@@ -6,10 +6,56 @@ RSpec.describe SpecGen::CLI do
   let(:novapay) { File.join(SpecGen::ROOT, 'spec', 'fixtures', 'specs', 'novapay.yaml') }
 
   describe '--help' do
-    it 'lists both commands and exits with 0' do
+    it 'lists every command and exits with 0' do
       result = run_cli('--help')
       expect(result.status).to eq(0)
-      expect(result.stdout).to include('generate').and include('diff')
+      expect(result.stdout).to include('generate').and include('analyze').and include('diff')
+    end
+  end
+
+  describe 'analyze' do
+    it 'prints what the analyzers recognised and exits with 0' do
+      result = run_cli('analyze', '--spec', novapay)
+      expect(result.status).to eq(0)
+      expect(result.stderr).to be_empty
+      expect(result.stdout).to include('5 operations, 8 schemas, 31 fields')
+        .and include('create_payout')
+        .and include('Auth: ApiKeyAuth -> api_key in header X-API-Key')
+        .and include('Warnings: 4')
+    end
+
+    it 'takes --provider as the name and marks it as stated, not derived' do
+      result = run_cli('analyze', '--spec', novapay, '--provider', 'demo')
+      expect(result.stdout).to include('Provider: demo (structural 1.00)')
+    end
+
+    it 'adds evidence lines with --explain' do
+      plain = run_cli('analyze', '--spec', novapay).stdout
+      explained = run_cli('analyze', '--spec', novapay, '--explain').stdout
+      expect(plain).not_to include('= rules/auth.yml')
+      expect(explained).to include('= rules/auth.yml entry "api_key_header"')
+    end
+
+    it 'requires --spec' do
+      result = run_cli('analyze')
+      expect(result.status).to eq(described_class::EXIT_USAGE)
+      expect(result.stderr).to include('--spec')
+    end
+
+    it 'reports a missing spec file with its path and without a stack trace' do
+      result = run_cli('analyze', '--spec', 'nope.yaml')
+      expect(result.status).to eq(described_class::EXIT_ERROR)
+      expect(result.stderr).to include('nope.yaml').and include('not found')
+      expect(result.stderr).not_to include('.rb:')
+    end
+
+    it 'turns a broken spec into one line with the location, not a stack trace' do
+      broken = File.join(SpecGen::ROOT, 'spec', 'fixtures', 'bad', 'broken_yaml.yaml')
+      result = run_cli('analyze', '--spec', broken)
+      expect(result.status).to eq(described_class::EXIT_ERROR)
+      expect(result.stderr).to include('broken_yaml.yaml').and include('line 8')
+      expect(result.stderr).not_to include('.rb:')
+      expect(result.stdout).to be_empty
     end
   end
 

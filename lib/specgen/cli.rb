@@ -74,6 +74,29 @@ module SpecGen
       not_implemented('generate')
     end
 
+    desc 'analyze --spec FILE [--provider NAME] [--explain]',
+         'Show what the analyzers recognise in a spec, without generating anything'
+    long_desc <<~DESC
+      Runs the analysis stage only and prints the intermediate representation:
+      provider identity, servers, authentication, every operation with its role
+      and confidence, every schema with its fields, and the warnings. With
+      --explain each derived value is followed by the evidence it rests on.
+    DESC
+    method_option :spec, type: :string, aliases: '-s', required: true,
+                         desc: 'Path to the OpenAPI spec (YAML or JSON)'
+    method_option :provider, type: :string, aliases: '-p',
+                             desc: 'Provider name; derived from info.title when omitted'
+    method_option :explain, type: :boolean, default: false,
+                            desc: 'Print the evidence behind every derived value'
+    def analyze
+      raise SpecLoadError.new('spec file not found', file: options[:spec]) if missing_spec?
+
+      rules = Rules.load
+      document = SpecLoader.load(options[:spec])
+      profile = Analyzers::Runner.call(document: document, rules: rules, options: options)
+      Reporter::Summary.new(profile, document, explain: options[:explain]).print_to($stdout)
+    end
+
     desc 'diff', 'Show integration-relevant differences between two versions of a spec'
     method_option :old, type: :string, required: true, desc: 'Previous spec version'
     method_option :new, type: :string, required: true, desc: 'New spec version'

@@ -7,7 +7,7 @@ module SpecGen
     # Nested structure is not flattened and not lost: a property that is an
     # object, or an array of objects, becomes a schema of its own, and the
     # field keeps its name. That is what lets a generator build
-    # `recipient: { type:, phone:, bank_code: }` instead of an opaque hash.
+    # `recipient: { type:, phone:, account: }` instead of an opaque hash.
     # The nested schemas are handed back rather than registered here, so the
     # analyzer stays the only place that writes to the profile and can stop
     # a cycle by name.
