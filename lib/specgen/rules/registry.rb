@@ -14,7 +14,7 @@ module SpecGen
       BOOKS = {
         roles: RolesBook, statuses: StatusesBook, currencies: CurrenciesBook,
         signatures: SignaturesBook, idempotency: IdempotencyBook, auth: AuthBook,
-        operations: OperationsBook,
+        operations: OperationsBook, conditions: ConditionsBook,
         contract: ContractBook
       }.freeze
 
@@ -34,6 +34,8 @@ module SpecGen
       attr_reader :auth
       # @return [OperationsBook]
       attr_reader :operations
+      # @return [ConditionsBook]
+      attr_reader :conditions
       # @return [ContractBook]
       attr_reader :contract
 

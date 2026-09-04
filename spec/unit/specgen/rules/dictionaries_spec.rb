@@ -112,6 +112,30 @@ RSpec.describe 'the shipped dictionaries' do
     end
   end
 
+  describe 'conditions' do
+    {
+      'БИК банка (обязателен для type=sbp)' => %w[type sbp],
+      'Номер карты (обязателен для type=card)' => %w[type card],
+      'Required when recipient_type is card' => %w[recipient_type card],
+      'Only for type = sbp' => %w[type sbp]
+    }.each do |sentence, (field, value)|
+      it "reads #{sentence.inspect} as #{field}=#{value}" do
+        _, found = rules.conditions.match(sentence)
+
+        expect(found).not_to be_nil, 'no pattern matched'
+        expect([found[:field], found[:value]]).to eq([field, value])
+      end
+    end
+
+    it 'keeps a condition read from prose below the matcher threshold' do
+      expect(rules.conditions.hint_confidence).to be < 0.6
+    end
+
+    it 'reads nothing out of a sentence that only describes a field' do
+      expect(rules.conditions.match('Телефон получателя (11 цифр, начинается с 7)')).to be_nil
+    end
+  end
+
   describe 'the contract' do
     it 'serves every operation role the contract covers' do
       SpecGen::IR::Roles::CONTRACT.each do |role|

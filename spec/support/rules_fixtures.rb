@@ -75,6 +75,10 @@ module RulesFixtures
                        'ceiling' => 0.95, 'floor' => 5 },
         'roles' => OPERATION_ROLES }
     },
+    'conditions.yml' => lambda {
+      { 'version' => 1,
+        'required_when' => { 'confidence' => 0.5, 'patterns' => [HINT_PATTERN] } }
+    },
     'contract.yml' => lambda {
       { 'version' => 1, 'base_class' => 'Provider::BaseService',
         'assumption' => 'Modelled from the case description; the real class was never handed out.',
@@ -84,6 +88,13 @@ module RulesFixtures
                               'known_values' => %w[create status] },
         'operation' => { 'amount_unit' => 'major' } }
     }
+  }.freeze
+
+  # Enough to prove the loader and the analyzer agree on the shape; the
+  # patterns that ship live in rules/conditions.yml.
+  HINT_PATTERN = {
+    'name' => 'equals', 'kind' => 'equals',
+    'pattern' => '(?i)required[^.;]{0,40}?(?<field>[a-z_][a-z0-9_]*)\s*(?:=|\bis\b)\s*(?<value>[a-z0-9_]+)'
   }.freeze
 
   # One line per role: the loader only needs each list to be non-empty, and
