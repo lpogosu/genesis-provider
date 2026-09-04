@@ -1,0 +1,8 @@
+openapi: 3.0.3
+info:
+  title: No paths
+  version: 1.0.0
+components:
+  schemas:
+    Payout:
+      type: object

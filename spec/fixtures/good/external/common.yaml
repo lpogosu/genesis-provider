@@ -1,0 +1,20 @@
+components:
+  schemas:
+    Money:
+      type: object
+      properties:
+        amount:
+          type: integer
+        currency:
+          $ref: '#/components/schemas/Currency'
+    Currency:
+      type: string
+      minLength: 3
+      maxLength: 3
+    Payout:
+      type: object
+      properties:
+        id:
+          type: string
+        money:
+          $ref: '#/components/schemas/Money'

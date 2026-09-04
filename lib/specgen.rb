@@ -2,6 +2,7 @@
 
 require_relative 'specgen/version'
 require_relative 'specgen/errors'
+require_relative 'specgen/spec_loader'
 
 # Generator of payment-provider integrations from OpenAPI specifications.
 #

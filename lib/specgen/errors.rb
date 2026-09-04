@@ -8,15 +8,19 @@ module SpecGen
   class Error < StandardError
     # @return [String, nil] spec file the error refers to
     attr_reader :file
-    # @return [String, nil] JSONPath of the offending element, e.g. "$.paths"
+    # @return [String, nil] location inside the file: a JSONPath such as
+    #   "$.paths", or "line 5, column 3" for syntax errors
     attr_reader :path
+    # @return [String, nil] the message without the location prefix
+    attr_reader :detail
 
     # @param message [String, nil] human-readable description
     # @param file [String, nil] spec file the error refers to
-    # @param path [String, nil] JSONPath inside that file
+    # @param path [String, nil] JSONPath (or line/column) inside that file
     def initialize(message = nil, file: nil, path: nil)
       @file = file
       @path = path
+      @detail = message
       super(message)
     end
 

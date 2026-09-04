@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info:
+  title: Dangling ref
+  version: 1.0.0
+paths:
+  /payouts:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Missing'
+      responses:
+        '201':
+          description: created
+components:
+  schemas:
+    Present:
+      type: object

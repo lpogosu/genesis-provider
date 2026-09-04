@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: Remote ref
+  version: 1.0.0
+paths:
+  /payouts:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: 'https://example.com/schemas/common.yaml#/Money'
+      responses:
+        '201':
+          description: created

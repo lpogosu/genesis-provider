@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: Unknown schema type
+  version: 1.0.0
+paths:
+  /payouts:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payout'
+      responses:
+        '201':
+          description: created
+components:
+  schemas:
+    Payout:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: money

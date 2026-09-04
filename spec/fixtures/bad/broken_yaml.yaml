@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: Broken YAML
+  version: 1.0.0
+paths:
+  /payouts:
+    post:
+      tags: [Payouts
+      responses:
+        '201':
+          description: created

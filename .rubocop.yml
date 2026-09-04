@@ -12,6 +12,9 @@ AllCops:
 
 Layout/LineLength:
   Max: 100
+  # Spec files hold literal documents and long JSONPath expectations.
+  Exclude:
+    - 'spec/**/*'
 
 # Project rules from CLAUDE.md: no method longer than 20 lines,
 # no class longer than 150.
@@ -23,6 +26,8 @@ Metrics/ModuleLength:
   Max: 150
 Metrics/AbcSize:
   Max: 20
+  Exclude:
+    - 'spec/**/*'
 Metrics/CyclomaticComplexity:
   Max: 8
 Metrics/PerceivedComplexity:

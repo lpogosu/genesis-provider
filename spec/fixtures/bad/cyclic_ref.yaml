@@ -1,0 +1,21 @@
+openapi: 3.0.3
+info:
+  title: Cyclic ref
+  version: 1.0.0
+paths:
+  /payouts:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/A'
+      responses:
+        '201':
+          description: created
+components:
+  schemas:
+    A:
+      $ref: '#/components/schemas/B'
+    B:
+      $ref: '#/components/schemas/A'

@@ -1,0 +1,23 @@
+openapi: 3.1.0
+info:
+  title: External refs
+  version: 1.0.0
+paths:
+  /payouts:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: 'common.yaml#/components/schemas/Money'
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+components:
+  responses:
+    Created:
+      description: created
+      content:
+        application/json:
+          schema:
+            $ref: 'common.yaml#/components/schemas/Payout'

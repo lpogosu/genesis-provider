@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: Broken external file
+  version: 1.0.0
+paths:
+  /payouts:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: 'common.yaml#/components/schemas/Money'
+      responses:
+        '201':
+          description: created
