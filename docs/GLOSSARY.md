@@ -191,6 +191,34 @@
 `роль поля: неизвестное значение "x" (допустимо: …)`. Один шаблон на форму
 проверки без согласования рода в русском.
 
+## Анализаторы части 2: единицы, статусы, ошибки, вебхуки, условия
+
+| В коде | По-русски | Примечание |
+|---|---|---|
+| amount unit | единица суммы | `minor` / `major` в значениях не переводить |
+| `Condition` / interaction condition | условие взаимодействия | не путать с условной обязательностью (`RequiredWhen`) |
+| kind (of condition) | вид условия | значения `min_amount`, `retry_after`… не переводить |
+| `ErrorRule` | правило ошибки / правило карты ошибок | |
+| error action | действие по ошибке | `reject`, `retry`, `retry_backoff`, `alert`, `escalate`, `dedup` не переводить |
+| generic rule | общее правило | правило с `operation: nil`, достроенное по соседним операциям |
+| deduplication success path | успешный путь дедупликации | ответ с кодом конфликта и схемой успеха |
+| conflict status | код конфликта / код ответа на повтор | 409 у выданной спеки |
+| `seen_in` | где встречен (код) | `enum`, `пример`, `ответ` |
+| undeclared (code) | не объявлен (в enum) | код есть в примере, но не в enum |
+| unused (code) | не встречается в примерах | код есть в enum, но ни в одном примере |
+| event (webhook) | событие | `payout.completed`; поле события ищется структурно, роли `event` в IR нет |
+| event field | поле события | |
+| prefix stripping | снятие префикса | `payout.completed` → `completed` |
+| signature profile | профиль подписи | `standard_webhooks` / `custom` |
+| named profile | именованный профиль | запись `profiles` в `rules/signatures.yml` |
+| confirming signal | подтверждающий сигнал | слово описания, совпавшее с уже выведенным |
+| overlay extension | расширение overlay | `x-specgen-*`, имена не переводить |
+| replay | повтор (запроса) | |
+| pause before retry | пауза до повтора | заголовок `Retry-After` |
+| rate limited | ограничена по частоте | |
+| status restriction | ограничение по статусу | «отмена возможна только в статусах …» |
+| reader (shared) | общий reader | `SchemaIndex`, `StatusReader`, `DedupReader`…; слово reader не переводить |
+
 ## Стандарты — не переводить
 
 OpenAPI, OpenAPI Overlay, JSON Schema, JSONPath, JSON Pointer, ISO 4217,
