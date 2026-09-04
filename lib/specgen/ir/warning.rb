@@ -27,8 +27,10 @@ module SpecGen
       # Every kind of doubt the pipeline can produce. Grouped by stage:
       # loading and structure, operations, fields and schemas, amounts,
       # statuses and errors, webhooks, idempotency, auth, overlays.
+      #
       CODES = %i[
         spec_element_unsupported schema_unresolved example_missing
+        provider_name_unknown server_environment_unknown
         operation_unmapped operation_id_missing operation_role_ambiguous
         undeclared_status_code
         field_role_unknown required_field_role_unknown conditional_required_hint
@@ -37,7 +39,6 @@ module SpecGen
         status_unmapped status_missing_from_enum
         error_code_undeclared error_code_unused error_action_unknown
         webhook_missing webhook_event_unmapped signature_profile_incomplete
-        idempotency_header_missing idempotency_dedup_unclear
         auth_unknown auth_multiple_schemes
         overlay_conflict overlay_target_missing
         contract_gap
