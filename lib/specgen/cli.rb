@@ -67,6 +67,10 @@ module SpecGen
                         desc: 'Run on every spec in spec/fixtures/specs and print a summary'
     def generate
       validate_generate_options!
+      # Fails here, before a single spec is read, when anything under rules/
+      # is inconsistent: a synonym two roles claim must never reach a
+      # payment request, and a startup error is the cheapest place to say so.
+      Rules.load
       not_implemented('generate')
     end
 

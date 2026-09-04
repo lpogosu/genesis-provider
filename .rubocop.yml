@@ -49,3 +49,9 @@ Style/Documentation:
 # LF-only on every platform (see .gitattributes).
 Layout/EndOfLine:
   EnforcedStyle: lf
+
+# The dictionaries in rules/ carry placeholders like `%{param_name}` that
+# `format` expands directly. The annotated form would add a type to a value
+# that is always a header name, so template tokens are the house style.
+Style/FormatStringToken:
+  EnforcedStyle: template

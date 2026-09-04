@@ -46,6 +46,14 @@ module SpecGen
   # a missing `paths`, an unresolvable or cyclic `$ref`, or an unknown type.
   class SpecParseError < Error; end
 
+  # Dictionary stage: something is wrong with the data under rules/ — a file
+  # missing or malformed, a role outside IR::Roles, a synonym claimed by two
+  # roles, a currency exponent out of range, a contract role no method
+  # serves. Unlike the other errors this one is never the user's fault: the
+  # dictionaries are ours, so the message lists every problem found at once
+  # and the run stops before a wrong synonym reaches generated code.
+  class RulesError < Error; end
+
   # Generation stage: template rendering failed, an artifact could not be
   # written, or generated code did not pass its own syntax check.
   class GenerationError < Error; end
