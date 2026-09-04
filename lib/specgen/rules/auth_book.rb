@@ -14,6 +14,8 @@ module SpecGen
     class AuthBook < Book
       FILE = 'auth.yml'
       MATCH_KEYS = %w[type in scheme flow].freeze
+      # A fragment key spelled with this token takes its name from the spec.
+      PARAM_NAME = '%{param_name}'
 
       # @param name [String] entry name in the dictionary
       # @return [Hash, nil] :match, :ir_type, :location, :credential_keys,
@@ -27,6 +29,32 @@ module SpecGen
         @schemes.keys
       end
 
+      # @param entry [Hash] an entry #scheme_for returned
+      # @return [String, nil] the name that entry is filed under
+      def name_of(entry)
+        @schemes.key(entry)
+      end
+
+      # Name of the header or query parameter that carries the credential.
+      # A literal fragment key is the name itself (Authorization); a key
+      # spelled with PARAM_NAME means the provider chose the name and the
+      # spec supplies it (apiKey `name`).
+      # @param entry [Hash] an entry #scheme_for returned
+      # @param declaration [Hash] the securityScheme as the spec wrote it
+      # @return [String, nil]
+      def param_name_for(entry, declaration)
+        return fragment_keys(entry).first unless spec_names_param?(entry)
+
+        name = declaration.is_a?(Hash) ? declaration['name'] : nil
+        name.is_a?(String) && !name.strip.empty? ? name : nil
+      end
+
+      # @param entry [Hash] an entry #scheme_for returned
+      # @return [Boolean] the parameter name comes from the spec, not from here
+      def spec_names_param?(entry)
+        fragment_keys(entry).any? { |key| key.include?(PARAM_NAME) }
+      end
+
       # Finds the entry that describes a declared security scheme.
       # @param declaration [Hash] one value of components.securitySchemes
       # @param flow [String, nil] OAuth2 flow, when the caller picked one
@@ -37,6 +65,10 @@ module SpecGen
       end
 
       private
+
+      def fragment_keys(entry)
+        entry[:headers].keys + entry[:query].keys
+      end
 
       def facts_of(declaration, flow)
         flows = declaration['flows']

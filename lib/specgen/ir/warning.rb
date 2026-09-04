@@ -28,6 +28,11 @@ module SpecGen
       # loading and structure, operations, fields and schemas, amounts,
       # statuses and errors, webhooks, idempotency, auth, overlays.
       #
+      # Two of the auth codes report what the spec plainly says rather than
+      # what could not be derived: `auth_absent` (no security declared
+      # anywhere) and `auth_key_in_query` (a credential the provider chose
+      # to put in the query string, where proxy logs keep it). Both are
+      # :info in the report, because a reader still has to see them.
       CODES = %i[
         spec_element_unsupported schema_unresolved example_missing
         provider_name_unknown server_environment_unknown
@@ -39,7 +44,8 @@ module SpecGen
         status_unmapped status_missing_from_enum
         error_code_undeclared error_code_unused error_action_unknown
         webhook_missing webhook_event_unmapped signature_profile_incomplete
-        auth_unknown auth_multiple_schemes
+        idempotency_header_missing idempotency_dedup_unclear
+        auth_unknown auth_multiple_schemes auth_absent auth_key_in_query
         overlay_conflict overlay_target_missing
         contract_gap
       ].freeze

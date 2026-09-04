@@ -9,7 +9,8 @@ module SpecGen
     #
     #   info         Info
     #   servers      [Server]
-    #   auth         Auth or nil (nil: the spec declares no security at all)
+    #   auth         Auth or nil (nil: no analyzer has looked yet; a spec
+    #                that declares no security gives Auth with type :none)
     #   operations   [Operation] in spec order
     #   schemas      {name => Schema}
     #   status_map   [StatusMapping]

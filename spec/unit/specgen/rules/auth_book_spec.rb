@@ -49,6 +49,32 @@ RSpec.describe SpecGen::Rules::AuthBook do
     end
   end
 
+  describe 'what an analyzer asks about a matched entry' do
+    it 'names the entry, so a report can cite the dictionary it came from' do
+      book = auth
+      entry = book.scheme_for({ 'type' => 'apiKey', 'in' => 'header' })
+
+      expect(book.name_of(entry)).to eq('api_key_header')
+    end
+
+    it 'takes the parameter name from the spec where a fragment key is a placeholder' do
+      book = auth
+      entry = book.scheme_for({ 'type' => 'apiKey', 'in' => 'header' })
+
+      expect(book.spec_names_param?(entry)).to be(true)
+      expect(book.param_name_for(entry, { 'name' => 'X-API-Key' })).to eq('X-API-Key')
+      expect(book.param_name_for(entry, {})).to be_nil
+    end
+
+    it 'keeps the fixed header name where the dictionary spells one out' do
+      book = auth
+      entry = book.scheme_for({ 'type' => 'http', 'scheme' => 'bearer' })
+
+      expect(book.spec_names_param?(entry)).to be(false)
+      expect(book.param_name_for(entry, { 'name' => 'X-Ignored' })).to eq('Authorization')
+    end
+  end
+
   describe 'guarding the entries' do
     it 'refuses an auth type outside IR::Auth' do
       patch = schemes { |set| set['bearer']['ir_type'] = 'jwt' }

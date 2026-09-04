@@ -16,4 +16,7 @@ end
 
 require_relative 'analyzers/base'
 require_relative 'analyzers/environment_detector'
+require_relative 'analyzers/security_requirements'
+require_relative 'analyzers/auth_scheme'
 require_relative 'analyzers/info_analyzer'
+require_relative 'analyzers/auth_analyzer'
