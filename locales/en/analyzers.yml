@@ -204,6 +204,16 @@ analyzers:
                 type: string
                 format: uuid
 
+  # Other interaction conditions (IR::Condition): not the shape of a request
+  # but its limits.
+  condition:
+    retry_after_evidence: "response %{status} declares header %{header} — a pause before retrying"
+    rate_limited_evidence: "response %{status} is declared: the operation is rate limited (RFC 6585)"
+    idempotency_optional_evidence: "header %{header} is declared with required: false; per rules/idempotency.yml the key is always sent"
+    constraint_evidence: "%{keyword}: %{value} on field `%{name}` (role %{role} by a rules/roles.yml synonym)"
+    restriction_evidence: "the description matched pattern %{pattern} (%{sentence}); statuses from the enum: %{statuses}"
+    unclear_message: "the description of operation %{key} reads as a status restriction (%{sentence}) but names no status from the enum of the status field; the condition was not derived — check the spec"
+
   units:
     unit_name:
       minor: "minor units"

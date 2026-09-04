@@ -22,6 +22,7 @@ RSpec.describe SpecGen::Analyzers::Runner do
     expect(profile.error_map.count(&:dedup?)).to eq(1)
     expect(profile.webhooks.first.events.size).to eq(4)
     expect(profile.idempotency.conflict_status.value).to eq(409)
+    expect(profile.conditions.size).to eq(9)
   end
 
   it 'lists every analyzer exactly once, so a new one cannot run twice or be forgotten' do

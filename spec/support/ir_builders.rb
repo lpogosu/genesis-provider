@@ -54,6 +54,8 @@ module IRBuilders
     rules = [error_rule(402, :retry), error_rule(500, :retry_backoff)]
     profile.status_map.concat(reverse ? statuses.reverse : statuses)
     profile.error_map.concat(reverse ? rules.reverse : rules)
+    profile.conditions << Condition.new(kind: :min_amount, field: 'amount', operation: 'createPayout',
+                                        value: structural(100_000, 'minimum: 100000'))
   end
 
   def fill_warnings(profile, reverse)

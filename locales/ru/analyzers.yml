@@ -204,6 +204,16 @@ analyzers:
                 type: string
                 format: uuid
 
+  # Другие условия взаимодействия (IR::Condition): не форма запроса, а его
+  # границы.
+  condition:
+    retry_after_evidence: "ответ %{status} объявляет заголовок %{header} — пауза до повтора"
+    rate_limited_evidence: "ответ %{status} объявлен: операция ограничена по частоте (RFC 6585)"
+    idempotency_optional_evidence: "заголовок %{header} объявлен с required: false; по rules/idempotency.yml ключ отправляется всегда"
+    constraint_evidence: "%{keyword}: %{value} у поля `%{name}` (роль %{role} по синониму rules/roles.yml)"
+    restriction_evidence: "описание совпало с шаблоном %{pattern} (%{sentence}); статусы из enum: %{statuses}"
+    unclear_message: "описание операции %{key} читается как ограничение по статусу (%{sentence}), но не называет ни одного статуса из enum поля статуса; условие не выведено — проверьте спецификацию"
+
   units:
     unit_name:
       minor: "минорные единицы"

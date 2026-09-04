@@ -156,6 +156,25 @@ RSpec.describe 'the shipped dictionaries' do
     it 'reads nothing out of a sentence that only describes a field' do
       expect(rules.conditions.match('Телефон получателя (11 цифр, начинается с 7)')).to be_nil
     end
+
+    {
+      'Отмена возможна только в статусах pending и processing' => 'pending и processing',
+      'Cancellation is allowed only in status pending' => 'pending',
+      'The payout can be cancelled only while pending or processing' => 'pending or processing',
+      'A payout may be cancelled when the status is pending' => 'pending'
+    }.each do |sentence, tail|
+      it "reads the status tail of #{sentence.inspect}" do
+        _, found = rules.conditions.match_restriction(sentence)
+
+        expect(found).not_to be_nil, 'no restriction pattern matched'
+        expect(found[:statuses]).to eq(tail)
+      end
+    end
+
+    it 'reads no restriction out of a plain cancel description' do
+      expect(rules.conditions.match_restriction('Отменить выплату')).to be_nil
+      expect(rules.conditions.restriction_confidence).to eq(0.6)
+    end
   end
 
   describe 'errors' do

@@ -44,6 +44,10 @@ module SpecGen
       # совпавший профиль справочника. `webhook_event_undeclared` — событие
       # есть в примере, но не в enum поля события: та же дыра, что
       # `status_missing_from_enum`, только у событий.
+      #
+      # `condition_unclear` — описание операции читается как ограничение по
+      # статусу, но не называет ни одного статуса, объявленного в enum;
+      # условие взаимодействия не выведено, догадки нет.
       CODES = %i[
         spec_element_unsupported schema_unresolved example_missing
         provider_name_unknown server_environment_unknown
@@ -59,7 +63,7 @@ module SpecGen
         idempotency_header_missing idempotency_dedup_unclear
         auth_unknown auth_multiple_schemes auth_absent auth_key_in_query
         overlay_conflict overlay_target_missing
-        contract_gap
+        contract_gap condition_unclear
       ].freeze
 
       # @param code [Symbol] один из CODES

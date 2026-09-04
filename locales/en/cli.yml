@@ -73,6 +73,8 @@ summary:
   idempotency_dedup: "dedup on %{status}"
   idempotency_dedup_unknown: "dedup not derived"
   idempotency_none: "Idempotency: no header declared"
+  conditions: "Interaction conditions: %{count}"
+  conditions_none: "Interaction conditions: none found"
   operations: "Operations:"
   operations_none: "Operations: none"
   request: "request:"

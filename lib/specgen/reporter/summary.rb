@@ -48,7 +48,8 @@ module SpecGen
       # анализаторы части 2 узнали о провайдере.
       def facts
         [DerivationLines.new(profile, explain: explain).lines,
-         ErrorLines.new(profile, explain: explain).lines]
+         ErrorLines.new(profile, explain: explain).lines,
+         ConditionLines.new(profile, explain: explain).lines]
       end
 
       def header

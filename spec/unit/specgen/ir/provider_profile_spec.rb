@@ -9,7 +9,7 @@ RSpec.describe SpecGen::IR::ProviderProfile do
     it 'starts with every collection empty and every optional part absent' do
       expect(profile.to_h).to eq(
         info: nil, servers: [], auth: nil, operations: [], schemas: {}, status_map: [],
-        error_map: [], webhooks: [], units: nil, idempotency: nil, warnings: []
+        error_map: [], webhooks: [], units: nil, idempotency: nil, conditions: [], warnings: []
       )
     end
 
@@ -135,6 +135,12 @@ RSpec.describe SpecGen::IR::ProviderProfile do
       expect(units[:unit]).to eq(value: :minor, source: :structural, confidence: 1.0,
                                  evidence: 'type: integer')
       expect(units[:exponent][:evidence]).to eq('ISO 4217: экспонента RUB 2')
+    end
+
+    it 'keeps interaction conditions in the order they were found, each with its derivation' do
+      condition = full_profile.to_h[:conditions].first
+      expect(condition).to include(kind: :min_amount, field: 'amount', operation: 'createPayout')
+      expect(condition[:value]).to include(value: 100_000, source: :structural)
     end
   end
 end

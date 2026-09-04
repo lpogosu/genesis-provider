@@ -73,6 +73,8 @@ summary:
   idempotency_dedup: "dedup on %{status}"
   idempotency_dedup_unknown: "дедупликация не выведена"
   idempotency_none: "Идемпотентность: заголовок не объявлен"
+  conditions: "Условия взаимодействия: %{count}"
+  conditions_none: "Условия взаимодействия: не найдены"
   operations: "Операции:"
   operations_none: "Операции: не найдены"
   request: "запрос:"

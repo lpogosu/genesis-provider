@@ -80,7 +80,8 @@ module RulesFixtures
     },
     'conditions.yml' => lambda {
       { 'version' => 1,
-        'required_when' => { 'confidence' => 0.5, 'patterns' => [HINT_PATTERN] } }
+        'required_when' => { 'confidence' => 0.5, 'patterns' => [HINT_PATTERN] },
+        'status_restriction' => { 'confidence' => 0.6, 'patterns' => [{ 'name' => 'only_in_statuses', 'pattern' => '(?i)(?:only in status(?:es)?|только в статусах)\s+(?<statuses>[^.;]+)' }] } }
     },
     'errors.yml' => lambda {
       { 'version' => 1, 'default_action' => 'reject', 'default_confidence' => 0.3,
@@ -135,10 +136,8 @@ module RulesFixtures
   }.freeze
 
   CONTRACT_HELPERS = {
-    'success' => {}, 'client' => {}, 'auth_headers' => {},
-    'failure' => { 'params' => [{ 'name' => 'code' }, { 'name' => 'i18n_key' }] },
-    'approve_operation' => { 'params' => [{ 'name' => 'operation' }] },
-    'reject_operation' => { 'params' => [{ 'name' => 'operation' }] }
+    'success' => {}, 'client' => {}, 'auth_headers' => {}, 'failure' => { 'params' => [{ 'name' => 'code' }, { 'name' => 'i18n_key' }] },
+    'approve_operation' => { 'params' => [{ 'name' => 'operation' }] }, 'reject_operation' => { 'params' => [{ 'name' => 'operation' }] }
   }.freeze
 
   # Пишет справочники во временный каталог и отдаёт его путь блоку.

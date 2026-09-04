@@ -3,6 +3,7 @@
 require_relative 'reporter/format'
 require_relative 'reporter/derivation_lines'
 require_relative 'reporter/error_lines'
+require_relative 'reporter/condition_lines'
 require_relative 'reporter/operation_lines'
 require_relative 'reporter/schema_lines'
 require_relative 'reporter/summary'

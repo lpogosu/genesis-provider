@@ -13,7 +13,7 @@ module SpecGen
     class Runner
       ORDER = [InfoAnalyzer, AuthAnalyzer, OperationAnalyzer, SchemaAnalyzer,
                UnitsAnalyzer, StatusAnalyzer, ErrorAnalyzer, WebhookAnalyzer,
-               IdempotencyAnalyzer].freeze
+               IdempotencyAnalyzer, ConditionsAnalyzer].freeze
 
       # @param document [SpecLoader::Document] спецификация со всеми
       #   разрешёнными `$ref`

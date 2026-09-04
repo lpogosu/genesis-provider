@@ -19,10 +19,12 @@ module SpecGen
     #   webhooks     [Webhook]
     #   units        Units или nil (nil: поля суммы нет нигде)
     #   idempotency  Idempotency или nil (nil: подходящего заголовка нет нигде)
+    #   conditions   [Condition] — другие условия взаимодействия, в порядке
+    #                спецификации
     #   warnings     [Warning]
     ProviderProfile = Struct.new(:info, :servers, :auth, :operations, :schemas, :status_map,
-                                 :error_map, :webhooks, :units, :idempotency, :warnings,
-                                 keyword_init: true)
+                                 :error_map, :webhooks, :units, :idempotency, :conditions,
+                                 :warnings, keyword_init: true)
 
     # Значения по умолчанию, сбор предупреждений и выборки ProviderProfile.
     class ProviderProfile
@@ -38,10 +40,12 @@ module SpecGen
       # @param webhooks [Array<Webhook>]
       # @param units [Units, nil]
       # @param idempotency [Idempotency, nil]
+      # @param conditions [Array<Condition>]
       # @param warnings [Array<Warning>]
       # @raise [ArgumentError]
       def initialize(info: nil, servers: [], auth: nil, operations: [], schemas: {}, status_map: [],
-                     error_map: [], webhooks: [], units: nil, idempotency: nil, warnings: [])
+                     error_map: [], webhooks: [], units: nil, idempotency: nil, conditions: [],
+                     warnings: [])
         Node.assert_optional!(info, Info, 'info')
         Node.assert_optional!(auth, Auth, 'auth')
         Node.assert_optional!(units, Units, 'units')

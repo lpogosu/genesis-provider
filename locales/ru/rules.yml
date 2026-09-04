@@ -66,6 +66,7 @@ rules:
     http_method: "HTTP-метод"
     operation_role: "роль операции"
     required_when: "раздел required_when"
+    status_restriction: "раздел status_restriction"
     pattern_entry: "описание шаблона"
     pattern_name: "имя шаблона"
     base_class: "базовый класс"

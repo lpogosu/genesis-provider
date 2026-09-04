@@ -65,6 +65,7 @@ rules:
     http_method: "HTTP method"
     operation_role: "operation role"
     required_when: "required_when"
+    status_restriction: "status_restriction"
     pattern_entry: "pattern entry"
     pattern_name: "pattern name"
     base_class: "base class"

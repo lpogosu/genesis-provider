@@ -51,6 +51,35 @@ RSpec.describe SpecGen::Rules::ConditionsBook do
     end
   end
 
+  describe 'the status restriction section' do
+    it 'reads its confidence and matches the statuses tail of the sentence' do
+      book = conditions
+
+      expect(book.restriction_confidence).to eq(0.6)
+      hint, found = book.match_restriction('Отмена возможна только в статусах pending и processing.')
+      expect(hint.name).to eq('only_in_statuses')
+      expect(hint.kind).to eq('statuses')
+      expect(found[:statuses]).to eq('pending и processing')
+      expect(book.match_restriction('Отменяет выплату')).to be_nil
+    end
+
+    it 'is optional: a dictionary without it has no restriction patterns' do
+      document = rule('conditions.yml')
+      document.delete('status_restriction')
+      book = load_rules('conditions.yml' => document).conditions
+
+      expect(book.restrictions).to eq([])
+      expect(book.match_restriction('only in statuses pending')).to be_nil
+    end
+
+    it 'refuses a restriction pattern that captures no statuses group' do
+      message = error_for { |doc| doc['status_restriction']['patterns'][0]['pattern'] = 'only in statuses (.+)' }
+
+      expect(message).to include('$.status_restriction.patterns[0].pattern')
+        .and include('шаблон должен захватывать statuses как именованную группу')
+    end
+  end
+
   describe 'guarding the data' do
     it 'refuses a pattern that captures no field, which is the whole point' do
       message = error_for { |doc| only_pattern(doc)['pattern'] = 'required when (.+)' }
