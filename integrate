@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Launcher for the command from the case description:
+#   ./integrate --spec provider_api.yaml --provider <name> --lang ruby
+load File.expand_path('bin/integrate', __dir__)

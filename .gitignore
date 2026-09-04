@@ -1,0 +1,20 @@
+# generated artifacts (never committed, regenerated on every run)
+/output/
+
+# local secrets
+.env
+.env.*
+!.env.example
+
+# scratch space
+/tmp/
+
+# tool state
+/.rspec_status
+/.bundle/
+/vendor/bundle/
+/coverage/
+*.gem
+
+# Claude Code local permissions
+.claude/settings.local.json

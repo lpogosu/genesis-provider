@@ -1,0 +1,46 @@
+# RuboCop configuration for the generator itself. Generated code in output/
+# is excluded here and checked separately by the Validators stage.
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'output/**/*'
+    - 'tmp/**/*'
+    - 'vendor/**/*'
+    - 'spec/fixtures/**/*'
+
+Layout/LineLength:
+  Max: 100
+
+# Project rules from CLAUDE.md: no method longer than 20 lines,
+# no class longer than 150.
+Metrics/MethodLength:
+  Max: 20
+Metrics/ClassLength:
+  Max: 150
+Metrics/ModuleLength:
+  Max: 150
+Metrics/AbcSize:
+  Max: 20
+Metrics/CyclomaticComplexity:
+  Max: 8
+Metrics/PerceivedComplexity:
+  Max: 8
+Metrics/ParameterLists:
+  Max: 5
+  CountKeywordArgs: false
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*_spec.rb'
+    - 'Gemfile'
+
+# Every public class and module of the core carries a comment: it is the
+# first thing a reviewer reads when judging structure.
+Style/Documentation:
+  Enabled: true
+
+# Golden tests compare generated files byte for byte, so the repository is
+# LF-only on every platform (see .gitattributes).
+Layout/EndOfLine:
+  EnforcedStyle: lf
