@@ -1,0 +1,571 @@
+<!doctype html>
+<!--
+  Слайды чекпоинта 1, команда «Два килобайта». Печать в PDF:
+
+    "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu ^
+      --no-pdf-header-footer --print-to-pdf="docs\checkpoint-1\checkpoint-1.pdf" ^
+      "file:///E:/hackgenesis/docs/checkpoint-1/slides.html"
+
+  Формат 16:9 (320×180 мм), один <section class="slide"> — одна страница.
+  Предпросмотр одного слайда: slides.html?only=3.
+  Текст выступления к этим слайдам — docs/CHECKPOINT-1-PITCH.md.
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Два килобайта. Генератор интеграций. Чекпоинт 1</title>
+<style>
+  @page { size: 320mm 180mm; margin: 0; }
+  :root {
+    --navy: #14213d;
+    --ink: #1f2937;
+    --muted: #64708a;
+    --line: #e3e7ef;
+    --paper: #ffffff;
+    --tint: #f4f6fa;
+    --teal: #0f8b8d;
+    --teal-soft: #e3f3f3;
+    --amber: #d97706;
+    --amber-soft: #fdf1df;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #7d8597; }
+  body {
+    font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Слайд: шапка, тело, колонтитул. Колонтитул в потоке, поэтому тело
+     физически не может на него наехать: лишнее обрезается внутри тела. */
+  .slide {
+    width: 320mm; height: 180mm;
+    padding: 13mm 18mm 9mm 18mm;
+    background: var(--paper);
+    page-break-after: always; break-after: page;
+    display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+    row-gap: 5mm;
+    overflow: hidden;
+  }
+  @media screen { .slide { margin: 10mm auto; box-shadow: 0 3px 14px rgba(0,0,0,.35); } }
+  .slide.dark { background: var(--navy); color: #fff; }
+
+  header .step { font-size: 12pt; color: var(--teal); font-weight: 600; margin: 0 0 2.5mm 0; }
+  .dark header .step { color: #8fd3d3; }
+  header h2 { font-size: 27pt; line-height: 1.15; margin: 0; font-weight: 700; color: var(--navy); letter-spacing: -.01em; }
+  .dark header h2 { color: #fff; }
+  header .sub { font-size: 15.5pt; color: var(--muted); margin: 2.5mm 0 0 0; line-height: 1.35; }
+  .dark header .sub { color: #b6c0d6; }
+
+  .body { min-height: 0; display: flex; flex-direction: column; }
+  /* Блоки не сжимаются: если текста всё же больше, чем места, он обрезается
+     краем слайда, а не наезжает на соседний блок. */
+  .body > * { flex-shrink: 0; }
+  .fill { flex: 1 1 0; min-height: 0; }
+
+  footer { display: flex; justify-content: space-between; font-size: 10pt; color: var(--muted); }
+  .dark footer { color: #8e9ab5; }
+
+  p, li { font-size: 14.5pt; line-height: 1.4; }
+  p { margin: 0 0 3.5mm 0; }
+  ul { margin: 0; padding-left: 6mm; }
+  li { margin-bottom: 2.6mm; }
+  b { color: var(--navy); }
+  .dark b { color: #fff; }
+  .muted { color: var(--muted); }
+  .lead { font-size: 17pt; line-height: 1.38; }
+  .big { font-size: 20pt; line-height: 1.3; font-weight: 600; color: var(--navy); }
+  code, .mono {
+    font-family: "Cascadia Mono", "Consolas", "JetBrains Mono", monospace;
+    font-size: .9em; background: var(--tint); padding: .04em .35em; border-radius: 3px;
+  }
+  .dark code { background: rgba(255,255,255,.12); color: #fff; }
+
+  .cols { display: flex; gap: 12mm; }
+  .col { flex: 1; min-width: 0; }
+
+  .card { background: var(--tint); border-radius: 4mm; padding: 5mm 6.5mm; margin-bottom: 3.5mm; }
+  .card h3 { font-size: 14.5pt; margin: 0 0 1.5mm 0; color: var(--navy); }
+  .card p { margin: 0; font-size: 13.5pt; }
+
+  /* Вопрос к экспертам */
+  .ask {
+    margin-top: auto;
+    display: flex; align-items: center; gap: 6mm;
+    background: var(--teal-soft); border-radius: 4mm; padding: 4.5mm 6.5mm;
+  }
+  .ask .mark {
+    flex: none; width: 12mm; height: 12mm; border-radius: 50%;
+    background: var(--teal); color: #fff; font-size: 18pt; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ask .label { font-size: 10.5pt; color: var(--teal); font-weight: 700; margin: 0 0 .8mm 0; }
+  .ask p { margin: 0; font-size: 14.5pt; line-height: 1.35; }
+
+  /* Шаги работы инструмента */
+  .steps { display: flex; gap: 6mm; margin-bottom: 6mm; }
+  .steps .s { flex: 1; background: var(--tint); border-radius: 4mm; padding: 5mm 6mm; }
+  .steps .s .n { font-size: 26pt; font-weight: 800; color: var(--teal); line-height: 1; margin-bottom: 2mm; }
+  .steps .s h3 { font-size: 15pt; margin: 0 0 2mm 0; color: var(--navy); }
+  .steps .s p { margin: 0; font-size: 13pt; color: var(--ink); }
+
+  /* Вопросы, которые закрывают стандарты */
+  .std-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+  .std { background: var(--tint); border-radius: 4mm; padding: 4mm 5.5mm; }
+  .std .q { font-size: 13.5pt; font-weight: 700; color: var(--navy); margin: 0 0 1.5mm 0; line-height: 1.3; }
+  .std .a { font-size: 12.2pt; line-height: 1.32; margin: 0; color: var(--ink); }
+  .std .a b { color: var(--teal); font-weight: 700; }
+
+  /* Уровни доверия */
+  .levels { display: flex; flex-direction: column; gap: 3.5mm; }
+  .level { display: flex; align-items: center; gap: 7mm; background: var(--tint); border-radius: 4mm; padding: 4.5mm 7mm; }
+  .level .n { font-size: 28pt; font-weight: 800; color: var(--teal); width: 12mm; flex: none; line-height: 1; }
+  .level .what { flex: 1.15; font-size: 14pt; line-height: 1.35; }
+  .level .how { flex: 1; font-size: 14pt; font-weight: 600; color: var(--navy); line-height: 1.35; }
+  .level.three { background: var(--amber-soft); }
+  .level.three .n { color: var(--amber); }
+
+  /* Находки */
+  .finds { display: grid; grid-template-columns: 1fr 1fr; gap: 3.5mm 10mm; align-content: start; }
+  .find { display: flex; gap: 4mm; }
+  .find .n { font-size: 20pt; font-weight: 800; color: var(--teal); width: 9mm; flex: none; line-height: 1.1; }
+  .find.hot .n { color: var(--amber); }
+  .find p { font-size: 13.2pt; margin: 0; line-height: 1.36; }
+
+  /* Терминал */
+  .term {
+    background: #0e1526; color: #d8e0f0; border-radius: 4mm; padding: 5.5mm 7mm;
+    font-family: "Cascadia Mono", "Consolas", monospace; font-size: 10.4pt; line-height: 1.32;
+    white-space: pre; overflow: hidden; max-width: 100%; min-width: 0;
+  }
+  .term .cmd { color: #8fd3d3; }
+  .term .k { color: #9fb3d9; }
+  .term .ok { color: #86e3ac; }
+  .term .w { color: #ffb86b; }
+  .term .dim { color: #6b7a99; }
+
+  /* Плитки с цифрами */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4.5mm; align-content: start; }
+  .tile { background: var(--tint); border-radius: 4mm; padding: 5mm 6mm; }
+  .tile .num { font-size: 30pt; font-weight: 800; color: var(--navy); line-height: 1; margin-bottom: 2.5mm; }
+  .tile .num small { font-size: 13pt; color: var(--muted); font-weight: 600; }
+  .tile .lbl { font-size: 12.8pt; line-height: 1.3; }
+  .tile .src { font-size: 10.5pt; color: var(--muted); margin-top: 1.5mm; line-height: 1.3; }
+  .tile.hot .num { color: var(--teal); }
+
+  /* План */
+  .plan { display: flex; gap: 9mm; }
+  .plan .col { background: var(--tint); border-radius: 4mm; padding: 5.5mm 7mm; }
+  .plan .col.next { background: var(--teal-soft); }
+  .plan h3 { font-size: 15pt; color: var(--navy); margin: 0 0 3.5mm 0; }
+  .plan li { font-size: 13pt; margin-bottom: 2mm; }
+  .plan { margin-bottom: 4mm; }
+  .steps .s p { font-size: 12.6pt; }
+
+  /* Список вопросов */
+  .qs .q { display: flex; gap: 6mm; margin-bottom: 4.2mm; }
+  .qs .q .n {
+    flex: none; width: 9mm; height: 9mm; border-radius: 50%; margin-top: 1mm;
+    background: #8fd3d3; color: var(--navy); font-weight: 800; font-size: 12.5pt;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .qs .q p { margin: 0; font-size: 14.5pt; line-height: 1.35; }
+  .qs .q p small { display: block; font-size: 11.5pt; color: #b6c0d6; margin-top: 1mm; }
+
+  /* Титул */
+  .title-slide { grid-template-rows: auto 1fr auto; }
+  .title-slide .team { font-size: 14pt; color: #8fd3d3; font-weight: 700; margin: 0 0 12mm 0; }
+  .title-slide h1 { font-size: 40pt; line-height: 1.1; margin: 0 0 7mm 0; font-weight: 800; letter-spacing: -.015em; }
+  .title-slide .lead { color: #b6c0d6; max-width: 240mm; }
+  .title-slide .today { border-left: 2mm solid #8fd3d3; padding-left: 6mm; }
+  .title-slide .today p { margin: 0; font-size: 17pt; line-height: 1.4; }
+  .title-slide .today .muted { color: #b6c0d6; }
+</style>
+</head>
+<body>
+
+<!-- 1. Титул -->
+<section class="slide dark title-slide">
+  <header>
+    <p class="team">Команда «Два килобайта»</p>
+    <h1>Генератор интеграций<br>с платёжными провайдерами</h1>
+    <p class="lead">Инструмент, который читает документацию платёжного провайдера и собирает из неё
+    готовую интеграцию для Space Payments: сервис, инструкцию, тестовые примеры и список того,
+    что осталось проверить человеку.</p>
+  </header>
+  <div class="body">
+    <div class="fill"></div>
+    <div class="today">
+      <p>Сегодня показываем, как инструмент читает документацию.</p>
+      <p class="muted">Генерацию кода привезём на второй чекпоинт. Хотим сверить с вами направление.</p>
+    </div>
+  </div>
+  <footer><span>Hack.Genesis 2026, кейс 1, первый чекпоинт</span><span>4 сентября 2026</span></footer>
+</section>
+
+<!-- 2. Задача -->
+<section class="slide">
+  <header>
+    <p class="step">1. Ваша задача, как мы её поняли</p>
+    <h2>Новый провайдер сейчас стоит 2–5 дней ручной работы</h2>
+  </header>
+  <div class="body">
+    <div class="cols">
+      <div class="col">
+        <div class="card">
+          <h3>Что есть на входе</h3>
+          <p>Файл с описанием API провайдера: куда слать запросы, какие поля передавать, какие ответы ждать.</p>
+        </div>
+        <div class="card">
+          <h3>Что нужно на выходе</h3>
+          <p>Готовый сервис по вашему контракту, инструкция по подключению, тестовые примеры запросов и
+          ответов. Одной командой, без ручных шагов.</p>
+        </div>
+      </div>
+      <div class="col">
+        <p class="big">В задании один провайдер, NovaPay. В жизни их будет много.</p>
+        <p class="lead">Инструмент должен справиться со следующим провайдером, документацию которого
+        мы ещё не видели. Поэтому мы делаем не интеграцию с NovaPay, а генератор. NovaPay для него
+        первый пример.</p>
+      </div>
+    </div>
+    <div class="ask">
+      <div class="mark">?</div>
+      <div><p class="label">Вопрос к вам</p>
+      <p>Мы правильно понимаем задачу? И на защите вы проверите решение на новой спецификации
+      или только на NovaPay?</p></div>
+    </div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>2</span></footer>
+</section>
+
+<!-- 3. Как устроено -->
+<section class="slide">
+  <header>
+    <p class="step">2. Что взяли за основу</p>
+    <h2>Инструмент работает как переводчик</h2>
+    <p class="sub">Сначала понимает документацию, потом пишет код. Между ними нейтральное описание провайдера.</p>
+  </header>
+  <div class="body">
+    <div class="steps">
+      <div class="s"><div class="n">1</div><h3>Читает документацию</h3>
+        <p>Находит запросы, поля, авторизацию, статусы, ошибки, уведомления. Про каждый факт помнит,
+        откуда он взят.</p></div>
+      <div class="s"><div class="n">2</div><h3>Переводит на нейтральный язык</h3>
+        <p>Не «поле amount у NovaPay», а «сумма выплаты». Внутри инструмента нет ничего от
+        конкретного провайдера.</p></div>
+      <div class="s"><div class="n">3</div><h3>Собирает файлы по шаблонам</h3>
+        <p>Сервис на Ruby, инструкция, тестовые примеры и отчёт о том, что осталось уточнить.</p></div>
+    </div>
+    <p><b>Знания о провайдерах лежат в справочниках, а не в коде:</b> названия статусов, валюты,
+    заголовки подписи. Новый провайдер добавляется строками в таблицу, код не трогаем.</p>
+    <div class="ask">
+      <div class="mark">?</div>
+      <div><p class="label">Вопрос к вам</p>
+      <p>Настоящего класса <code>Provider::BaseService</code> у нас нет, мы восстановили его по примеру из
+      задания. Расскажете, как устроены <code>approve_operation</code>, <code>reject_operation</code> и
+      <code>client</code>?</p></div>
+    </div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>3</span></footer>
+</section>
+
+<!-- 4. Лазейка -->
+<section class="slide">
+  <header>
+    <p class="step">3. Какую лазейку нашли</p>
+    <h2>Нейросети запрещены, а документацию понимать надо</h2>
+    <p class="sub">Выручили стандарты: почти всё, что в документации написано словами, давно описано открытым стандартом.</p>
+  </header>
+  <div class="body">
+    <div class="std-grid">
+      <div class="std"><p class="q">Сумма в копейках или в рублях?</p>
+        <p class="a"><b>ISO 4217.</b> У каждой валюты стандартное число знаков после запятой. У рубля два,
+        значит множитель 100. Слово «копейках» используем только для проверки.</p></div>
+      <div class="std"><p class="q">БИК обязателен только для СБП. Как учесть?</p>
+        <p class="a"><b>JSON Schema.</b> Такое условие можно записать формально. Если оно есть только словами,
+        инструмент замечает и просит человека подтвердить.</p></div>
+      <div class="std"><p class="q">Как проверять подпись уведомления?</p>
+        <p class="a"><b>Standard Webhooks.</b> Отраслевая спецификация подписи. Схема NovaPay от неё
+        отличается, поэтому проверка настраиваемая.</p></div>
+      <div class="std"><p class="q">Что значит ответ 409 при повторе?</p>
+        <p class="a"><b>Idempotency-Key, черновик IETF.</b> Повтор возвращает уже созданную выплату. Это не
+        ошибка, а защита от дублей.</p></div>
+      <div class="std"><p class="q">Куда записать то, чего в документации нет?</p>
+        <p class="a"><b>OpenAPI Overlay.</b> Официальный формат дополнений к спецификации, а не наш
+        самодельный файл настроек.</p></div>
+      <div class="std"><p class="q">Как понять, что поле <code>sum</code> это сумма?</p>
+        <p class="a"><b>Сопоставление схем баз данных.</b> Словари синонимов, сходство названий, тип поля,
+        каждое с весом. Методы 2001 года.</p></div>
+    </div>
+    <div class="fill"></div>
+    <p class="big" style="margin:0;font-size:17pt">Один файл на входе всегда даёт один и тот же результат.
+    <span class="muted" style="font-weight:500">Это проверяют автотесты, и это же доказывает, что нейросети внутри нет.</span></p>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>4</span></footer>
+</section>
+
+<!-- 5. Не угадывать молча -->
+<section class="slide">
+  <header>
+    <p class="step">3. Что сделали там, где стандарт не помогает</p>
+    <h2>Главный принцип: инструмент не угадывает молча</h2>
+    <p class="sub">Про каждый факт он знает, откуда его взял, и ведёт себя по-разному.</p>
+  </header>
+  <div class="body">
+    <div class="levels">
+      <div class="level"><div class="n">1</div>
+        <div class="what"><b>Написано в файле явно.</b> Обязательные поля, допустимые значения, типы.</div>
+        <div class="how">Берём как есть.</div></div>
+      <div class="level"><div class="n">2</div>
+        <div class="what"><b>Взято из стандарта или справочника.</b> Множитель валюты, перевод статуса.</div>
+        <div class="how">Берём, но записываем источник и уверенность.</div></div>
+      <div class="level three"><div class="n">3</div>
+        <div class="what"><b>Понять не удалось.</b> Условие описано словами, статус незнакомый.</div>
+        <div class="how">Не придумываем. Пишем в отчёт, оставляем пометку в коде и шаблон для ответа человека.</div></div>
+    </div>
+    <div class="fill"></div>
+    <p class="big" style="font-size:18pt">Незамеченная ошибка в платёжной интеграции дороже минуты ручной проверки.</p>
+    <div class="ask">
+      <div class="mark">?</div>
+      <div><p class="label">Вопрос к вам</p>
+      <p>Такой баланс вам подходит: очевидное автоматически, спорное отдаём человеку с подсказкой? Или вы ждёте,
+      что инструмент будет решать больше сам, пусть и с риском ошибиться?</p></div>
+    </div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>5</span></footer>
+</section>
+
+<!-- 6. Что нашли в спеке -->
+<section class="slide">
+  <header>
+    <p class="step">4. Что мы нашли в вашей документации</p>
+    <h2>Шесть мест, где простой генератор ошибся бы молча</h2>
+  </header>
+  <div class="body">
+    <div class="finds">
+      <div class="find hot"><div class="n">1</div><p><b>Ответ 409 значит две разные вещи.</b> При создании выплаты: «такая уже
+        есть, вот она». При отмене: «отменить нельзя». Простой генератор отклонил бы уже созданную выплату.</p></div>
+      <div class="find"><div class="n">2</div><p><b>Три кода ошибок есть в примерах, но нет в официальном списке:</b>
+        <code>unauthorized</code>, <code>not_found</code>, <code>invalid_status</code>. Учитываем и список, и примеры.</p></div>
+      <div class="find"><div class="n">3</div><p><b>Три кода из списка нет ни в одном примере.</b> Обработку для них всё
+        равно делаем, расхождение пишем в отчёт.</p></div>
+      <div class="find"><div class="n">4</div><p><b>У запроса статуса не описаны ответы 429 и 500,</b> хотя у создания выплаты
+        они есть. Добавляем стандартную обработку.</p></div>
+      <div class="find"><div class="n">5</div><p><b>«БИК обязателен для СБП» написано только словами.</b> Инструмент это
+        находит, но не выдаёт за факт: просит подтвердить.</p></div>
+      <div class="find"><div class="n">6</div><p><b>Подпись уведомления описана не полностью.</b> Заголовок и алгоритм есть,
+        формат подписи и что подписывается, нет. Взяли вариант, который вы подтвердили.</p></div>
+    </div>
+    <div class="fill"></div>
+    <div class="ask">
+      <div class="mark">?</div>
+      <div><p class="label">Вопрос к вам</p>
+      <p>Про 409 при повторе: сервис должен взять уже созданную выплату и продолжить с ней, а не отклонять
+      операцию. Подтверждаете?</p></div>
+    </div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>6</span></footer>
+</section>
+
+<!-- 7. Как оно работает -->
+<section class="slide">
+  <header>
+    <p class="step">5. Вот смотрите, как оно работает</p>
+    <h2>Одна команда, один экран</h2>
+  </header>
+  <div class="body">
+<div class="term fill" style="font-size:9pt"><span class="cmd">$ ./integrate analyze --spec provider_api.yaml</span>
+Разбор спецификации... novapay.yaml: OpenAPI 3.0.3, 5 операций, 8 схем, 31 поле
+<span class="k">Провайдер:</span> novapay (эвристика 0.80)
+<span class="k">Авторизация:</span> ApiKeyAuth -> api_key, заголовок X-API-Key, ключи credentials: api_key
+<span class="k">Единицы суммы:</span> <span class="ok">minor, x100 (ISO 4217: экспонента RUB 2)</span>; валюта RUB (задано явно 1.00)
+<span class="k">Статусы:</span> 5 сопоставлено, 0 не выведено
+  pending     -> in_progress (по справочнику 1.00)
+  processing  -> in_progress (по справочнику 1.00)
+  completed   -> approved (по справочнику 1.00)
+  failed      -> rejected (по справочнику 1.00)
+  cancelled   -> rejected (по справочнику 1.00)
+<span class="k">Вебхук:</span> /webhooks/payout — 4 события, подпись X-NovaPay-Signature (custom: hmac_sha256, hex, raw_body)
+  payout.completed   -> approved (по справочнику 1.00)
+  payout.failed      -> rejected (по справочнику 1.00)
+  payout.processing  -> in_progress (по справочнику 1.00)
+  payout.cancelled   -> rejected (по справочнику 1.00)
+<span class="k">Идемпотентность:</span> заголовок Idempotency-Key (необязательный), стратегия uuid_v5, <span class="ok">dedup on 409</span>
+<span class="k">Ошибки:</span> 7 в enum + <span class="w">3 только в примерах</span>; дедупликация 409 у createPayout
+  unauthorized           alert (по справочнику 0.80)  <span class="w">[пример]</span>
+  not_found              reject (по справочнику 0.80)  <span class="w">[пример]</span>
+  invalid_status         reject (по справочнику 0.80)  <span class="w">[пример]</span>
+  createPayout     400 reject, 401 alert, 402 escalate, <span class="ok">409 dedup</span>, 422 reject, 429 retry_backoff +Retry-After, 500 retry_backoff
+<span class="k">Условия взаимодействия:</span> 9
+  retry_after                createPayout  429 (задано явно 1.00)
+  min_amount                 amount        100000 (задано явно 1.00)
+  field_max_length           external_id   64 (задано явно 1.00)
+  cancel_status_restriction  cancelPayout  pending, processing (эвристика 0.60)
+<span class="k">Предупреждения:</span> 14 (0 ошибок, 5 предупреждений, 9 справок)</div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>7</span></footer>
+</section>
+
+<!-- 8. Что распознано -->
+<section class="slide">
+  <header>
+    <p class="step">5. Что инструмент понял из документации NovaPay</p>
+    <h2>Первый критерий, разбор спецификации, закрыт на живом прогоне</h2>
+  </header>
+  <div class="body">
+    <div class="tiles"><!-- LIVE-TILES -->
+      <div class="tile"><div class="num">5</div><div class="lbl">запросов к API и назначение каждого</div><div class="src">два из них вне вашего контракта, об этом сказано явно</div></div>
+      <div class="tile"><div class="num">31</div><div class="lbl">поле в 8 структурах данных</div><div class="src">тип, обязательность, ограничения</div></div>
+      <div class="tile"><div class="num">1</div><div class="lbl">способ авторизации</div><div class="src">ключ в заголовке X-API-Key</div></div>
+      <div class="tile hot"><div class="num">×100</div><div class="lbl">множитель суммы: копейки</div><div class="src">по ISO 4217, у рубля два знака</div></div>
+      <div class="tile"><div class="num">5 <small>из 5</small></div><div class="lbl">статусов переведены в ваши</div><div class="src">по таблице из задания</div></div>
+      <div class="tile"><div class="num">7 <small>+ 3</small></div><div class="lbl">кодов ошибок</div><div class="src">7 в официальном списке, ещё 3 только в примерах</div></div>
+      <div class="tile"><div class="num">4</div><div class="lbl">вида уведомлений и их подпись</div><div class="src">заголовок X-NovaPay-Signature, HMAC-SHA256</div></div>
+      <div class="tile"><div class="num">9</div><div class="lbl">условий взаимодействия</div><div class="src">пауза Retry-After, минимальная сумма, отмена только в двух статусах, защита от дублей по 409</div></div>
+    </div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>8</span></footer>
+</section>
+
+<!-- 9. Отчёт -->
+<section class="slide">
+  <header>
+    <p class="step">5. Отчёт о том, что осталось человеку</p>
+    <h2>Каждое сомнение инструмента: где, в чём и как исправить</h2>
+  </header>
+  <div class="body">
+    <div class="cols">
+      <div class="col">
+        <p class="lead">Строка отчёта указывает на место в документации, объясняет проблему и предлагает готовый
+        фрагмент. Человек вписывает одно значение, инструмент перечитывает файл, предупреждение исчезает.</p>
+        <ul>
+          <li><b>Ошибка.</b> Без ответа человека сервис собирать нельзя.</li>
+          <li><b>Предупреждение.</b> Сервис собран, но это место стоит проверить глазами.</li>
+          <li><b>Справка.</b> Осознанное решение, например запрос, которого нет в контракте.</li>
+        </ul>
+      </div>
+      <div class="col">
+<div class="term" style="font-size:9.6pt"><span class="w">ВНИМАНИЕ</span> <span class="k">$.components.schemas.Recipient</span>
+  `bank_code` выглядит условно обязательным (`type` = sbp),
+  но схема не задаёт условия; фрагмент ниже задаёт его формально
+  <span class="dim">overlay:</span>
+    - target: "$.components.schemas.Recipient"
+      update:
+        x-jsonschema-if:
+          properties:
+            type:
+              const: sbp
+        x-jsonschema-then:
+          required: [bank_code]</div>
+      </div>
+    </div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>9</span></footer>
+</section>
+
+<!-- 10. Где мы -->
+<section class="slide">
+  <header>
+    <p class="step">6. Где мы сейчас и что дальше</p>
+    <h2>Разбор документации работает, генерации кода пока нет</h2>
+  </header>
+  <div class="body">
+    <div class="plan">
+      <div class="col">
+        <h3>Готово к первому чекпоинту</h3>
+        <ul>
+          <li>Чтение спецификаций в YAML и JSON. На битый файл инструмент отвечает понятным
+          сообщением, а не падает.</li>
+          <li>Полный разбор: запросы, поля, авторизация, суммы, статусы, ошибки, уведомления,
+          защита от дублей.</li>
+          <li>Экран разбора с объяснением каждого решения, на русском и английском.</li>
+          <li>Автотесты проходят.</li>
+        </ul>
+      </div>
+      <div class="col next">
+        <h3>Ко второму чекпоинту</h3>
+        <ul>
+          <li>Сопоставление полей: какое поле провайдера что означает.</li>
+          <li>Генерация всех четырёх файлов.</li>
+          <li><b>Тестовый сервер провайдера из той же документации:</b> сгенерированный сервис отправит
+          настоящий запрос и получит настоящее уведомление.</li>
+          <li>Ещё три спецификации: карта вместо СБП, депозиты в рублях вместо копеек, намеренно
+          дырявая документация.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ask">
+      <div class="mark">?</div>
+      <div><p class="label">Вопрос к вам</p>
+      <p>Что вам важнее увидеть на второй встрече: глубокую работу на NovaPay или работу на трёх разных
+      провайдерах?</p></div>
+    </div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>10</span></footer>
+</section>
+
+<!-- 11. Вопросы -->
+<section class="slide dark">
+  <header>
+    <p class="step">7. Мы на верном пути?</p>
+    <h2>Пять вопросов. От ответов зависит, что мы напишем дальше.</h2>
+  </header>
+  <div class="body">
+    <div class="qs">
+      <div class="q"><div class="n">1</div><p>Настоящего <code>Provider::BaseService</code> у нас нет, мы восстановили его по примеру
+        из задания. Сколько аргументов принимают <code>approve_operation</code> и <code>reject_operation</code>, и что
+        такое <code>client</code>: это ваш HTTP-клиент?<small>От этого зависит вся генерация сервиса. Если узнаем сейчас, поправим за минуты.</small></p></div>
+      <div class="q"><div class="n">2</div><p>Ответ 409 при повторном создании выплаты: сервис берёт уже созданную выплату и продолжает
+        с ней, а не отклоняет операцию?<small>Разница между рабочей интеграцией и потерянными деньгами клиента.</small></p></div>
+      <div class="q"><div class="n">3</div><p>Отменённая выплата у вас считается отклонённой. Так и останется, или появится отдельный
+        статус «отменено»?<small>От ответа зависит набор внутренних статусов.</small></p></div>
+      <div class="q"><div class="n">4</div><p>На защите будет новая спецификация или только NovaPay?<small>Меняет приоритет: устойчивость к незнакомому
+        или глубина на известном.</small></p></div>
+      <div class="q"><div class="n">5</div><p>Достаточно ли примеров в <code>fixtures.json</code>, или нужны исполняемые тесты? Считается ли
+        сгенерированный код в доле Ruby? Нужен ли Docker?</p></div>
+    </div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>11</span></footer>
+</section>
+
+<!-- 12. Правила -->
+<section class="slide">
+  <header>
+    <p class="step">Приложение</p>
+    <h2>Как соблюдаем правила кейса</h2>
+  </header>
+  <div class="body">
+    <div class="cols">
+      <div class="col">
+        <div class="card"><h3>Нейросетей внутри нет</h3><p>Только справочники, правила и сравнение строк. Один вход всегда даёт один
+          выход, это проверяют автотесты. С нейросетью внутри такое доказать было бы невозможно.</p></div>
+        <div class="card"><h3>Всё на Ruby</h3><p>Ядро целиком на Ruby. Веб-интерфейс, если понадобится, будет тонким и без
+          отдельной сборки на JavaScript.</p></div>
+      </div>
+      <div class="col">
+        <div class="card"><h3>Только открытые библиотеки</h3><p>Каждая зависимость записана вместе с лицензией и назначением.
+          Сам инструмент не ходит ни в какие внешние сервисы.</p></div>
+        <div class="card"><h3>Никаких секретов в коде</h3><p>Сгенерированный сервис читает ключи только из настроек платформы.
+          В тестовых примерах заглушки и тестовые номера карт.</p></div>
+      </div>
+    </div>
+  </div>
+  <footer><span>Два килобайта. Генератор интеграций</span><span>12</span></footer>
+</section>
+
+<script>
+  // Предпросмотр одного слайда: slides.html?only=3. На печать не влияет.
+  (function () {
+    var only = new URLSearchParams(location.search).get('only');
+    if (!only) return;
+    document.body.style.background = '#fff';
+    document.querySelectorAll('.slide').forEach(function (slide, index) {
+      if (index + 1 !== Number(only)) { slide.remove(); return; }
+      slide.style.margin = '0'; slide.style.boxShadow = 'none';
+    });
+  })();
+</script>
+</body>
+</html>
