@@ -21,12 +21,34 @@ module SpecGen
 
       # @return [Array<String>]
       def lines
-        units_lines + status_lines + webhook_lines
+        units_lines + status_lines + webhook_lines + idempotency_lines
       end
 
       private
 
       attr_reader :profile, :explain
+
+      def idempotency_lines
+        idempotency = profile.idempotency
+        return [Texts.t('summary.idempotency_none')] if idempotency.nil?
+
+        [idempotency_line(idempotency),
+         *evidence(idempotency.header), *evidence(idempotency.strategy),
+         *evidence(idempotency.conflict_status)]
+      end
+
+      def idempotency_line(idempotency)
+        need = Texts.t(idempotency.required ? 'summary.param_required' : 'summary.param_optional')
+        Texts.t('summary.idempotency', header: idempotency.header.value, need: need,
+                                       strategy: idempotency.strategy.value,
+                                       dedup: dedup_text(idempotency))
+      end
+
+      def dedup_text(idempotency)
+        return Texts.t('summary.idempotency_dedup_unknown') unless idempotency.dedup?
+
+        Texts.t('summary.idempotency_dedup', status: idempotency.conflict_status.value)
+      end
 
       def webhook_lines
         return [Texts.t('summary.webhook_none')] if profile.webhooks.empty?

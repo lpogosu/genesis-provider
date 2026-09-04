@@ -177,6 +177,33 @@ analyzers:
             payload: raw_body  # raw_body | id_timestamp_body
             secret_key: %{secret_key}
 
+  idempotency:
+    header_evidence: "header parameter %{header} matches an alias of rules/idempotency.yml; accepted by: %{operations}"
+    optional_note: "; declared required: false, but per rules/idempotency.yml (send_when_optional) the key is always sent"
+    strategy_evidence: "rules/idempotency.yml: default_strategy %{strategy} — the key is derived deterministically from operation.id, a replay yields the same key"
+    dedup_unknown: "no operation with the header (%{operations}) declares a %{status} response with the success schema"
+    dedup_unclear_message: "header %{header} is declared, but no operation describes a %{status} response with the success schema; on a replay the service cannot tell a duplicate from an error — ask the provider or describe the response in an overlay"
+    dedup_overlay: |
+      - target: "%{path}.responses"
+        update:
+          '%{status}':
+            description: Duplicate idempotency key, previous result returned
+            content:
+              application/json:
+                schema:
+                  $ref: '%{ref}'
+    missing_message: "no operation declares an idempotency header (aliases of rules/idempotency.yml: %{aliases}); a replay after a network failure would create a second payout — ask the provider or declare the header in an overlay"
+    missing_overlay: |
+      - target: "%{path}"
+        update:
+          parameters:
+            - name: %{header}
+              in: header
+              required: false
+              schema:
+                type: string
+                format: uuid
+
   units:
     unit_name:
       minor: "minor units"

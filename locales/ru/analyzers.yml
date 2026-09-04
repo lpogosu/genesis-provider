@@ -177,6 +177,33 @@ analyzers:
             payload: raw_body  # raw_body | id_timestamp_body
             secret_key: %{secret_key}
 
+  idempotency:
+    header_evidence: "параметр-заголовок %{header} совпал с алиасом rules/idempotency.yml; принимают: %{operations}"
+    optional_note: "; объявлен required: false, но по rules/idempotency.yml (send_when_optional) ключ отправляется всегда"
+    strategy_evidence: "rules/idempotency.yml: default_strategy %{strategy} — ключ детерминирован от operation.id, повтор даёт тот же ключ"
+    dedup_unknown: "ни одна операция с заголовком (%{operations}) не объявляет ответ %{status} со схемой успешного ответа"
+    dedup_unclear_message: "заголовок %{header} объявлен, но ни одна операция не описывает ответ %{status} со схемой успешного ответа; при повторе сервис не отличит дубль от ошибки — уточните у провайдера или опишите ответ в overlay"
+    dedup_overlay: |
+      - target: "%{path}.responses"
+        update:
+          '%{status}':
+            description: Duplicate idempotency key, previous result returned
+            content:
+              application/json:
+                schema:
+                  $ref: '%{ref}'
+    missing_message: "ни одна операция не объявляет заголовок идемпотентности (алиасы rules/idempotency.yml: %{aliases}); повтор запроса после сетевого сбоя создаст вторую выплату — уточните у провайдера или объявите заголовок в overlay"
+    missing_overlay: |
+      - target: "%{path}"
+        update:
+          parameters:
+            - name: %{header}
+              in: header
+              required: false
+              schema:
+                type: string
+                format: uuid
+
   units:
     unit_name:
       minor: "минорные единицы"

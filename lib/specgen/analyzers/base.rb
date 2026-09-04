@@ -92,6 +92,22 @@ module SpecGen
         SchemaNaming.operation_key(operation['operationId'], http_method, path)
       end
 
+      # Роль операции, пересчитанная от документа тем же композитным матчером,
+      # что у OperationAnalyzer, — общий компонент, а не чтение чужого
+      # результата: анализаторы независимы.
+      # @param path [String]
+      # @param http_method [String]
+      # @param operation [Hash]
+      # @return [Symbol] одна из IR::Roles::OPERATION
+      def role_of(path, http_method, operation)
+        security = operation['security']
+        tags = operation['tags'].is_a?(Array) ? operation['tags'].grep(String) : []
+        OperationRole.new(book: rules.operations, id: operation['operationId'],
+                          http_method: http_method.to_sym, path: path, tags: tags,
+                          body: operation['requestBody'].is_a?(Hash),
+                          secured: !(security.is_a?(Array) && security.empty?)).call.role
+      end
+
       # Из тестов опции приходят с ключами-символами, из Thor — со строками;
       # анализатор не обязан знать, с какими именно.
       # @param name [Symbol]

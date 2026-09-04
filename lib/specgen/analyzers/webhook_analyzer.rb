@@ -53,11 +53,7 @@ module SpecGen
       end
 
       def webhook?(path, verb, node)
-        security = node['security']
-        tags = node['tags'].is_a?(Array) ? node['tags'].grep(String) : []
-        OperationRole.new(book: rules.operations, id: node['operationId'], http_method: verb.to_sym,
-                          path: path, tags: tags, body: node['requestBody'].is_a?(Hash),
-                          secured: !(security.is_a?(Array) && security.empty?)).call.role == ROLE
+        role_of(path, verb, node) == ROLE
       end
 
       # @return [Array<Found>]
