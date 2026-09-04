@@ -57,4 +57,10 @@ module SpecGen
   # Generation stage: template rendering failed, an artifact could not be
   # written, or generated code did not pass its own syntax check.
   class GenerationError < Error; end
+
+  # Слой текстов (locales/): нет каталога языка, нет ключа, ключ задан
+  # дважды, не хватает параметра подстановки. Как и RulesError, это всегда
+  # наша ошибка, а не пользователя: тест на полноту локалей ловит её до
+  # запуска, а сюда она попадает только если тест не запускали.
+  class LocaleError < Error; end
 end

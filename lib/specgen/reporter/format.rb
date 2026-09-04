@@ -2,41 +2,36 @@
 
 module SpecGen
   module Reporter
-    # How a Derived value and its evidence look on screen, shared by every
-    # section of the summary so the same fact never prints two ways.
+    # Как на экране выглядят выведенное значение и его обоснование. Общий для
+    # всех секций сводки, чтобы один и тот же факт никогда не печатался двумя
+    # способами.
     #
-    #   derived(d)   "acmepay (heuristic 0.80)" or "unknown"
-    #   evidence(d)  the evidence sentence, indented, only when asked for
+    #   derived(d)   "acmepay (эвристика 0.80)" или «не выведено»
+    #   evidence(d)  строка обоснования с отступом — только когда её просят
     module Format
       INDENT = '  '
 
       # @param derived [IR::Derived, nil]
-      # @return [String] value with its source and confidence
+      # @return [String] значение с источником и уверенностью
       def self.derived(derived)
-        return 'unknown' if derived.nil? || derived.unknown?
+        return Texts.t('summary.unknown') if derived.nil? || derived.unknown?
 
-        "#{derived.value} (#{derived.source} #{format('%.2f', derived.confidence)})"
+        "#{derived.value} (#{Texts.t("source.#{derived.source}")} " \
+          "#{format('%.2f', derived.confidence)})"
       end
 
       # @param derived [IR::Derived, nil]
-      # @param explain [Boolean] whether evidence is wanted at all
-      # @param depth [Integer] indentation level of the line it explains
-      # @return [Array<String>] zero or one line
+      # @param explain [Boolean] нужно ли обоснование вообще
+      # @param depth [Integer] уровень отступа объясняемой строки
+      # @return [Array<String>] ноль или одна строка
       def self.evidence(derived, explain:, depth: 1)
         return [] unless explain && derived&.evidence
 
         ["#{INDENT * (depth + 1)}= #{derived.evidence}"]
       end
 
-      # @param number [Integer]
-      # @param noun [String] singular
-      # @return [String] "1 schema", "8 schemas"
-      def self.count(number, noun)
-        "#{number} #{noun}#{'s' unless number == 1}"
-      end
-
-      # @param value [Object] a constraint value from the spec
-      # @return [String] compact, without Ruby quoting for plain strings
+      # @param value [Object] значение ограничения из спецификации
+      # @return [String] компактно, без Ruby-кавычек у простых строк
       def self.constraint(value)
         case value
         when Array then value.map { |item| constraint(item) }.join(', ')

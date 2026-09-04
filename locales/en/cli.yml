@@ -1,0 +1,117 @@
+# locales/en/cli.yml — command-line and `integrate analyze` texts.
+#
+# One file per pipeline stage, so two stages never edit the same file.
+# Placeholders are %{name}; the key set must match locales/ru/cli.yml,
+# which spec/unit/specgen/texts_spec.rb checks.
+
+cli:
+  error_prefix: "error"
+  usage_prefix: "usage"
+  spec_not_found: "spec file not found"
+  not_implemented: "`%{command}` is not implemented yet (skeleton build %{version})"
+  unsupported_lang: "--lang %{lang} is not supported (supported: %{supported})"
+  unsupported_locale: "--locale %{locale} is not supported (supported: %{supported})"
+  need_spec_or_all: "either --spec or --all is required"
+  version: "integrate %{version}"
+  desc:
+    generate: "Generate integration artifacts from an OpenAPI spec (default command)"
+    generate_long: |
+      Reads an OpenAPI 3.x specification of a payment provider and writes four
+      artifacts into the output directory: <provider>_service.rb,
+      INTEGRATION.md, fixtures.json and report.md.
+
+      Either --spec or --all is required.
+    analyze: "Show what the analyzers recognise in a spec, without generating anything"
+    analyze_long: |
+      Runs the analysis stage only and prints the intermediate representation:
+      provider identity, servers, authentication, every operation with its role
+      and confidence, every schema with its fields, and the warnings. With
+      --explain each derived value is followed by the evidence it rests on.
+    diff: "Show integration-relevant differences between two versions of a spec"
+    version: "Print the generator version"
+  option:
+    spec: "Path to the OpenAPI spec (YAML or JSON)"
+    provider: "Provider name; derived from info.title when omitted"
+    lang: "Target language (only ruby is supported)"
+    overlay: "OpenAPI Overlay 1.0.0 file with manual overrides"
+    output: "Output directory"
+    with_mock: "Also generate a mock provider server from the same spec"
+    fix: "Write an overlay skeleton with a TODO slot for every ambiguity"
+    strict: "Exit with status 1 when the report contains warnings"
+    all: "Run on every spec in spec/fixtures/specs and print a summary"
+    old: "Previous spec version"
+    new: "New spec version"
+    explain: "Print the evidence behind every derived value"
+    locale: "Language of messages and reports: ru or en (default ru, or SPECGEN_LOCALE)"
+
+summary:
+  header: "Parsing spec... %{file}: OpenAPI %{version}, %{counts}"
+  provider: "Provider: %{value}"
+  provider_not_analysed: "Provider: not analysed"
+  base_url: "Base URL: ENV %{env}"
+  servers: "Servers:"
+  servers_none: "Servers: none declared"
+  auth: "Auth: %{scheme} -> %{type}, %{where}, credentials: %{keys}"
+  auth_none: "Auth: none declared in the spec"
+  auth_not_analysed: "Auth: not analysed"
+  auth_unknown: "Auth: %{scheme} -> unknown"
+  operations: "Operations:"
+  operations_none: "Operations: none"
+  request: "request:"
+  responses: "responses:"
+  optional_body: "(optional body)"
+  not_in_contract: "not in contract"
+  unsecured: "unsecured"
+  schemas: "Schemas:"
+  schemas_none: "Schemas: none"
+  field_required: "required"
+  field_optional: "optional"
+  param_required: "required"
+  param_optional: "optional"
+  required_when_equals: "required when %{field} = %{value} (%{origin} %{confidence})"
+  required_when_present: "required when %{field} present (%{origin} %{confidence})"
+  warnings: "Warnings: %{total} (%{counts})"
+  overlay: "overlay:"
+  unknown: "unknown"
+
+plural:
+  operation: { one: "operation", other: "operations" }
+  schema: { one: "schema", other: "schemas" }
+  field: { one: "field", other: "fields" }
+  error: { one: "error", other: "errors" }
+  warning: { one: "warning", other: "warnings" }
+  info: { one: "info", other: "info" }
+
+severity:
+  error: "ERROR"
+  warning: "WARNING"
+  info: "INFO"
+
+environment:
+  sandbox: "sandbox"
+  production: "production"
+  unknown: "unknown"
+
+# Where a derived value came from (IR::Derived#source).
+source:
+  structural: "structural"
+  registry: "registry"
+  heuristic: "heuristic"
+  overlay: "overlay"
+  unknown: "unknown"
+
+# Where a conditional requirement was read from (IR::RequiredWhen#origin).
+origin:
+  dependent_required: "dependentRequired"
+  if_then: "if/then"
+  x_jsonschema_if: "x-jsonschema-if"
+  discriminator: "discriminator"
+  overlay: "overlay"
+  description_hint: "description hint"
+
+# Where a parameter or a credential lives.
+location:
+  header: "header"
+  query: "query"
+  cookie: "cookie"
+  path: "path"

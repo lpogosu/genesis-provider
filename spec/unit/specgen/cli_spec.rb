@@ -18,15 +18,29 @@ RSpec.describe SpecGen::CLI do
       result = run_cli('analyze', '--spec', novapay)
       expect(result.status).to eq(0)
       expect(result.stderr).to be_empty
-      expect(result.stdout).to include('5 operations, 8 schemas, 31 fields')
+      expect(result.stdout).to include('5 операций, 8 схем, 31 поле')
         .and include('create_payout')
-        .and include('Auth: ApiKeyAuth -> api_key in header X-API-Key')
-        .and include('Warnings: 4')
+        .and include('Авторизация: ApiKeyAuth -> api_key, заголовок X-API-Key')
+        .and include('Предупреждения: 4')
     end
 
     it 'takes --provider as the name and marks it as stated, not derived' do
       result = run_cli('analyze', '--spec', novapay, '--provider', 'demo')
-      expect(result.stdout).to include('Provider: demo (structural 1.00)')
+      expect(result.stdout).to include('Провайдер: demo (задано явно 1.00)')
+    end
+
+    it 'speaks English with --locale en, keeping identifiers untouched' do
+      result = run_cli('analyze', '--spec', novapay, '--locale', 'en')
+      expect(result.status).to eq(0)
+      expect(result.stdout).to include('Parsing spec... novapay.yaml')
+        .and include('Provider: novapay (heuristic 0.80)')
+        .and include('create_payout')
+    end
+
+    it 'rejects an unknown locale as a usage error and names the supported ones' do
+      result = run_cli('analyze', '--spec', novapay, '--locale', 'xx')
+      expect(result.status).to eq(described_class::EXIT_USAGE)
+      expect(result.stderr).to include('xx').and include('en, ru')
     end
 
     it 'adds evidence lines with --explain' do
@@ -45,7 +59,7 @@ RSpec.describe SpecGen::CLI do
     it 'reports a missing spec file with its path and without a stack trace' do
       result = run_cli('analyze', '--spec', 'nope.yaml')
       expect(result.status).to eq(described_class::EXIT_ERROR)
-      expect(result.stderr).to include('nope.yaml').and include('not found')
+      expect(result.stderr).to include('nope.yaml').and include('не найден')
       expect(result.stderr).not_to include('.rb:')
     end
 
@@ -62,19 +76,19 @@ RSpec.describe SpecGen::CLI do
   describe 'generate' do
     it 'is the default command, so `integrate --spec FILE` works' do
       result = run_cli('--spec', novapay)
-      expect(result.stderr).to include('`generate` is not implemented yet')
+      expect(result.stderr).to include('команда `generate` ещё не реализована')
     end
 
     it 'requires --spec or --all' do
       result = run_cli('generate')
       expect(result.status).to eq(described_class::EXIT_USAGE)
-      expect(result.stderr).to include('--spec or --all')
+      expect(result.stderr).to include('--spec или --all')
     end
 
     it 'reports a missing spec file with its path and without a stack trace' do
       result = run_cli('generate', '--spec', 'nope.yaml')
       expect(result.status).to eq(described_class::EXIT_ERROR)
-      expect(result.stderr).to include('nope.yaml').and include('not found')
+      expect(result.stderr).to include('nope.yaml').and include('не найден')
       expect(result.stderr).not_to include('.rb:')
     end
 
@@ -94,13 +108,13 @@ RSpec.describe SpecGen::CLI do
       result = run_cli('generate', '--spec', novapay, '--provider', 'demo', '--lang', 'ruby',
                        '--overlay', novapay, '--output', 'tmp/out',
                        '--with-mock', '--fix', '--strict')
-      expect(result.stderr).to include('not implemented')
-      expect(result.stderr).not_to include('usage:')
+      expect(result.stderr).to include('ещё не реализована')
+      expect(result.stderr).not_to include('использование:')
     end
 
     it 'accepts --all without --spec' do
       result = run_cli('generate', '--all')
-      expect(result.stderr).to include('not implemented')
+      expect(result.stderr).to include('ещё не реализована')
     end
   end
 
@@ -113,7 +127,7 @@ RSpec.describe SpecGen::CLI do
 
     it 'accepts two spec versions' do
       result = run_cli('diff', '--old', novapay, '--new', novapay)
-      expect(result.stderr).to include('`diff` is not implemented yet')
+      expect(result.stderr).to include('команда `diff` ещё не реализована')
     end
   end
 

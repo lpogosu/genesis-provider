@@ -1,0 +1,117 @@
+# locales/ru/cli.yml — тексты командной строки и экрана `integrate analyze`.
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с locales/en/cli.yml,
+# это проверяет spec/unit/specgen/texts_spec.rb.
+
+cli:
+  error_prefix: "ошибка"
+  usage_prefix: "использование"
+  spec_not_found: "файл спецификации не найден"
+  not_implemented: "команда `%{command}` ещё не реализована (каркас, версия %{version})"
+  unsupported_lang: "--lang %{lang} не поддерживается (доступно: %{supported})"
+  unsupported_locale: "--locale %{locale} не поддерживается (доступно: %{supported})"
+  need_spec_or_all: "нужен --spec или --all"
+  version: "integrate %{version}"
+  desc:
+    generate: "Сгенерировать артефакты интеграции из OpenAPI-спецификации (команда по умолчанию)"
+    generate_long: |
+      Читает OpenAPI 3.x спецификацию платёжного провайдера и пишет четыре
+      артефакта в каталог вывода: <provider>_service.rb, INTEGRATION.md,
+      fixtures.json и report.md.
+
+      Нужен либо --spec, либо --all.
+    analyze: "Показать, что анализаторы распознали в спецификации, ничего не генерируя"
+    analyze_long: |
+      Запускает только стадию анализа и печатает промежуточное представление:
+      провайдера и серверы, авторизацию, каждую операцию с ролью и уверенностью,
+      каждую схему с полями и предупреждения. С --explain под каждым выведенным
+      значением печатается обоснование, на котором оно держится.
+    diff: "Показать значимые для интеграции отличия между двумя версиями спецификации"
+    version: "Напечатать версию генератора"
+  option:
+    spec: "Путь к OpenAPI-спецификации (YAML или JSON)"
+    provider: "Имя провайдера; без флага выводится из info.title"
+    lang: "Целевой язык (поддерживается только ruby)"
+    overlay: "Файл OpenAPI Overlay 1.0.0 с ручными переопределениями"
+    output: "Каталог вывода"
+    with_mock: "Сгенерировать из той же спецификации ещё и мок-сервер провайдера"
+    fix: "Записать заготовку overlay со слотом TODO на каждую неоднозначность"
+    strict: "Завершиться с кодом 1, если в отчёте есть предупреждения"
+    all: "Прогнать все спецификации из spec/fixtures/specs и напечатать сводку"
+    old: "Предыдущая версия спецификации"
+    new: "Новая версия спецификации"
+    explain: "Печатать обоснование под каждым выведенным значением"
+    locale: "Язык сообщений и отчётов: ru или en (по умолчанию ru или SPECGEN_LOCALE)"
+
+summary:
+  header: "Разбор спецификации... %{file}: OpenAPI %{version}, %{counts}"
+  provider: "Провайдер: %{value}"
+  provider_not_analysed: "Провайдер: не анализировался"
+  base_url: "Базовый URL: переменная окружения %{env}"
+  servers: "Серверы:"
+  servers_none: "Серверы: не объявлены"
+  auth: "Авторизация: %{scheme} -> %{type}, %{where}, ключи credentials: %{keys}"
+  auth_none: "Авторизация: в спецификации не объявлена"
+  auth_not_analysed: "Авторизация: не анализировалась"
+  auth_unknown: "Авторизация: %{scheme} -> не распознана"
+  operations: "Операции:"
+  operations_none: "Операции: не найдены"
+  request: "запрос:"
+  responses: "ответы:"
+  optional_body: "(необязательное тело)"
+  not_in_contract: "вне контракта"
+  unsecured: "без авторизации"
+  schemas: "Схемы:"
+  schemas_none: "Схемы: не найдены"
+  field_required: "обязательное"
+  field_optional: "необязательное"
+  param_required: "обязательный"
+  param_optional: "необязательный"
+  required_when_equals: "обязательно при %{field} = %{value} (%{origin} %{confidence})"
+  required_when_present: "обязательно при наличии %{field} (%{origin} %{confidence})"
+  warnings: "Предупреждения: %{total} (%{counts})"
+  overlay: "overlay:"
+  unknown: "не выведено"
+
+plural:
+  operation: { one: "операция", few: "операции", many: "операций" }
+  schema: { one: "схема", few: "схемы", many: "схем" }
+  field: { one: "поле", few: "поля", many: "полей" }
+  error: { one: "ошибка", few: "ошибки", many: "ошибок" }
+  warning: { one: "предупреждение", few: "предупреждения", many: "предупреждений" }
+  info: { one: "справка", few: "справки", many: "справок" }
+
+severity:
+  error: "ОШИБКА"
+  warning: "ВНИМАНИЕ"
+  info: "СПРАВКА"
+
+environment:
+  sandbox: "песочница"
+  production: "продакшен"
+  unknown: "не определено"
+
+# Источник выведенного значения (IR::Derived#source).
+source:
+  structural: "задано явно"
+  registry: "по справочнику"
+  heuristic: "эвристика"
+  overlay: "из overlay"
+  unknown: "не выведено"
+
+# Откуда прочитано условие обязательности (IR::RequiredWhen#origin).
+origin:
+  dependent_required: "dependentRequired"
+  if_then: "if/then"
+  x_jsonschema_if: "x-jsonschema-if"
+  discriminator: "discriminator"
+  overlay: "overlay"
+  description_hint: "намёк в описании"
+
+# Где живёт параметр или учётные данные.
+location:
+  header: "заголовок"
+  query: "query"
+  cookie: "cookie"
+  path: "путь"

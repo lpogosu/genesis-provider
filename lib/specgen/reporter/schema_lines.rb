@@ -2,21 +2,20 @@
 
 module SpecGen
   module Reporter
-    # The schemas section of the summary: every schema with every field, its
-    # type and format, whether it is required, and the constraints the spec
-    # states. A field with a conditional requirement says so on its line,
-    # with the origin of the condition, because "required when type = card"
-    # read from prose and the same rule read from dependentRequired are not
-    # the same level of trust.
+    # Секция схем в сводке: каждая схема с каждым полем — тип и формат,
+    # обязательность, ограничения из спецификации. Поле с условной
+    # обязательностью говорит об этом в своей строке вместе с происхождением
+    # условия: «обязательно при type = card», прочитанное из прозы описания,
+    # и то же правило из dependentRequired — разный уровень доверия.
     #
-    # Field roles print only once a matcher has assigned one; a column of
-    # "unknown" before the matchers exist would say nothing.
+    # Роли полей печатаются только после того, как их проставит матчер:
+    # колонка из одних «не выведено» до появления матчеров не сказала бы
+    # ничего.
     class SchemaLines
       INDENT = Format::INDENT
-      REQUIRED = { true => 'required', false => 'optional' }.freeze
 
       # @param profile [IR::ProviderProfile]
-      # @param explain [Boolean] print the evidence behind assigned roles
+      # @param explain [Boolean] печатать обоснование присвоенных ролей
       def initialize(profile, explain: false)
         @schemas = profile.schemas.values
         @explain = explain
@@ -24,15 +23,15 @@ module SpecGen
 
       # @return [Array<String>]
       def lines
-        return ['Schemas: none'] if @schemas.empty?
+        return [Texts.t('summary.schemas_none')] if @schemas.empty?
 
-        ['Schemas:'] + @schemas.flat_map { |schema| schema_lines(schema) }
+        [Texts.t('summary.schemas')] + @schemas.flat_map { |schema| schema_lines(schema) }
       end
 
       private
 
       def schema_lines(schema)
-        heading = "#{INDENT}#{schema.name} (#{Format.count(schema.fields.size, 'field')})"
+        heading = "#{INDENT}#{schema.name} (#{Texts.plural(schema.fields.size, 'field')})"
         [heading] + schema.fields.flat_map { |field| field_lines(field) }
       end
 
@@ -43,14 +42,18 @@ module SpecGen
       def field_line(field)
         columns = [(INDENT * 2) + field.name.ljust(name_width),
                    type_text(field).ljust(type_width),
-                   REQUIRED.fetch(field.required?)]
+                   requiredness(field).ljust(requiredness_width)]
         details = details(field)
         columns << details unless details.empty?
-        columns.join('  ')
+        columns.join('  ').rstrip
       end
 
       def type_text(field)
         [field.type || '?', field.format].compact.join(' ')
+      end
+
+      def requiredness(field)
+        Texts.t(field.required? ? 'summary.field_required' : 'summary.field_optional')
       end
 
       def details(field)
@@ -63,13 +66,12 @@ module SpecGen
       end
 
       def condition(condition)
-        clause = if condition.presence?
-                   "#{condition.field} present"
-                 else
-                   "#{condition.field} = #{Format.constraint(condition.equals)}"
-                 end
-        origin = condition.origin.to_s.tr('_', ' ')
-        "required when #{clause} (#{origin} #{format('%.2f', condition.confidence)})"
+        common = { field: condition.field, origin: Texts.t("origin.#{condition.origin}"),
+                   confidence: format('%.2f', condition.confidence) }
+        return Texts.t('summary.required_when_present', **common) if condition.presence?
+
+        Texts.t('summary.required_when_equals', value: Format.constraint(condition.equals),
+                                                **common)
       end
 
       def name_width
@@ -78,6 +80,11 @@ module SpecGen
 
       def type_width
         @type_width ||= fields.map { |field| type_text(field).size }.max || 0
+      end
+
+      def requiredness_width
+        @requiredness_width ||= %w[summary.field_required summary.field_optional]
+                                .map { |key| Texts.t(key).size }.max
       end
 
       def fields

@@ -18,4 +18,13 @@ RSpec.configure do |config|
   config.filter_run_when_matching :focus
   config.order = :random
   Kernel.srand config.seed
+
+  # Тексты проверяются на языке по умолчанию — русском, — потому что именно
+  # его видят эксперты. Пример может переключить язык у себя; после него
+  # выбор сбрасывается, чтобы порядок примеров ничего не менял.
+  config.around do |example|
+    SpecGen::Texts.locale = 'ru'
+    example.run
+    SpecGen::Texts.locale = nil
+  end
 end

@@ -2,6 +2,7 @@
 
 require_relative 'specgen/version'
 require_relative 'specgen/errors'
+require_relative 'specgen/texts'
 require_relative 'specgen/spec_loader'
 require_relative 'specgen/ir'
 require_relative 'specgen/rules'
@@ -25,4 +26,6 @@ module SpecGen
   RULES_DIR = File.join(ROOT, 'rules').freeze
   # ERB templates, one per generated artifact.
   TEMPLATES_DIR = File.join(ROOT, 'templates').freeze
+  # Тексты для человека по языкам: locales/<код>/<стадия>.yml.
+  LOCALES_DIR = File.join(ROOT, 'locales').freeze
 end

@@ -29,6 +29,27 @@ SpecLoader → OverlayApplier → Analyzers → IR → Generators → Validators
 | Mock provider | не начат | — | промпт 8 |
 | Validators | не начат | — | промпт 9 |
 | Reporter | только консольный `Summary` | `SpecGen::Reporter::Summary` | `report.md` — промпт 7 |
+| Texts (язык) | готов: ru по умолчанию, en | `SpecGen::Texts.t`, `locales/<код>/*.yml` | `--locale en`; `spec/unit/specgen/texts_spec.rb` следит за полнотой ключей |
+
+---
+
+## Язык
+
+Правило — в `CLAUDE.md`, раздел «Язык»; термины — в `docs/GLOSSARY.md`.
+Коротко: всё для человека по-русски, всё для машины по-английски. Тексты для
+человека не пишутся строками в коде, а лежат в `locales/<код>/<стадия>.yml` и
+читаются через `Texts.t('ключ', имя: значение)` и `Texts.plural(n, 'сущ')`.
+
+Состояние перевода на 4 сентября 2026:
+
+| Что | Состояние |
+|---|---|
+| CLI, справка, экран `analyze` | переведено, через `locales/*/cli.yml` |
+| Комментарии в `lib/specgen/{cli,texts}.rb`, `reporter/` | по-русски |
+| Сообщения предупреждений и обоснования в анализаторах | **ещё английские строки в коде** — переносятся в `locales/*/analyzers.yml` |
+| Сообщения ошибок загрузчика и справочников | **ещё английские** — `locales/*/spec_loader.yml`, `locales/*/rules.yml` |
+| Комментарии в `lib/specgen/{spec_loader,ir,rules,analyzers}/` | **ещё английские** |
+| Описания примеров в тестах `it '...'` | остаются английскими намеренно |
 
 ---
 
