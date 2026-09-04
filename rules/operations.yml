@@ -1,0 +1,163 @@
+# rules/operations.yml — распознавание роли эндпоинта по признакам спецификации.
+#
+# Зачем. Роль операции (создание выплаты, опрос статуса, отмена, баланс,
+# входящий вебхук) нигде в OpenAPI не объявлена. Её приходится выводить из
+# нескольких независимых признаков: имени operationId, HTTP-метода, пути,
+# тега, наличия тела запроса и наличия авторизации. Ни один признак сам по
+# себе не решает — решает сумма взвешенных голосов.
+#
+# Источник подхода. Composite matcher из COMA (Rahm & Bernstein 2001,
+# Do & Rahm 2002): несколько независимых матчеров, веса, агрегация, порог.
+# Подход старше нейросетей на два десятилетия и полностью детерминирован:
+# один и тот же вход даёт один и тот же балл, и балл можно распечатать в
+# report.md как арифметику.
+#
+# Как читается запись роли:
+#   verbs           глаголы действия в operationId (create, cancel, fetch)
+#   nouns           существительные, называющие саму роль (payout, status)
+#   resources       существительные ресурса, встречающиеся в пути и в
+#                   operationId (payouts, payment, transaction)
+#   tail            последний литеральный сегмент пути (payouts, cancel)
+#   tail_parameter  true, если признаком роли является путь, который
+#                   заканчивается параметром: /payouts/{id} — это чтение
+#                   конкретного ресурса, а не создание нового
+#   http_methods    методы, которыми роль вообще может выражаться
+#   tags            теги операции (сравниваются без учёта регистра и
+#                   разделителей)
+#   request_body    true — у роли обязано быть тело запроса, false — тела
+#                   быть не должно; ключ опущен, если признак не значим
+#   unsecured       true, если `security: []` (операция без авторизации)
+#     — признак роли. Так объявляют входящий вебхук: его вызывает
+#     провайдер, а не мы.
+#
+# Как считается балл. Каждый признак голосует своим весом за все роли,
+# которым он подходит. operationId голосует полным весом, если совпали и
+# глагол, и существительное, и долей `partial`, если совпало только одно.
+# Побеждает роль с наибольшей суммой; при равенстве — порядок ролей в этом
+# файле.
+#
+# Уверенность = балл победителя / сумма весов признаков, которые вообще
+# проголосовали хоть за кого-то. Признак, который не сработал ни для одной
+# роли (например, operationId, которого в спеке нет), в знаменатель не
+# входит: нельзя штрафовать вывод за отсутствие данных, о котором мы и так
+# сообщаем отдельным предупреждением.
+#
+# ЧЕГО ЗДЕСЬ ДЕЛАТЬ НЕЛЬЗЯ:
+#   1. Писать слова конкретного провайдера. payout, deposit, balance,
+#      webhook — общеотраслевая лексика; название компании, её эндпоинт или
+#      её способ оплаты — нет. Такое место — overlay, а не справочник.
+#   2. Добавлять роль вне IR::Roles::OPERATION. Роль :unmapped описывать не
+#      нужно: это результат «ни одна роль не набрала порога», а не запись.
+#   3. Подгонять веса под одну спецификацию. Вес меняется только вместе с
+#      прогоном по всем спекам из spec/fixtures/specs.
+#
+# Роли идут в порядке жизненного цикла операции, слова внутри списков — по
+# алфавиту.
+
+version: 1
+
+# Вес каждого признака. Порядок величин: имя операции сильнее пути, путь
+# сильнее метода, тег слабее всех — он часто общий у половины спеки.
+# unsecured весит много, потому что `security: []` в платёжном API — это
+# почти всегда вебхук, и другого структурного признака вебхука в OpenAPI 3.0
+# просто нет (секция `webhooks` появилась только в 3.1).
+weights:
+  operation_id: 5
+  path_tail: 3
+  unsecured: 4
+  path_resource: 2
+  http_method: 2
+  tag: 1
+  request_body: 1
+
+scoring:
+  # Доля веса, которую даёт operationId, когда совпало только одно из двух:
+  # глагол без существительного (createSomething) или существительное без
+  # глагола (payoutWebhook).
+  partial: 0.5
+  # Минимальная доля голосов у победителя. Ниже — роль не присваивается:
+  # лучше строка в отчёте, чем молчаливая догадка в платёжной интеграции.
+  minimum: 0.4
+  # Минимальный абсолютный балл, в весах. Доли недостаточно: если из всех
+  # признаков сработали только метод и наличие тела, победитель наберёт
+  # 100% крошечного знаменателя, ничего при этом не зная о роли. Порог
+  # равен весу operation_id: роль обязана опираться либо на имя операции,
+  # либо на хвост пути вместе с ресурсом (3 + 2), а не на POST с телом.
+  floor: 5
+  # Минимальный отрыв от второго места, в тех же долях. Две роли с почти
+  # равными баллами — это неоднозначность, а не победа одной из них.
+  margin: 0.1
+  # Потолок уверенности. Эвристика никогда не заявляет 1.0: даже полное
+  # совпадение признаков остаётся выводом, который человек вправе
+  # переопределить через overlay.
+  ceiling: 0.95
+
+roles:
+  create_payout:
+    verbs: [create, execute, initiate, make, new, open, register, send, start, submit]
+    nouns: [disbursement, disbursements, payment, payments, payout, payouts, transfer,
+            transfers, withdrawal, withdrawals]
+    resources: [disbursement, disbursements, payment, payments, payout, payouts, transfer,
+                transfers, withdrawal, withdrawals]
+    tail: [disbursements, payments, payouts, transfers, withdrawals]
+    http_methods: [post]
+    tags: [disbursements, payment, payments, payout, payouts, transfer, transfers]
+    request_body: true
+
+  create_deposit:
+    verbs: [accept, create, execute, initiate, make, new, open, register, start, submit]
+    nouns: [charge, charges, deposit, deposits, invoice, invoices, payin, payins, refill,
+            refills, topup, topups]
+    resources: [charge, charges, deposit, deposits, invoice, invoices, payin, payins, refill,
+                refills, topup, topups]
+    tail: [charges, deposits, invoices, payins, refills, topups]
+    http_methods: [post]
+    tags: [charges, deposit, deposits, invoice, invoices, payin, payins, topup, topups]
+    request_body: true
+
+  fetch_status:
+    verbs: [check, fetch, find, get, lookup, poll, query, read, retrieve, show]
+    nouns: [details, info, state, status]
+    resources: [charge, charges, deposit, deposits, invoice, invoices, operation, operations,
+                payment, payments, payout, payouts, transaction, transactions, transfer,
+                transfers]
+    tail: [details, state, status]
+    # /payouts/{payout_id} — чтение конкретного ресурса.
+    tail_parameter: true
+    http_methods: [get]
+    tags: [deposit, deposits, operation, operations, payment, payments, payout, payouts,
+           status, transaction, transactions, transfer, transfers]
+    request_body: false
+
+  cancel:
+    verbs: [abort, cancel, decline, delete, reject, revoke, stop, void]
+    nouns: [cancel, cancellation, reversal, void]
+    resources: [charge, charges, deposit, deposits, operation, operations, payment, payments,
+                payout, payouts, transaction, transactions, transfer, transfers]
+    tail: [cancel, cancellation, cancellations, reversal, reversals, void]
+    http_methods: [delete, post]
+    tags: [cancellation, cancellations, deposit, deposits, operation, operations, payment,
+           payments, payout, payouts, transfer, transfers]
+    request_body: false
+
+  balance:
+    verbs: [check, fetch, get, query, read, retrieve, show]
+    nouns: [account, accounts, balance, balances, funds, limit, limits]
+    resources: [account, accounts, balance, balances, funds]
+    tail: [account, accounts, balance, balances, funds, limits]
+    http_methods: [get]
+    tags: [account, accounts, balance, balances, funds]
+    request_body: false
+
+  webhook:
+    verbs: [accept, deliver, handle, notify, process, receive]
+    nouns: [callback, callbacks, event, events, hook, hooks, notification, notifications,
+            webhook, webhooks]
+    resources: [callback, callbacks, event, events, hook, hooks, notification, notifications,
+                webhook, webhooks]
+    tail: [callback, callbacks, event, events, hook, hooks, notification, notifications,
+           webhook, webhooks]
+    http_methods: [post]
+    tags: [callback, callbacks, event, events, notification, notifications, webhook, webhooks]
+    request_body: true
+    unsecured: true

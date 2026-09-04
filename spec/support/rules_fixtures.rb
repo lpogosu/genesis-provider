@@ -66,6 +66,15 @@ module RulesFixtures
           }
         } }
     },
+    'operations.yml' => lambda {
+      { 'version' => 1,
+        'weights' => { 'operation_id' => 5, 'path_tail' => 3, 'unsecured' => 4,
+                       'path_resource' => 2, 'http_method' => 2, 'tag' => 1,
+                       'request_body' => 1 },
+        'scoring' => { 'partial' => 0.5, 'minimum' => 0.4, 'margin' => 0.1,
+                       'ceiling' => 0.95, 'floor' => 5 },
+        'roles' => OPERATION_ROLES }
+    },
     'contract.yml' => lambda {
       { 'version' => 1, 'base_class' => 'Provider::BaseService',
         'assumption' => 'Modelled from the case description; the real class was never handed out.',
@@ -75,6 +84,17 @@ module RulesFixtures
                               'known_values' => %w[create status] },
         'operation' => { 'amount_unit' => 'major' } }
     }
+  }.freeze
+
+  # One line per role: the loader only needs each list to be non-empty, and
+  # spec files carry no line-length limit.
+  OPERATION_ROLES = {
+    'create_payout' => { 'verbs' => %w[create new], 'nouns' => %w[payout payouts], 'resources' => %w[payout payouts], 'tail' => %w[payouts], 'http_methods' => %w[post], 'tags' => %w[payouts], 'request_body' => true },
+    'create_deposit' => { 'verbs' => %w[create new], 'nouns' => %w[deposit deposits], 'resources' => %w[deposit deposits], 'tail' => %w[deposits], 'http_methods' => %w[post], 'request_body' => true },
+    'fetch_status' => { 'verbs' => %w[get fetch check], 'nouns' => %w[status state], 'resources' => %w[payout payouts deposits], 'tail' => %w[status], 'tail_parameter' => true, 'http_methods' => %w[get], 'tags' => %w[payouts], 'request_body' => false },
+    'cancel' => { 'verbs' => %w[cancel void], 'nouns' => %w[cancel cancellation], 'resources' => %w[payout payouts], 'tail' => %w[cancel], 'http_methods' => %w[post delete], 'request_body' => false },
+    'balance' => { 'verbs' => %w[get check], 'nouns' => %w[balance balances], 'resources' => %w[balance], 'tail' => %w[balance], 'http_methods' => %w[get], 'request_body' => false },
+    'webhook' => { 'verbs' => %w[notify receive], 'nouns' => %w[webhook callback], 'resources' => %w[webhooks callbacks], 'tail' => %w[webhooks callbacks], 'http_methods' => %w[post], 'tags' => %w[webhooks], 'request_body' => true, 'unsecured' => true }
   }.freeze
 
   CONTRACT_METHODS = {

@@ -98,6 +98,20 @@ RSpec.describe 'the shipped dictionaries' do
     end
   end
 
+  describe 'operations' do
+    it 'describes every role the matcher can assign' do
+      expect(rules.operations.roles).to eq(SpecGen::IR::Roles::OPERATION - [:unmapped])
+    end
+
+    it 'weights the operation name above the path, and the path above the tag' do
+      book = rules.operations
+
+      expect(book.weight(:operation_id)).to be > book.weight(:path_tail)
+      expect(book.weight(:path_tail)).to be > book.weight(:tag)
+      expect(book.scoring(:floor)).to be >= book.weight(:operation_id)
+    end
+  end
+
   describe 'the contract' do
     it 'serves every operation role the contract covers' do
       SpecGen::IR::Roles::CONTRACT.each do |role|
