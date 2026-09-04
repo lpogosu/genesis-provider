@@ -2,18 +2,19 @@
 
 module SpecGen
   module IR
-    # One event a webhook endpoint can deliver, and the internal status the
-    # generated `process_callback` moves the operation to.
+    # Одно событие, которое может доставить точка приёма вебхуков, и
+    # внутренний статус, в который сгенерированный `process_callback`
+    # переводит операцию.
     #
-    #   name             event name verbatim, e.g. "payout.completed"
-    #   provider_status  status value carried in the payload, or nil
-    #   internal_status  Derived<Symbol> one of Roles::INTERNAL_STATUS
-    #   example          payload example verbatim, or nil
-    #   json_path        where the event is declared (enum entry or example)
+    #   name             имя события дословно, например "payout.completed"
+    #   provider_status  значение статуса в теле уведомления или nil
+    #   internal_status  Derived<Symbol>, один из Roles::INTERNAL_STATUS
+    #   example          пример тела дословно или nil
+    #   json_path        где событие объявлено (запись enum или пример)
     WebhookEvent = Struct.new(:name, :provider_status, :internal_status, :example, :json_path,
                               keyword_init: true)
 
-    # Checks and predicates of WebhookEvent.
+    # Проверки и предикаты WebhookEvent.
     class WebhookEvent
       include Node
 
@@ -24,8 +25,9 @@ module SpecGen
       # @param json_path [String, nil]
       # @raise [ArgumentError]
       def initialize(name:, internal_status:, provider_status: nil, example: nil, json_path: nil)
-        Node.assert_text!(name, 'webhook event name')
-        Node.assert_derived!(internal_status, 'webhook internal status', allowed: Roles::INTERNAL_STATUS)
+        Node.assert_text!(name, 'имя события вебхука')
+        Node.assert_derived!(internal_status, 'внутренний статус вебхука',
+                             allowed: Roles::INTERNAL_STATUS)
         super
       end
 

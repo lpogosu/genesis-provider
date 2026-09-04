@@ -125,15 +125,17 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
       profile = with_components({ 'Thing' => object({ 'value' => { 'description' => 'any' } }) })
 
       expect(profile.schema('Thing').field('value')).to have_attributes(type: nil)
-      expect(profile.warnings.first).to have_attributes(code: :format_unknown)
-      expect(profile.warnings.first.message).to include('`value` declares no `type`')
+      expect(profile.warnings.first)
+        .to have_attributes(code: :format_unknown, severity: :warning,
+                            json_path: '$.components.schemas.Thing.properties.value')
+      expect(profile.warnings.first.message).to include('`value`').and include('`type`')
     end
 
     it 'leaves the role unknown, because the field matchers decide it' do
       role = field_for({ 'type' => 'string' }).role
 
       expect(role).to be_unknown
-      expect(role.evidence).to include('field matchers')
+      expect(role.evidence).to include('матчеры полей')
     end
   end
 
@@ -233,8 +235,9 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
       profile = with_components({ 'R' => node }, oas31: true)
 
       expect(profile.schema('R').field('bank_code').required_when).to be_nil
-      expect(profile.warnings.first).to have_attributes(code: :conditional_required_hint)
-      expect(profile.warnings.first.message).to include('negative condition')
+      expect(profile.warnings.first).to have_attributes(code: :conditional_required_hint,
+                                                        severity: :warning)
+      expect(profile.warnings.first.message).to include('отрицательное условие')
     end
 
     it 'reads a hint out of prose as a heuristic, and offers the overlay that formalises it' do
@@ -245,10 +248,21 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
       expect(condition).to have_attributes(field: 'type', equals: 'sbp',
                                            origin: :description_hint, confidence: 0.5)
       expect(condition.formal?).to be(false)
-      expect(warning).to have_attributes(code: :conditional_required_hint,
+      expect(condition.evidence).to include('намёк в описании (equals)')
+      expect(warning).to have_attributes(code: :conditional_required_hint, severity: :warning,
                                          json_path: '$.components.schemas.R')
+      expect(warning.message).to include('`bank_code` выглядит условно обязательным (`type` = sbp)')
       expect(warning.suggested_overlay).to include('- target: "$.components.schemas.R"',
                                                    'x-jsonschema-if', 'const: sbp',
+                                                   'required: [bank_code]')
+    end
+
+    it 'states the same doubt in English when the locale is switched' do
+      SpecGen::Texts.locale = 'en'
+      warning = with_components({ 'R' => described('required when type is card') }).warnings.first
+
+      expect(warning.message).to include('`bank_code` looks conditionally required (`type` = card)')
+      expect(warning.suggested_overlay).to include('- target: "$.components.schemas.R"',
                                                    'required: [bank_code]')
     end
 
@@ -294,7 +308,7 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
 
       expect(profile.schema('Thing').field('a').type).to eq('string')
       expect(profile.warnings.first.message)
-        .to include('allOf branches disagree on the type of `a`')
+        .to include('ветки allOf расходятся в типе `a` (string и integer)')
     end
 
     it 'says plainly that oneOf variants are not decomposed' do
@@ -304,7 +318,7 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
 
       expect(codes(profile)).to include(:spec_element_unsupported)
       expect(profile.warnings.map(&:message).join)
-        .to include('`oneOf` with 2 variants is not decomposed')
+        .to include('`oneOf` не раскладывается на варианты (их 2)')
     end
   end
 
@@ -313,7 +327,7 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
       profile = with_components({ 'Thing' => { 'type' => 'object' } })
 
       expect(profile.schema('Thing').fields).to be_empty
-      expect(profile.warnings.first.message).to include('declares no properties')
+      expect(profile.warnings.first.message).to include('не объявляет свойств')
     end
 
     it 'says nothing about a scalar component with no properties' do
@@ -338,14 +352,14 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
       profile = with_components({ 'Thing' => node })
 
       expect(profile.schema('Thing').required).to eq([])
-      expect(profile.warnings.map(&:message).join).to include('`required` must be a list')
+      expect(profile.warnings.map(&:message).join).to include('`required` должен быть списком')
     end
 
     it 'reports an array that declares no items' do
       profile = with_components({ 'Thing' => object({ 'lines' => { 'type' => 'array' } }) })
 
       expect(profile.schema('Thing').field('lines').schema).to be_nil
-      expect(profile.warnings.map(&:message).join).to include('declares no `items`')
+      expect(profile.warnings.map(&:message).join).to include('не объявлены `items`')
     end
 
     it 'reports a components.schemas that is not an object and does not raise' do

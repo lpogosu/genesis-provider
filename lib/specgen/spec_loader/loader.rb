@@ -2,12 +2,13 @@
 
 module SpecGen
   module SpecLoader
-    # Orchestrates the loading stage: read → detect version → validate
-    # structure → resolve `$ref`. An OpenAPI Overlay, when the OverlayApplier
-    # stage exists, is applied to the raw document between reading and
-    # validation, so its JSONPath targets address the source as written.
+    # Дирижирует стадией загрузки: чтение → определение версии → проверка
+    # структуры → разрешение `$ref`. OpenAPI Overlay, когда появится стадия
+    # OverlayApplier, применяется к исходному документу между чтением и
+    # проверкой: так его цели JSONPath адресуют спецификацию в том виде, в
+    # котором она написана.
     class Loader
-      # @param path [String] spec file
+      # @param path [String] файл спецификации
       def initialize(path)
         @path = path
       end

@@ -2,28 +2,32 @@
 
 module SpecGen
   module Analyzers
-    # Fills IR::Auth: how the generated service authenticates its requests.
+    # Заполняет IR::Auth: как сгенерированный сервис авторизует свои
+    # запросы.
     #
-    # This class picks *which* scheme to use and leaves the translation of
-    # it to AuthScheme, which asks rules/auth.yml. Neither knows a scheme by
-    # name: a provider that authenticates in a way we have not met yet is a
-    # new entry in that dictionary, never a branch here.
+    # Этот класс выбирает, *какую* схему использовать, а перевод её
+    # оставляет AuthScheme, который спрашивает rules/auth.yml. Ни один из
+    # них не знает схему по имени: провайдер, авторизующийся способом,
+    # которого мы ещё не встречали, — это новая запись в справочнике, а не
+    # ветка здесь.
     #
-    # A spec may declare several schemes and use one. The choice is counted,
-    # not guessed: how many operations require each scheme, ties broken by
-    # declaration order, `security: []` (an inbound webhook) voting for
-    # nothing. The schemes that lost are reported with their JSONPaths.
+    # Спецификация может объявить несколько схем, а использовать одну.
+    # Выбор посчитан, а не угадан: сколько операций требует каждую схему,
+    # ничья разрешается порядком объявления, а `security: []` (входящий
+    # вебхук) не голосует ни за что. Проигравшие схемы попадают в отчёт
+    # вместе со своими JSONPath.
     #
-    # Why a profile always gets an Auth, even when the spec declares none:
-    # `auth: nil` cannot be told apart from "the analyzer never ran", while
-    # `type: Derived.structural(:none)` says the spec was read and it really
-    # asks for no credentials. Everything else - an unrecognised scheme, a
-    # scheme required but never declared - is `Derived.unknown` with a
-    # blocking warning, so a gap can never reach the generator disguised as
-    # an open API.
+    # Почему профиль всегда получает Auth, даже если спецификация не
+    # объявляет ни одной схемы: `auth: nil` невозможно отличить от
+    # «анализатор не запускался», тогда как `type: Derived.structural(:none)`
+    # говорит, что спецификация прочитана и она действительно не просит
+    # учётных данных. Всё остальное — нераспознанная схема, схема,
+    # требуемая, но нигде не объявленная — это `Derived.unknown` плюс
+    # блокирующее предупреждение, чтобы пробел не мог дойти до генератора
+    # под видом открытого API.
     class AuthAnalyzer < Base
-      # Fills `profile.auth`.
-      # @return [IR::ProviderProfile] the profile it was given
+      # Заполняет `profile.auth`.
+      # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
         profile.auth = build_auth
         profile
@@ -52,7 +56,7 @@ module SpecGen
         )
       end
 
-      # @return [Array<Array(Object, String)>] `security` of each operation
+      # @return [Array<Array(Object, String)>] `security` каждой операции
       def operation_security
         each_operation.map do |path, http_method, operation|
           [operation['security'], json_path('paths', path, http_method, 'security')]
@@ -61,16 +65,17 @@ module SpecGen
 
       def report_bad_security
         requirements.bad_paths.each do |path|
-          warn_shape(path, '`security` must be a list of requirement objects; it was ignored')
+          warn_shape(path, Texts.t('analyzers.auth.security_shape'))
         end
       end
 
-      # @return [Hash{String => Hash}] usable declarations, in spec order
+      # @return [Hash{String => Hash}] пригодные объявления, в порядке
+      #   спецификации
       def declared_schemes
         components = data['components']
         schemes = components.is_a?(Hash) ? components['securitySchemes'] : nil
         return {} if schemes.nil?
-        return warn_shape(schemes_path, '`securitySchemes` must be an object') || {} unless
+        return warn_shape(schemes_path, shape_message('securitySchemes')) || {} unless
           schemes.is_a?(Hash)
 
         schemes.select { |name, declaration| usable?(name, declaration) }
@@ -80,20 +85,20 @@ module SpecGen
       def usable?(name, declaration)
         return true if declaration.is_a?(Hash)
 
-        warn_shape(scheme_path(name), "security scheme #{name} must be an object; it was skipped")
+        warn_shape(scheme_path(name), Texts.t('analyzers.auth.scheme_shape', name: name))
         false
       end
 
-      # A scheme an operation requires but `components` never defines. With
-      # nothing else declared it blocks generation; alongside a scheme we do
-      # recognise it is a contradiction worth reporting.
+      # Схема, которую операция требует, а `components` нигде не определяет.
+      # Если больше ничего не объявлено, это блокирует генерацию; рядом с
+      # схемой, которую мы всё же распознали, это противоречие, о котором
+      # стоит сообщить.
       def report_undeclared(declared)
         missing = requirements.names - declared.keys
         return if missing.empty?
 
         profile.warn(:auth_unknown,
-                     "operations require security scheme #{missing.join(', ')}, which " \
-                     'components.securitySchemes does not declare',
+                     Texts.t('analyzers.auth.undeclared_message', names: missing.join(', ')),
                      json_path: schemes_path, severity: declared.empty? ? :error : :warning)
       end
 
@@ -102,31 +107,33 @@ module SpecGen
         return if rejected.empty?
 
         listed = rejected.map { |name| "#{name} (#{scheme_path(name)})" }.join(', ')
+        operations = Texts.plural(requirements.counts[chosen], 'operation')
         profile.warn(:auth_multiple_schemes,
-                     "the spec declares #{declared.size} security schemes; chose #{chosen}, " \
-                     "required by #{requirements.counts[chosen]} operation(s); ignored #{listed}",
+                     Texts.t('analyzers.auth.multiple_schemes', total: declared.size,
+                                                                chosen: chosen,
+                                                                operations: operations,
+                                                                ignored: listed),
                      json_path: schemes_path)
       end
 
-      # Nothing usable is declared: either the spec really asks for no
-      # credentials, or it requires a scheme it never defines.
+      # Ничего пригодного не объявлено: либо спецификация действительно не
+      # просит учётных данных, либо она требует схему, которую нигде не
+      # определяет.
       # @return [IR::Auth]
       def no_declaration
         required = requirements.winner(requirements.names)
         return undeclared_auth(required) unless required.nil?
 
-        profile.warn(:auth_absent,
-                     'the spec declares no security at all, so generated requests carry no ' \
-                     'credentials; unusual for a payment API, check it against the contract',
+        profile.warn(:auth_absent, Texts.t('analyzers.auth.absent_message'),
                      json_path: schemes_path, severity: :info)
         IR::Auth.new(type: IR::Derived.structural(
-          :none, evidence: 'no components.securitySchemes, no operation declares security'
+          :none, evidence: Texts.t('analyzers.auth.absent_evidence')
         ))
       end
 
       # @return [IR::Auth]
       def undeclared_auth(name)
-        evidence = "#{name} is required by operations but declared nowhere"
+        evidence = Texts.t('analyzers.auth.undeclared_evidence', name: name)
         IR::Auth.new(scheme_name: name, json_path: scheme_path(name),
                      type: IR::Derived.unknown(evidence: evidence))
       end
@@ -137,6 +144,10 @@ module SpecGen
 
       def scheme_path(name)
         json_path('components', 'securitySchemes', name)
+      end
+
+      def shape_message(key)
+        Texts.t('analyzers.common.must_be_object', key: key)
       end
 
       def warn_shape(path, message)

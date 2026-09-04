@@ -2,21 +2,21 @@
 
 module SpecGen
   module IR
-    # An inbound notification endpoint: one path, one payload schema, one
-    # signature scheme, several events.
+    # Точка приёма входящих уведомлений: один путь, одна схема тела, одна
+    # схема подписи, несколько событий.
     #
-    #   path       path template the provider is told to call
-    #   operation  Operation#key of the matching :webhook operation, or nil
-    #              when the spec documents webhooks outside `paths`
-    #   schema     name of the payload schema in profile.schemas
-    #   signature  SignatureProfile, or nil when the spec mentions no
-    #              signature at all (which is itself a warning)
+    #   path       шаблон пути, который провайдеру велят вызывать
+    #   operation  Operation#key соответствующей операции с ролью :webhook или
+    #              nil, если спецификация описывает вебхуки вне `paths`
+    #   schema     имя схемы тела в profile.schemas
+    #   signature  SignatureProfile или nil, если спецификация не упоминает
+    #              подпись вообще (что само по себе предупреждение)
     #   events     [WebhookEvent]
-    #   json_path  "$.paths['/webhooks/x'].post" or "$.webhooks.x"
+    #   json_path  "$.paths['/webhooks/x'].post" или "$.webhooks.x"
     Webhook = Struct.new(:path, :operation, :schema, :signature, :events, :json_path,
                          keyword_init: true)
 
-    # Checks and lookups of Webhook.
+    # Проверки и выборки Webhook.
     class Webhook
       include Node
 
@@ -28,23 +28,23 @@ module SpecGen
       # @param json_path [String, nil]
       # @raise [ArgumentError]
       def initialize(path:, operation: nil, schema: nil, signature: nil, events: [], json_path: nil)
-        Node.assert_text!(path, 'webhook path')
-        Node.assert_optional!(signature, SignatureProfile, 'webhook signature')
+        Node.assert_text!(path, 'путь вебхука')
+        Node.assert_optional!(signature, SignatureProfile, 'подпись вебхука')
         super
       end
 
-      # @param name [String] event name
+      # @param name [String] имя события
       # @return [WebhookEvent, nil]
       def event(name)
         events.find { |event| event.name == name }
       end
 
-      # @return [Boolean] a signature scheme is known and complete
+      # @return [Boolean] схема подписи выведена и полна
       def verifiable?
         !signature.nil? && signature.complete?
       end
 
-      # @return [Array<WebhookEvent>] events without an internal status
+      # @return [Array<WebhookEvent>] события без внутреннего статуса
       def unmapped_events
         events.reject(&:mapped?)
       end

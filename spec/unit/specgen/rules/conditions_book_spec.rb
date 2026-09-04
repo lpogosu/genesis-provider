@@ -55,30 +55,30 @@ RSpec.describe SpecGen::Rules::ConditionsBook do
     it 'refuses a pattern that captures no field, which is the whole point' do
       message = error_for { |doc| only_pattern(doc)['pattern'] = 'required when (.+)' }
 
-      expect(message).to include('pattern must capture field, value as a named group')
+      expect(message).to include('шаблон должен захватывать field, value как именованную группу')
     end
 
     it 'refuses an equality pattern that captures no value' do
       message = error_for { |doc| only_pattern(doc)['pattern'] = 'required (?<field>[a-z]+)' }
 
-      expect(message).to include('pattern must capture value as a named group')
+      expect(message).to include('шаблон должен захватывать value как именованную группу')
     end
 
     it 'refuses a kind it does not know' do
       expect(error_for { |doc| only_pattern(doc)['kind'] = 'maybe' })
-        .to include('kind must be one of equals, presence')
+        .to include('kind: ожидается одно из equals, presence')
     end
 
     it 'refuses a regular expression that does not compile' do
       expect(error_for { |doc| only_pattern(doc)['pattern'] = '(?<field>[a-z' })
-        .to include('pattern is not a valid regular expression')
+        .to include('регулярное выражение: не компилируется')
     end
 
     it 'refuses a confidence outside 0..1 and an empty pattern list' do
       expect(error_for { |doc| doc['required_when']['confidence'] = 1.5 })
-        .to include('confidence must be a number within 0.0..1.0')
+        .to include('уверенность: ожидается число в диапазоне 0.0..1.0')
       expect(error_for { |doc| doc['required_when']['patterns'] = [] })
-        .to include('patterns must be a non-empty array')
+        .to include('список patterns: ожидается непустой массив')
     end
   end
 end

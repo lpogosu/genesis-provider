@@ -2,13 +2,14 @@
 
 module SpecGen
   module Analyzers
-    # A warning a reader found but cannot record.
+    # Предупреждение, которое читатель нашёл, но записать не может.
     #
-    # Readers (ParameterReader, SchemaReader, ConditionReader) are pure:
-    # they take spec fragments and return IR, without touching the profile.
-    # What they notice on the way travels back as Notes, and the analyzer -
-    # the one object that owns the profile - turns them into warnings. One
-    # place records warnings, so their order stays predictable.
+    # Читатели (ParameterReader, SchemaReader, ConditionReader) чистые: они
+    # получают фрагменты спецификации и возвращают IR, не касаясь профиля.
+    # Замеченное по пути возвращается обратно как Note, а анализатор —
+    # единственный объект, который владеет профилем, — превращает их в
+    # предупреждения. Записывает предупреждения одно место, поэтому их
+    # порядок остаётся предсказуемым.
     Note = Struct.new(:code, :message, :json_path, :severity, :suggested_overlay,
                       keyword_init: true)
   end

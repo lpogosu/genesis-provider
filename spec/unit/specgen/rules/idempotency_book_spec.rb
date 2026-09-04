@@ -22,14 +22,14 @@ RSpec.describe SpecGen::Rules::IdempotencyBook do
 
     it 'requires the canonical name to be one of the aliases' do
       expect(rules_error('idempotency.yml' => idempotency_rule('canonical_header' => 'X-Key')))
-        .to include('"X-Key" is missing from the aliases')
+        .to include('канонический заголовок "X-Key" отсутствует среди алиасов')
     end
 
     it 'refuses the same alias twice under two spellings' do
       patch = idempotency_rule
       patch['aliases'] << 'idempotency key'
 
-      expect(rules_error('idempotency.yml' => patch)).to include('repeats "Idempotency-Key"')
+      expect(rules_error('idempotency.yml' => patch)).to include('повторяет "Idempotency-Key"')
     end
   end
 
@@ -45,17 +45,17 @@ RSpec.describe SpecGen::Rules::IdempotencyBook do
 
     it 'refuses a strategy IR does not know' do
       expect(rules_error('idempotency.yml' => idempotency_rule('default_strategy' => 'random')))
-        .to include('unknown idempotency strategy "random"')
+        .to include('стратегия идемпотентности: неизвестное значение "random"')
     end
 
     it 'refuses a namespace that is not a UUID, because the key must be reproducible' do
       expect(rules_error('idempotency.yml' => idempotency_rule('uuid_v5_namespace' => 'nova')))
-        .to include('must be a UUID')
+        .to include('ожидается UUID')
     end
 
     it 'refuses a conflict status that is not an HTTP status' do
       expect(rules_error('idempotency.yml' => idempotency_rule('conflict_status' => 42)))
-        .to include('within 100..599')
+        .to include('в диапазоне 100..599')
     end
   end
 

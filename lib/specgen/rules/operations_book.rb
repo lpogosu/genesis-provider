@@ -2,50 +2,50 @@
 
 module SpecGen
   module Rules
-    # The vocabulary and the weights that turn a path plus a method plus an
-    # operationId into an operation role.
+    # Слова и веса, которые превращают путь плюс метод плюс operationId в
+    # роль операции.
     #
-    # Nothing about recognising an endpoint lives in lib/: the words, the
-    # weight of each signal and the thresholds are all data here, so tuning
-    # the matcher is a diff in a YAML file and a test run, not a code
-    # change. The loader is strict for the same reason the other books are -
-    # a role nobody can ever match, or a weight of zero, would quietly bend
-    # every generated integration.
+    # В lib/ не живёт ничего о распознавании эндпоинта: слова, вес каждого
+    # сигнала и пороги — данные здесь, поэтому настройка матчера это правка
+    # YAML-файла и прогон тестов, а не изменение кода. Загрузчик строг по той
+    # же причине, что и остальные книги: роль, с которой ничто не может
+    # совпасть, или нулевой вес тихо искривили бы каждую сгенерированную
+    # интеграцию.
     class OperationsBook < Book
       FILE = 'operations.yml'
-      # The independent signals of the composite matcher, in the order the
-      # evidence line lists them.
+      # Независимые сигналы композитного матчера, в том порядке, в котором их
+      # перечисляет строка обоснования.
       SIGNALS = %i[operation_id path_tail path_resource http_method tag request_body
                    unsecured].freeze
-      # Numbers that shape the decision rather than one signal. All but
-      # `floor` are fractions; `floor` is an absolute score in weights.
+      # Числа, которые задают решение целиком, а не один сигнал. Все, кроме
+      # `floor`, — доли; `floor` — абсолютная сумма в весах.
       FRACTIONS = %i[partial minimum margin ceiling].freeze
       SCORING = (FRACTIONS + [:floor]).freeze
-      # Word lists every role may carry.
+      # Списки слов, которые может нести любая роль.
       LISTS = %i[verbs nouns resources tail tags].freeze
-      # :unmapped is the outcome of matching nothing, never an entry.
+      # :unmapped — исход, когда не совпало ничего, и никогда не запись.
       ROLES = (IR::Roles::OPERATION - [:unmapped]).freeze
       FRACTION = (0.0..1.0)
 
-      # @return [Array<Symbol>] described roles, in dictionary order
+      # @return [Array<Symbol>] описанные роли, в порядке справочника
       def roles
         @entries.keys
       end
 
-      # @param role [Symbol] one of ROLES
+      # @param role [Symbol] одна из ROLES
       # @return [Hash, nil] :verbs, :nouns, :resources, :tail, :tags,
       #   :http_methods, :tail_parameter, :request_body, :unsecured
       def entry(role)
         @entries[role]
       end
 
-      # @param signal [Symbol] one of SIGNALS
-      # @return [Integer] its weight
+      # @param signal [Symbol] один из SIGNALS
+      # @return [Integer] его вес
       def weight(signal)
         @weights.fetch(signal, 0)
       end
 
-      # @param key [Symbol] one of SCORING
+      # @param key [Symbol] один из SCORING
       # @return [Float]
       def scoring(key)
         @scoring.fetch(key, 0.0)
@@ -67,11 +67,10 @@ module SpecGen
 
       def signal_weight(weights, signal)
         at = path('weights', signal)
-        value = integer(weights[signal.to_s], "weight of #{signal}", at)
+        value = integer(weights[signal.to_s], noun(:weight_of, signal: signal), at)
         return value if value.nil? || value.positive?
 
-        complain("weight of #{signal} must be greater than zero", at)
-        nil
+        fault('operations.weight_zero', at, signal: signal)
       end
 
       def load_scoring
@@ -85,22 +84,20 @@ module SpecGen
         at = path('scoring', key)
         return value.to_f if value.is_a?(Numeric) && value.positive?
 
-        complain("#{key} must be a number greater than zero, got #{describe(value)}", at)
-        nil
+        fault('operations.above_zero', at, key: key, got: describe(value))
       end
 
       def fraction(value, key)
         at = path('scoring', key)
         return value.to_f if value.is_a?(Numeric) && FRACTION.cover?(value)
 
-        complain("#{key} must be a number within #{FRACTION}, got #{describe(value)}", at)
-        nil
+        fault('operations.fraction', at, key: key, range: FRACTION, got: describe(value))
       end
 
       def load_roles
         entries = {}
         section('roles').each do |name, body|
-          role = symbol_in(name, ROLES, 'operation role', path('roles', name))
+          role = symbol_in(name, ROLES, noun(:operation_role), path('roles', name))
           entries[role] = compile(role, body) unless role.nil?
         end
         report_missing(entries.keys)
@@ -109,7 +106,7 @@ module SpecGen
 
       def compile(role, body)
         at = path('roles', role)
-        fields = mapping(body, "role #{role}", at)
+        fields = mapping(body, noun(:role_body, role: role), at)
         entry = LISTS.to_h { |key| [key, words(fields[key.to_s], key, at)] }
         entry.merge!(http_methods: methods_of(fields['http_methods'], at),
                      tail_parameter: fields['tail_parameter'] == true,
@@ -119,19 +116,20 @@ module SpecGen
         entry.freeze
       end
 
-      # Dictionary words are stored normalized, so "Pay-Outs", "payOuts" and
-      # "pay_outs" in a spec all compare equal to one entry.
+      # Слова справочника хранятся нормализованными, поэтому "Pay-Outs",
+      # "payOuts" и "pay_outs" в спецификации сравниваются с одной записью.
       def words(value, key, at)
-        listed = string_list(value, "#{key} of the role",
+        listed = string_list(value, noun(:list, key: key),
                              "#{at}#{SpecLoader::JsonPath.segment(key)}", required: false)
         listed.map { |word| Normalizer.call(word) }.reject(&:empty?).uniq.freeze
       end
 
       def methods_of(value, at)
         at = "#{at}.http_methods"
-        listed = string_list(value, 'http methods', at, required: false)
+        listed = string_list(value, noun(:list, key: 'http_methods'), at, required: false)
         listed.each_with_index.filter_map do |name, index|
-          symbol_in(name.to_s.downcase, IR::Operation::METHODS, 'HTTP method', "#{at}[#{index}]")
+          symbol_in(name.to_s.downcase, IR::Operation::METHODS, noun(:http_method),
+                    "#{at}[#{index}]")
         end.freeze
       end
 
@@ -139,26 +137,26 @@ module SpecGen
         [true, false].include?(value) ? value : nil
       end
 
-      # A role whose every list is empty can never win a vote, which is a
-      # mistake in the data rather than a curious edge case.
+      # Роль, у которой пусты все списки, никогда не сможет победить в
+      # голосовании — это ошибка в данных, а не любопытный крайний случай.
       def check_matchable(role, entry, at)
         return if LISTS.any? { |key| !entry[key].empty? }
 
-        complain("role #{role} lists no word to match on", at)
+        fault('operations.unmatchable', at, role: role)
       end
 
       def report_missing(described)
         missing = ROLES - described
         return if missing.empty?
 
-        complain("no entry describes #{missing.join(', ')}; every role of " \
-                 'IR::Roles::OPERATION but :unmapped must be described', path('roles'))
+        fault('operations.missing', path('roles'), roles: missing.join(', '))
       end
 
       def report_unknown(unknown, allowed, at)
         return if unknown.empty?
 
-        complain("unknown keys #{unknown.join(', ')} (allowed: #{allowed.join(', ')})", at)
+        fault('operations.unknown_keys', at, keys: unknown.join(', '),
+                                             allowed: allowed.join(', '))
       end
     end
   end

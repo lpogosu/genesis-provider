@@ -2,21 +2,21 @@
 
 module SpecGen
   module SpecLoader
-    # Result of loading a spec: the normalized source document (`raw`, the
-    # target for an OpenAPI Overlay), the fully resolved copy the analyzers
-    # read (`data`), and what is known about the file itself.
+    # Результат загрузки спецификации: нормализованный исходный документ
+    # (`raw` — цель для OpenAPI Overlay), полностью разрешённая копия,
+    # которую читают анализаторы (`data`), и то, что известно про сам файл.
     class Document
-      # @return [String] path as given on the command line
+      # @return [String] путь, как он задан в командной строке
       attr_reader :file
-      # @return [String] OpenAPI version string, e.g. "3.0.3"
+      # @return [String] строка версии OpenAPI, например "3.0.3"
       attr_reader :version
-      # @return [Symbol] :oas30 or :oas31
+      # @return [Symbol] :oas30 или :oas31
       attr_reader :family
-      # @return [Hash] source document with `$ref` intact
+      # @return [Hash] исходный документ с нетронутыми `$ref`
       attr_reader :raw
-      # @return [Hash] document with every `$ref` replaced by its target
+      # @return [Hash] документ, в котором каждый `$ref` заменён своей целью
       attr_reader :data
-      # @return [Array<String>] other files pulled in through `$ref`
+      # @return [Array<String>] другие файлы, подтянутые через `$ref`
       attr_reader :external_files
 
       # @param file [String]
@@ -34,22 +34,22 @@ module SpecGen
         @external_files = external_files
       end
 
-      # @return [Hash] resolved `paths` section
+      # @return [Hash] разрешённая секция `paths`
       def paths
         data['paths']
       end
 
-      # @return [Hash] resolved `components` section, empty when absent
+      # @return [Hash] разрешённая секция `components`, пустая при отсутствии
       def components
         data.fetch('components', {})
       end
 
-      # @return [Hash] `info` section, empty when absent
+      # @return [Hash] секция `info`, пустая при отсутствии
       def info
         data.fetch('info', {})
       end
 
-      # @return [Boolean] true for 3.1 and later (JSON Schema 2020-12)
+      # @return [Boolean] true для 3.1 и выше (JSON Schema 2020-12)
       def oas31?
         family == :oas31
       end

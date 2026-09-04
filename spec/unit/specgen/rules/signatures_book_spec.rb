@@ -33,7 +33,7 @@ RSpec.describe SpecGen::Rules::SignaturesBook do
       patch['profiles'].delete('standard_webhooks')
 
       expect(rules_error('signatures.yml' => patch))
-        .to include('standard_webhooks is required as the default')
+        .to include('профиль standard_webhooks обязателен как профиль по умолчанию')
     end
   end
 
@@ -49,13 +49,13 @@ RSpec.describe SpecGen::Rules::SignaturesBook do
       patch = profiles { |set| set['raw_hex']['tolerance'] = 300 }
 
       expect(rules_error('signatures.yml' => patch))
-        .to include('only apply to an id_timestamp_body payload')
+        .to include('применимы только к payload id_timestamp_body')
     end
 
     it 'refuses a tolerance that is not a number of seconds' do
       patch = profiles { |set| set['standard_webhooks']['tolerance'] = 0 }
 
-      expect(rules_error('signatures.yml' => patch)).to include('within 1..86400')
+      expect(rules_error('signatures.yml' => patch)).to include('в диапазоне 1..86400')
     end
   end
 
@@ -64,13 +64,13 @@ RSpec.describe SpecGen::Rules::SignaturesBook do
       patch = profiles { |set| set['raw_hex']['algorithm'] = 'md5' }
 
       expect(rules_error('signatures.yml' => patch))
-        .to include('unknown signature algorithm "md5"')
+        .to include('алгоритм подписи: неизвестное значение "md5"')
     end
 
     it 'refuses an encoding outside IR::SignatureProfile' do
       patch = profiles { |set| set['raw_hex']['encoding'] = 'base32' }
 
-      expect(rules_error('signatures.yml' => patch)).to include('unknown signature encoding')
+      expect(rules_error('signatures.yml' => patch)).to include('кодирование подписи: неизвестное значение')
     end
   end
 

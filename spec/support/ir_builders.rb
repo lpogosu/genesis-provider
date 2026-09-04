@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-# Small IR objects for examples, so each example states only what it tests.
+# Маленькие объекты IR для примеров, чтобы каждый пример говорил только о
+# том, что он проверяет.
 module IRBuilders
   include SpecGen::IR
 
@@ -18,7 +19,7 @@ module IRBuilders
 
   def units
     Units.new(currency: structural('RUB', 'enum: [RUB]'), unit: structural(:minor, 'type: integer'),
-              exponent: Derived.registry(2, evidence: 'ISO 4217: RUB exponent 2'))
+              exponent: Derived.registry(2, evidence: 'ISO 4217: экспонента RUB 2'))
   end
 
   def info
@@ -26,8 +27,9 @@ module IRBuilders
              title: 'Acme Payout API')
   end
 
-  # A profile with one of everything, built either in declaration order or in
-  # reverse, to prove the serialised form does not depend on insertion order.
+  # Профиль, в котором есть по одному всему, собранный либо в порядке
+  # объявления, либо в обратном, — чтобы доказать, что сериализованный вид не
+  # зависит от порядка вставки.
   def full_profile(reverse: false)
     profile = ProviderProfile.new(info: info, units: units)
     fill_operations(profile, reverse)
@@ -47,22 +49,22 @@ module IRBuilders
   end
 
   def fill_maps(profile, reverse)
-    statuses = [StatusMapping.new(provider_status: 'pending', internal: structural(:in_progress, 'canon')),
-                StatusMapping.new(provider_status: 'completed', internal: structural(:approved, 'canon'))]
+    statuses = [StatusMapping.new(provider_status: 'pending', internal: structural(:in_progress, 'канон кейса')),
+                StatusMapping.new(provider_status: 'completed', internal: structural(:approved, 'канон кейса'))]
     rules = [error_rule(402, :retry), error_rule(500, :retry_backoff)]
     profile.status_map.concat(reverse ? statuses.reverse : statuses)
     profile.error_map.concat(reverse ? rules.reverse : rules)
   end
 
   def fill_warnings(profile, reverse)
-    entries = [[:units_inconsistent, 'minimum disagrees with the description', :warning, '$.b'],
-               [:operation_unmapped, 'GET /balance is not part of the contract', :info, '$.a']]
+    entries = [[:units_inconsistent, 'minimum расходится с описанием', :warning, '$.b'],
+               [:operation_unmapped, 'GET /balance не входит в контракт', :info, '$.a']]
     (reverse ? entries.reverse : entries).each do |code, message, severity, path|
       profile.warn(code, message, severity: severity, json_path: path)
     end
   end
 
-  # @return [Boolean] true when the structure holds no IR objects any more
+  # @return [Boolean] true, если в структуре больше не осталось объектов IR
   def plain?(value)
     case value
     when Hash then value.all? { |key, item| (key.is_a?(Symbol) || key.is_a?(String)) && plain?(item) }

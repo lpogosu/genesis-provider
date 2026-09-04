@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe SpecGen::SpecLoader::RefResolver do
-  def resolve(data, reader: ->(path) { raise SpecGen::SpecLoadError.new('file not found', file: path) })
+  def resolve(data, reader: ->(path) { raise SpecGen::SpecLoadError.new('нет файла', file: path) })
     described_class.new(data, file: 'mem.yaml', reader: reader).resolve
   end
 
@@ -44,18 +44,18 @@ RSpec.describe SpecGen::SpecLoader::RefResolver do
 
   it 'rejects a $ref that is not a string' do
     data = { 'a' => { '$ref' => 42 } }
-    expect { resolve(data) }.to raise_error(SpecGen::SpecParseError, /\$ref must be a string, got number/)
+    expect { resolve(data) }.to raise_error(SpecGen::SpecParseError, /должен иметь тип string, а не number/)
   end
 
   it 'rejects a fragment that is not a JSON Pointer' do
     data = { 'a' => { '$ref' => '#components/schemas/Money' } }
-    expect { resolve(data) }.to raise_error(SpecGen::SpecParseError, %r{must be a JSON Pointer starting with '/'})
+    expect { resolve(data) }.to raise_error(SpecGen::SpecParseError, %r{должен быть JSON Pointer и начинаться с '/'})
   end
 
   it 'reports a self-referencing schema as a cycle' do
     data = { 'm' => { 'type' => 'object', 'properties' => { 'child' => { '$ref' => '#/m' } } } }
     expect { resolve(data) }.to raise_error(SpecGen::SpecParseError) do |error|
-      expect(error.message).to include('cyclic $ref: #/m -> #/m')
+      expect(error.message).to include('#/m -> #/m')
       expect(error.path).to eq("$.m.properties.child['$ref']")
     end
   end
@@ -79,5 +79,13 @@ RSpec.describe SpecGen::SpecLoader::RefResolver do
     data = { 'a' => { '$ref' => 'common.yaml#/defs/Money' }, 'defs' => { 'Currency' => { 'type' => 'root-would-be-wrong' } } }
     resolved = resolve(data, reader: ->(_path) { external })
     expect(resolved['a']['currency']['type']).to eq('string')
+  end
+
+  it 'retells the failure of an external file at the $ref that pulled it in' do
+    data = { 'a' => { '$ref' => 'common.yaml#/defs/Money' } }
+    expect { resolve(data) }.to raise_error(SpecGen::SpecLoadError) do |error|
+      expect(error.message).to include('common.yaml').and include('нет файла')
+      expect(error.path).to eq("$.a['$ref']")
+    end
   end
 end

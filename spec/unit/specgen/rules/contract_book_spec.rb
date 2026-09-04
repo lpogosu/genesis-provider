@@ -18,7 +18,7 @@ RSpec.describe SpecGen::Rules::ContractBook do
       book = contract
 
       expect(book.base_class).to eq('Provider::BaseService')
-      expect(book.assumption).to include('never handed out')
+      expect(book.assumption).to include('реального класса нам не выдали')
     end
 
     it 'renders a signature, so no template spells one out' do
@@ -42,7 +42,7 @@ RSpec.describe SpecGen::Rules::ContractBook do
     it 'carries the semantics of request_method and the unit of the amount' do
       book = contract
 
-      expect(book.request_method_semantics).to include('not an HTTP verb')
+      expect(book.request_method_semantics).to include('не HTTP-метод')
       expect(book.request_method_values).to eq(%w[create status])
       expect(book.amount_unit).to eq(:major)
       expect(book.internal_statuses).to contain_exactly(:in_progress, :approved, :rejected)
@@ -61,20 +61,20 @@ RSpec.describe SpecGen::Rules::ContractBook do
       patch = methods_patch { |set| set['fetch_status'].delete('roles') }
 
       expect(rules_error('contract.yml' => patch))
-        .to include('no method serves fetch_status').and include('roles:')
+        .to include('ни один метод не обслуживает fetch_status').and include('roles:')
     end
 
     it 'refuses two methods claiming the same role' do
       patch = methods_patch { |set| set['check_conditions']['roles'] = ['webhook'] }
 
       expect(rules_error('contract.yml' => patch))
-        .to include('operation role webhook is already served by')
+        .to include('роль операции webhook уже обслуживает')
     end
 
     it 'refuses a role outside IR::Roles::CONTRACT' do
       patch = methods_patch { |set| set['fetch_status']['roles'] = %w[fetch_status balance] }
 
-      expect(rules_error('contract.yml' => patch)).to include('unknown operation role "balance"')
+      expect(rules_error('contract.yml' => patch)).to include('роль операции: неизвестное значение "balance"')
     end
   end
 
@@ -82,7 +82,7 @@ RSpec.describe SpecGen::Rules::ContractBook do
     it 'refuses a method name Ruby would not accept' do
       patch = methods_patch { |set| set['fetch status'] = set.delete('fetch_status') }
 
-      expect(rules_error('contract.yml' => patch)).to include('is not a Ruby method name')
+      expect(rules_error('contract.yml' => patch)).to include('не похоже на имя метода Ruby')
     end
 
     it 'refuses a parameter with a default before one without' do
@@ -91,7 +91,7 @@ RSpec.describe SpecGen::Rules::ContractBook do
                                            { 'name' => 'request_method' }]
       end
 
-      expect(rules_error('contract.yml' => patch)).to include('defaults must come last')
+      expect(rules_error('contract.yml' => patch)).to include('должны идти последними')
     end
 
     it 'refuses a missing helper' do
@@ -99,7 +99,7 @@ RSpec.describe SpecGen::Rules::ContractBook do
       patch['helpers'].delete('approve_operation')
 
       expect(rules_error('contract.yml' => patch))
-        .to include('helpers missing: approve_operation')
+        .to include('не описаны хелперы: approve_operation')
     end
 
     it 'refuses internal statuses that disagree with IR' do
@@ -107,12 +107,12 @@ RSpec.describe SpecGen::Rules::ContractBook do
       patch['internal_statuses'] = %w[in_progress approved]
 
       expect(rules_error('contract.yml' => patch))
-        .to include('internal statuses must be exactly')
+        .to include('внутренние статусы должны быть ровно')
     end
 
     it 'refuses a base class that is not a constant path' do
       expect(rules_error('contract.yml' => rule('contract.yml').merge('base_class' => 'service')))
-        .to include('is not a Ruby constant path')
+        .to include('не похож на путь константы Ruby')
     end
   end
 end

@@ -9,22 +9,23 @@ require_relative 'specgen/rules'
 require_relative 'specgen/analyzers'
 require_relative 'specgen/reporter'
 
-# Generator of payment-provider integrations from OpenAPI specifications.
+# Генератор интеграций с платёжными провайдерами из OpenAPI-спецификаций.
 #
-# The pipeline has one stage per directory under lib/specgen/:
+# У конвейера одна стадия на каталог внутри lib/specgen/:
 #
 #   SpecLoader → OverlayApplier → Analyzers → IR → Generators → Validators → Reporter
 #
-# The core is provider-neutral. It works with endpoint and field *roles* and
-# reads its dictionaries from rules/. Anything specific to one provider lives
-# in rules/ (data) or in an OpenAPI Overlay file, never in lib/.
+# Ядро провайдер-нейтрально. Оно работает с ролями эндпоинтов и полей и
+# читает свои справочники из rules/. Всё, что специфично для одного
+# провайдера, живёт в rules/ (данные) или в файле OpenAPI Overlay, но никогда
+# в lib/.
 module SpecGen
-  # Repository root, resolved from this file so the CLI works from any
-  # working directory.
+  # Корень репозитория, вычисленный от этого файла, чтобы CLI работал из
+  # любого рабочего каталога.
   ROOT = File.expand_path('..', __dir__).freeze
-  # Dictionaries: field roles, status synonyms, ISO 4217, signature profiles.
+  # Справочники: роли полей, синонимы статусов, ISO 4217, профили подписи.
   RULES_DIR = File.join(ROOT, 'rules').freeze
-  # ERB templates, one per generated artifact.
+  # ERB-шаблоны, по одному на генерируемый артефакт.
   TEMPLATES_DIR = File.join(ROOT, 'templates').freeze
   # Тексты для человека по языкам: locales/<код>/<стадия>.yml.
   LOCALES_DIR = File.join(ROOT, 'locales').freeze

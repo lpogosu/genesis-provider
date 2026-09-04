@@ -19,7 +19,7 @@ RSpec.describe SpecGen::IR::ProviderProfile do
 
     it 'rejects a member of the wrong type instead of failing later in a template' do
       expect { described_class.new(units: :minor) }
-        .to raise_error(ArgumentError, /units must be a Units or nil/)
+        .to raise_error(ArgumentError, /units: ожидается Units или nil/)
     end
   end
 
@@ -38,7 +38,7 @@ RSpec.describe SpecGen::IR::ProviderProfile do
     end
 
     it 'refuses a code outside the vocabulary' do
-      expect { profile.warn(:made_up, 'x') }.to raise_error(ArgumentError, /unknown warning code/)
+      expect { profile.warn(:made_up, 'x') }.to raise_error(ArgumentError, /код предупреждения: неизвестное значение/)
     end
 
     it 'answers whether a given severity occurred' do
@@ -80,7 +80,7 @@ RSpec.describe SpecGen::IR::ProviderProfile do
     end
 
     it 'refuses a role outside the vocabulary rather than returning nothing' do
-      expect { profile.operations_by_role(:refund) }.to raise_error(ArgumentError, /operation role/)
+      expect { profile.operations_by_role(:refund) }.to raise_error(ArgumentError, /роль операции/)
     end
 
     it 'finds an operation by its key, which falls back to method and path' do
@@ -134,7 +134,7 @@ RSpec.describe SpecGen::IR::ProviderProfile do
       units = full_profile.to_h[:units]
       expect(units[:unit]).to eq(value: :minor, source: :structural, confidence: 1.0,
                                  evidence: 'type: integer')
-      expect(units[:exponent][:evidence]).to eq('ISO 4217: RUB exponent 2')
+      expect(units[:exponent][:evidence]).to eq('ISO 4217: экспонента RUB 2')
     end
   end
 end

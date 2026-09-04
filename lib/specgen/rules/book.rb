@@ -2,24 +2,24 @@
 
 module SpecGen
   module Rules
-    # One dictionary file under rules/. A Book checks its file against the
-    # closed vocabularies of IR::Roles and the IR value objects, then exposes
-    # it as the lookups analyzers and generators call. Problems go into a
-    # shared collector instead of being raised, so a load reports every
-    # mistake in every dictionary at once and then refuses to hand back a
-    # half-valid registry.
+    # Один файл справочника из rules/. Книга сверяет свой файл с закрытыми
+    # наборами IR::Roles и объектов IR, а затем отдаёт его как те выборки,
+    # которые вызывают анализаторы и генераторы. Проблемы уходят в общий
+    # сборщик, а не поднимаются сразу: одна загрузка сообщает обо всех
+    # промахах во всех справочниках, после чего отказывается отдать
+    # полувалидный реестр.
     #
-    # A subclass declares FILE and implements #build.
+    # Наследник объявляет FILE и реализует #build.
     class Book
       include Checks
 
       SUPPORTED_VERSION = 1
 
-      # @return [String] path of the file this book was read from
+      # @return [String] путь файла, из которого прочитана книга
       attr_reader :file
 
-      # @param document [Document] already parsed dictionary
-      # @param problems [Problems] shared collector
+      # @param document [Document] уже разобранный справочник
+      # @param problems [Problems] общий сборщик проблем
       def initialize(document, problems)
         @file = document.file
         @data = document.data
@@ -28,7 +28,7 @@ module SpecGen
         build
       end
 
-      # @return [String] basename, the way messages name the dictionary
+      # @return [String] имя файла — так справочник называют сообщения
       def name
         File.basename(file)
       end
@@ -37,7 +37,7 @@ module SpecGen
 
       attr_reader :data, :problems
 
-      # Fills the lookups from `data`. Subclasses override.
+      # Заполняет выборки из `data`. Наследники переопределяют.
       # @return [void]
       def build; end
 
@@ -45,21 +45,21 @@ module SpecGen
         version = data['version']
         return if version == SUPPORTED_VERSION
 
-        complain("dictionary version must be #{SUPPORTED_VERSION}, got #{describe(version)}",
-                 path('version'))
+        fault('book.version', path('version'), expected: SUPPORTED_VERSION,
+                                               got: describe(version))
       end
 
-      # @param key [String] name of a top-level section
-      # @param type [Class] Hash or Array
-      # @param required [Boolean] whether an absent section is a problem
-      # @return [Hash, Array] the section, or an empty one
+      # @param key [String] имя раздела верхнего уровня
+      # @param type [Class] Hash или Array
+      # @param required [Boolean] считать ли отсутствие раздела проблемой
+      # @return [Hash, Array] сам раздел или пустой раздел нужного типа
       def section(key, type = Hash, required: true)
         value = data[key]
         return value if value.is_a?(type)
         return type.new if value.nil? && !required
 
         expected = SpecLoader::TypeName::NAMES.fetch(type)
-        complain("section must be an #{expected}, got #{describe(value)}", path(key))
+        fault('book.section', path(key), expected: expected, got: describe(value))
         type.new
       end
 

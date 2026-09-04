@@ -2,31 +2,33 @@
 
 module SpecGen
   module Rules
-    # One method of the Provider::BaseService contract, as the dictionary
-    # states it. Renders its own signature and call arguments so the ERB
-    # templates never spell a method name or a parameter list themselves.
+    # Один метод контракта Provider::BaseService в том виде, в котором его
+    # задаёт справочник. Сам выводит свою сигнатуру и аргументы вызова,
+    # поэтому ERB-шаблоны никогда не пишут имя метода или список параметров
+    # своими руками.
     #
-    # It collects its complaints in `problems` instead of raising, and the
-    # book drains them into the shared collector with the right JSONPath.
+    # Свои жалобы он собирает в `problems`, а не поднимает сразу: книга
+    # переливает их в общий сборщик с правильным JSONPath.
     class MethodSpec
       NAME = /\A[a-z_][a-z0-9_]*[?!]?\z/
       PARAM = /\A[a-z_][a-z0-9_]*\z/
 
-      # @return [String] method name
+      # @return [String] имя метода
       attr_reader :name
-      # @return [Array<Hash>] each :name and, when it has one, :default
+      # @return [Array<Hash>] у каждого :name и, если есть, :default
       attr_reader :params
-      # @return [Array<String>] operation roles the entry claims to serve
+      # @return [Array<String>] роли операций, которые запись берётся
+      #   обслуживать
       attr_reader :roles
-      # @return [String, nil] what the method returns, for documentation
+      # @return [String, nil] что метод возвращает, для документации
       attr_reader :returns
-      # @return [String, nil] one line on what the method is for
+      # @return [String, nil] одна строка о том, зачем метод нужен
       attr_reader :purpose
-      # @return [Array<Array(String, String)>] message and relative path
+      # @return [Array<Array(String, String)>] сообщение и относительный путь
       attr_reader :problems
 
-      # @param name [Object] key of the entry
-      # @param fields [Object] body of the entry
+      # @param name [Object] ключ записи
+      # @param fields [Object] тело записи
       def initialize(name, fields)
         @name = name.to_s
         @fields = fields.is_a?(Hash) ? fields : {}
@@ -38,7 +40,7 @@ module SpecGen
         check_name
       end
 
-      # @return [Boolean] the method calls super before its own work
+      # @return [Boolean] метод вызывает super до своей работы
       def calls_super?
         @fields['calls_super'] == true
       end
@@ -50,7 +52,7 @@ module SpecGen
         "#{name}(#{params.map { |param| render(param) }.join(', ')})"
       end
 
-      # @return [String] "operation, request_method", for a super call
+      # @return [String] "operation, request_method" — для вызова super
       def call_args
         params.map { |param| param[:name] }.join(', ')
       end
@@ -64,7 +66,7 @@ module SpecGen
       def check_name
         return if @name.match?(NAME)
 
-        complain("method name #{@name.inspect} is not a Ruby method name", '')
+        complain('bad_name', '', name: @name.inspect)
       end
 
       def parse_params
@@ -72,7 +74,7 @@ module SpecGen
         return [] if declared.nil?
 
         unless declared.is_a?(Array)
-          complain('params must be an array', '.params')
+          complain('params_not_array', '.params')
           return []
         end
         params = declared.each_with_index.filter_map { |item, index| param(item, index) }
@@ -82,11 +84,10 @@ module SpecGen
 
       def param(item, index)
         at = ".params[#{index}]"
-        return complain('parameter must be an object', at) unless item.is_a?(Hash)
+        return complain('param_not_object', at) unless item.is_a?(Hash)
 
         name = item['name'].to_s
-        return complain("parameter name #{item['name'].inspect} is not an identifier", at) unless
-          name.match?(PARAM)
+        return complain('bad_param', at, name: item['name'].inspect) unless name.match?(PARAM)
 
         { name: name, default: item['default']&.to_s }.freeze
       end
@@ -95,11 +96,14 @@ module SpecGen
         flags = params.map { |param| !param[:default].nil? }
         return if flags.each_cons(2).none? { |first, second| first && !second }
 
-        complain('parameters with defaults must come last', '.params')
+        complain('default_order', '.params')
       end
 
-      def complain(message, at)
-        @problems << [message, at]
+      # @param key [String] ключ под `rules.method.`
+      # @param at [String] путь записи относительно её места в справочнике
+      # @return [nil]
+      def complain(key, at, **params)
+        @problems << [Texts.t("rules.method.#{key}", **params), at]
         nil
       end
     end

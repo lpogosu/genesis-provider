@@ -4,14 +4,15 @@ require 'uri'
 
 module SpecGen
   module SpecLoader
-    # RFC 6901 JSON Pointer as used in `$ref` fragments: "/components/schemas/X".
-    # Handles the ~0 / ~1 escapes and percent-encoding, and walks a parsed
-    # document returning MISSING when the pointer leads nowhere.
+    # JSON Pointer по RFC 6901 в том виде, в каком он стоит во фрагменте
+    # `$ref`: "/components/schemas/X". Разбирает экранирование ~0 / ~1 и
+    # процентные последовательности, обходит разобранный документ и
+    # возвращает MISSING, когда указатель ведёт в пустоту.
     module JsonPointer
       MISSING = Object.new.freeze
 
-      # @param pointer [String] "" for the whole document or "/a/b/0"
-      # @return [Array<String>] unescaped reference tokens
+      # @param pointer [String] "" для всего документа либо "/a/b/0"
+      # @return [Array<String>] разэкранированные токены ссылки
       def self.keys(pointer)
         return [] if pointer.empty?
 
@@ -26,7 +27,7 @@ module SpecGen
 
       # @param document [Hash, Array]
       # @param pointer [String]
-      # @return [Object] the target, or MISSING
+      # @return [Object] цель либо MISSING
       def self.fetch(document, pointer)
         keys(pointer).reduce(document) do |node, key|
           next MISSING if node.equal?(MISSING)
@@ -37,7 +38,7 @@ module SpecGen
 
       # @param node [Object]
       # @param key [String]
-      # @return [Object] child of node addressed by key, or MISSING
+      # @return [Object] потомок узла по этому ключу либо MISSING
       def self.step(node, key)
         case node
         when Hash then node.fetch(key, MISSING)

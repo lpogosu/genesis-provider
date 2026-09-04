@@ -6,9 +6,9 @@ require 'psych'
 RSpec.describe SpecGen::SpecLoader do
   include Fixtures
 
-  # Every bad input must fail with (1) a class from our hierarchy, (2) the
-  # file name in the message and (3) the location of the problem. A file
-  # that cannot be opened at all has no location inside it: path is nil.
+  # Любой плохой ввод обязан падать с (1) классом из нашей иерархии,
+  # (2) именем файла в сообщении и (3) местом проблемы. У файла, который не
+  # удалось открыть вообще, места внутри нет: path равен nil.
   def expect_failure(file, klass, path:, message:)
     expect { described_class.load(file) }.to raise_error(klass) do |error|
       expect(error.file).to eq(file)
@@ -28,100 +28,106 @@ RSpec.describe SpecGen::SpecLoader do
   describe 'bad input' do
     it 'broken YAML → SpecLoadError with line and column' do
       expect_failure(bad_fixture('broken_yaml.yaml'), SpecGen::SpecLoadError,
-                     path: /\Aline \d+, column \d+\z/, message: /YAML syntax error/)
+                     path: /\Aстрока \d+, столбец \d+\z/, message: /ошибка синтаксиса YAML/)
     end
 
     it 'broken JSON → SpecLoadError naming the parser problem' do
       expect_failure(bad_fixture('broken.json'), SpecGen::SpecLoadError,
-                     path: /\A(line \d+, column \d+)?\z/, message: /JSON syntax error/)
+                     path: /\A(строка \d+, столбец \d+)?\z/, message: /ошибка синтаксиса JSON/)
     end
 
     it 'cyclic $ref → SpecParseError showing the cycle' do
       expect_failure(bad_fixture('cyclic_ref.yaml'), SpecGen::SpecParseError,
                      path: /\A\$\.components\.schemas\.B\['\$ref'\]\z/,
-                     message: %r{cyclic \$ref: #/components/schemas/A -> #/components/schemas/B -> #/components/schemas/A})
+                     message: %r{циклический .\$ref.: #/components/schemas/A -> #/components/schemas/B -> #/components/schemas/A})
     end
 
     it 'dangling $ref → SpecParseError at the $ref that points nowhere' do
       expect_failure(bad_fixture('dangling_ref.yaml'), SpecGen::SpecParseError,
                      path: %r{\A\$\.paths\['/payouts'\]\.post\.requestBody\.content\['application/json'\]\.schema\['\$ref'\]\z},
-                     message: %r{\$ref target not found: #/components/schemas/Missing})
+                     message: %r{цель .\$ref. не найдена: #/components/schemas/Missing})
     end
 
     it 'empty file → SpecLoadError' do
-      expect_failure(bad_fixture('empty.yaml'), SpecGen::SpecLoadError, path: /\A\$\z/, message: /file is empty/)
+      expect_failure(bad_fixture('empty.yaml'), SpecGen::SpecLoadError, path: /\A\$\z/, message: /файл пуст/)
     end
 
     it 'whitespace-only file → SpecLoadError' do
-      expect_failure(bad_fixture('whitespace.yaml'), SpecGen::SpecLoadError, path: /\A\$\z/, message: /file is empty/)
+      expect_failure(bad_fixture('whitespace.yaml'), SpecGen::SpecLoadError, path: /\A\$\z/, message: /файл пуст/)
     end
 
     it 'comment-only file → SpecLoadError' do
       expect_failure(bad_fixture('comment_only.yaml'), SpecGen::SpecLoadError,
-                     path: /\A\$\z/, message: /contains no document/)
+                     path: /\A\$\z/, message: /не содержит документа/)
     end
 
     it 'not an OpenAPI document → SpecLoadError listing what was found' do
       expect_failure(bad_fixture('not_openapi.yaml'), SpecGen::SpecLoadError,
-                     path: /\A\$\z/, message: /not an OpenAPI document.*top-level keys: version, services/)
+                     path: /\A\$\z/, message: /это не документ OpenAPI.*ключи верхнего уровня: version, services/)
     end
 
     it 'array at the root → SpecLoadError' do
       expect_failure(bad_fixture('array_root.yaml'), SpecGen::SpecLoadError,
-                     path: /\A\$\z/, message: /root must be an object, got array/)
+                     path: /\A\$\z/, message: /корень документа должен иметь тип object, а не array/)
     end
 
     it 'Swagger 2.0 → SpecLoadError with a conversion hint' do
       expect_failure(bad_fixture('swagger2.yaml'), SpecGen::SpecLoadError,
-                     path: /\A\$\.swagger\z/, message: /Swagger 2\.0 is not supported.*swagger2openapi/)
+                     path: /\A\$\.swagger\z/, message: /Swagger 2\.0 не поддерживается.*swagger2openapi/)
     end
 
     it 'unsupported OpenAPI version → SpecLoadError' do
       expect_failure(bad_fixture('unsupported_version.yaml'), SpecGen::SpecLoadError,
-                     path: /\A\$\.openapi\z/, message: /unsupported OpenAPI version "4\.0\.0"/)
+                     path: /\A\$\.openapi\z/, message: /версия OpenAPI "4\.0\.0" не поддерживается/)
     end
 
     it 'missing paths → SpecParseError' do
       expect_failure(bad_fixture('no_paths.yaml'), SpecGen::SpecParseError,
-                     path: /\A\$\.paths\z/, message: /`paths` is missing/)
+                     path: /\A\$\.paths\z/, message: /нет секции .paths./)
     end
 
     it 'empty paths → SpecParseError' do
       expect_failure(bad_fixture('empty_paths.yaml'), SpecGen::SpecParseError,
-                     path: /\A\$\.paths\z/, message: /`paths` is empty/)
+                     path: /\A\$\.paths\z/, message: /секция .paths. пуста/)
     end
 
     it 'unknown schema type → SpecParseError at the type keyword of the definition' do
       expect_failure(bad_fixture('unknown_type.yaml'), SpecGen::SpecParseError,
                      path: /\A\$\.components\.schemas\.Payout\.properties\.amount\.type\z/,
-                     message: /unknown schema type "money"/)
+                     message: /неизвестный тип схемы "money"/)
     end
 
     it 'remote $ref → SpecParseError, the generator never touches the network' do
       expect_failure(bad_fixture('remote_ref.yaml'), SpecGen::SpecParseError,
-                     path: /schema\['\$ref'\]\z/, message: /remote \$ref is not supported/)
+                     path: /schema\['\$ref'\]\z/, message: /по сети не поддерживается/)
     end
 
     it 'missing external file → SpecLoadError at the $ref in the main document' do
       expect_failure(bad_fixture('external_missing.yaml'), SpecGen::SpecLoadError,
                      path: /schema\['\$ref'\]\z/,
-                     message: /referenced file nowhere\.yaml could not be loaded: file not found/)
+                     message: /не удалось загрузить файл nowhere\.yaml.*файл не найден/)
     end
 
     it 'broken external file → SpecLoadError with the external file and its line' do
       expect_failure(bad_fixture('external_broken/main.yaml'), SpecGen::SpecLoadError,
                      path: /schema\['\$ref'\]\z/,
-                     message: /referenced file common\.yaml could not be loaded: YAML syntax error.*line \d+, column \d+/)
+                     message: /не удалось загрузить файл common\.yaml.*ошибка синтаксиса YAML.*строка \d+, столбец \d+/)
     end
 
     it 'missing file → SpecLoadError' do
       expect_failure(bad_fixture('does_not_exist.yaml'), SpecGen::SpecLoadError,
-                     path: nil, message: /file not found/)
+                     path: nil, message: /файл не найден/)
     end
 
     it 'directory instead of a file → SpecLoadError' do
       expect_failure(File.dirname(bad_fixture('empty.yaml')), SpecGen::SpecLoadError,
-                     path: nil, message: /directory/)
+                     path: nil, message: /каталог/)
+    end
+
+    it 'says the same in English when the locale is switched' do
+      SpecGen::Texts.locale = 'en'
+      expect_failure(bad_fixture('no_paths.yaml'), SpecGen::SpecParseError,
+                     path: /\A\$\.paths\z/, message: /at \$\.paths: .paths. is missing/)
     end
   end
 
@@ -152,7 +158,7 @@ RSpec.describe SpecGen::SpecLoader do
     it 'stops a runaway chain of 300 references with a message instead of a stack overflow' do
       Dir.mktmpdir do |dir|
         expect_failure(chain_spec(dir, 300), SpecGen::SpecParseError,
-                       path: /\A\$\.components\.schemas\.S\d+/, message: /nesting deeper than 256 levels/)
+                       path: /\A\$\.components\.schemas\.S\d+/, message: /вложенность глубже 256 уровней/)
       end
     end
   end

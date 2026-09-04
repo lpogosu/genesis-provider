@@ -2,30 +2,27 @@
 
 module SpecGen
   module Analyzers
-    # The parameters of one operation, including the ones it inherits.
+    # Параметры одной операции, включая унаследованные.
     #
-    # OpenAPI declares parameters in two places: on the path item, where
-    # every operation of that path inherits them, and on the operation
-    # itself, which overrides an inherited one with the same name and
-    # location. Missing that inheritance loses the path identifier of every
-    # `GET /payouts/{id}` written the tidy way, so it is modelled here
-    # rather than left to each caller.
+    # OpenAPI объявляет параметры в двух местах: на path item, откуда их
+    # наследует каждая операция этого пути, и на самой операции, которая
+    # переопределяет унаследованный параметр с тем же именем и местом. Не
+    # заметить это наследование — потерять идентификатор в пути у каждого
+    # аккуратно написанного `GET /payouts/{id}`, поэтому оно смоделировано
+    # здесь, а не оставлено каждому вызывающему.
     #
-    # Roles are deliberately not matched here. A parameter carries a role
-    # like a field does, but matching names to roles is the field matchers'
-    # job, and inventing a role in two places would make them disagree.
+    # Роли здесь намеренно не сопоставляются. Параметр несёт роль так же,
+    # как поле, но сопоставление имён с ролями — работа матчеров полей, а
+    # выдумывание роли в двух местах привело бы к расхождению между ними.
     class ParameterReader
-      # Why every role comes out unknown at this stage.
-      ROLE_PENDING = 'parameter roles are matched by the field matchers, a later stage'
-
-      # @return [Array<Array(String, String)>] message and JSONPath of every
-      #   parameter the caller should warn about
+      # @return [Array<Array(String, String)>] сообщение и JSONPath каждого
+      #   параметра, о котором вызывающий должен предупредить
       attr_reader :problems
 
-      # @param shared [Object] `parameters` of the path item
-      # @param own [Object] `parameters` of the operation
-      # @param shared_path [String] JSONPath of the path item's list
-      # @param own_path [String] JSONPath of the operation's list
+      # @param shared [Object] `parameters` у path item
+      # @param own [Object] `parameters` у операции
+      # @param shared_path [String] JSONPath списка у path item
+      # @param own_path [String] JSONPath списка у операции
       def initialize(shared:, own:, shared_path:, own_path:)
         @shared = shared
         @own = own
@@ -34,9 +31,9 @@ module SpecGen
         @problems = []
       end
 
-      # Inherited parameters keep their place; an override replaces the
-      # inherited entry in it, and a parameter only the operation declares
-      # is appended.
+      # Унаследованные параметры сохраняют своё место; переопределение
+      # занимает место унаследованного, а параметр, объявленный только
+      # операцией, добавляется в конец.
       # @return [Array<IR::Parameter>]
       def call
         merged = read(@shared, @shared_path).to_h { |parameter| [key_of(parameter), parameter] }
@@ -54,7 +51,7 @@ module SpecGen
         return [] if list.nil?
 
         unless list.is_a?(Array)
-          problem('`parameters` must be a list', at)
+          problem(Texts.t('analyzers.common.must_be_list', key: 'parameters'), at)
           return []
         end
 
@@ -62,11 +59,11 @@ module SpecGen
       end
 
       def parameter(item, at)
-        return problem('parameter must be an object', at) unless item.is_a?(Hash)
+        return problem(Texts.t('analyzers.parameter.shape'), at) unless item.is_a?(Hash)
 
         name = item['name']
         location = location_of(item['in'])
-        return problem('parameter needs a `name` and a known `in`', at) if bad?(name, location)
+        return problem(Texts.t('analyzers.parameter.name_missing'), at) if bad?(name, location)
 
         build(item, name, location, at)
       end
@@ -90,11 +87,12 @@ module SpecGen
         IR::Parameter::LOCATIONS.include?(location) ? location : nil
       end
 
+      # Почему на этой стадии любая роль выходит «не выведено».
       def pending_role
-        IR::Derived.unknown(evidence: ROLE_PENDING)
+        IR::Derived.unknown(evidence: Texts.t('analyzers.parameter.role_pending'))
       end
 
-      # @return [nil] so a filter_map drops the parameter it describes
+      # @return [nil] чтобы filter_map выбросил описанный параметр
       def problem(message, at)
         @problems << [message, at]
         nil

@@ -35,7 +35,7 @@ RSpec.describe SpecGen::Rules::StatusesBook do
 
       expect(book.internal_for('on_hold')).to be_nil
       expect(book).to be_ambiguous('on_hold')
-      expect(book.ambiguity('ON-HOLD')).to include('manual review')
+      expect(book.ambiguity('ON-HOLD')).to include('ручная проверка')
     end
 
     it 'refuses to be both ambiguous and mapped' do
@@ -43,7 +43,7 @@ RSpec.describe SpecGen::Rules::StatusesBook do
       patch['synonyms']['approved'] << 'on_hold'
 
       expect(rules_error('statuses.yml' => patch))
-        .to include('on_hold').and include('already mapped to approved')
+        .to include('on_hold').and include('уже отображён на approved')
     end
   end
 
@@ -53,7 +53,7 @@ RSpec.describe SpecGen::Rules::StatusesBook do
       patch['synonyms']['rejected'] << 'paid'
 
       expect(rules_error('statuses.yml' => patch))
-        .to include('"paid" is already mapped to approved')
+        .to include('статус "paid" уже отображён на approved')
         .and include('$.synonyms.approved[0]')
     end
 
@@ -61,7 +61,7 @@ RSpec.describe SpecGen::Rules::StatusesBook do
       patch = rule('statuses.yml')
       patch['synonyms']['in_progress'] << 'Pending'
 
-      expect(rules_error('statuses.yml' => patch)).to include('already mapped to in_progress')
+      expect(rules_error('statuses.yml' => patch)).to include('уже отображён на in_progress')
     end
   end
 
@@ -70,7 +70,7 @@ RSpec.describe SpecGen::Rules::StatusesBook do
       patch = rule('statuses.yml')
       patch['canonical']['refunded'] = 'reversed'
 
-      expect(rules_error('statuses.yml' => patch)).to include('unknown internal status "reversed"')
+      expect(rules_error('statuses.yml' => patch)).to include('внутренний статус: неизвестное значение "reversed"')
     end
 
     it 'requires at least one provider status per internal status' do
@@ -79,8 +79,8 @@ RSpec.describe SpecGen::Rules::StatusesBook do
       patch['synonyms']['rejected'] = []
 
       expect(rules_error('statuses.yml' => patch))
-        .to include('no provider status maps to rejected')
-        .or include('synonyms of rejected must be a non-empty array')
+        .to include('ни один статус провайдера не отображён на rejected')
+        .or include('синонимы статуса rejected: ожидается непустой массив')
     end
   end
 end

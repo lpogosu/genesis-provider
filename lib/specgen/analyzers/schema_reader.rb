@@ -2,34 +2,34 @@
 
 module SpecGen
   module Analyzers
-    # One schema object turned into an IR::Schema with its fields.
+    # Один объект схемы, превращённый в IR::Schema со своими полями.
     #
-    # Nested structure is not flattened and not lost: a property that is an
-    # object, or an array of objects, becomes a schema of its own, and the
-    # field keeps its name. That is what lets a generator build
-    # `recipient: { type:, phone:, account: }` instead of an opaque hash.
-    # The nested schemas are handed back rather than registered here, so the
-    # analyzer stays the only place that writes to the profile and can stop
-    # a cycle by name.
+    # Вложенная структура не сплющивается и не теряется: свойство, которое
+    # само объект или массив объектов, становится отдельной схемой, а поле
+    # сохраняет своё имя. Именно это позволяет генератору собрать
+    # `recipient: { type:, phone:, account: }`, а не непрозрачный хеш.
+    # Вложенные схемы возвращаются наверх, а не регистрируются здесь: так
+    # анализатор остаётся единственным, кто пишет в профиль, и может
+    # остановить цикл по имени.
     #
-    # Field roles are deliberately left unknown: matching names to roles is
-    # the field matchers' job, and two places guessing would disagree.
+    # Роли полей намеренно оставлены невыведенными: сопоставлять имена с
+    # ролями — работа матчеров полей, а два места, догадывающихся об одном и
+    # том же, разойдутся в ответах.
     class SchemaReader
-      # What one schema produced.
+      # Что дала одна схема.
       #
-      #   schema  IR::Schema, fields included
-      #   nested  [[name, node, json_path]] schemas to register next
-      #   notes   [Note] for the analyzer to record
+      #   schema  IR::Schema вместе с полями
+      #   nested  [[имя, узел, JSONPath]] схемы, которые регистрировать дальше
+      #   notes   [Note] для записи анализатором
       Result = Struct.new(:schema, :nested, :notes, keyword_init: true)
 
-      ROLE_PENDING = 'field roles are matched by the field matchers, a later stage'
       OBJECT = 'object'
       ARRAY = 'array'
 
-      # @param name [String] name the schema is filed under
-      # @param node [Object] the schema object, `$ref`s already resolved
-      # @param at [String] JSONPath of the schema
-      # @param book [Rules::ConditionsBook] prose patterns for conditions
+      # @param name [String] имя, под которым схема попадёт в профиль
+      # @param node [Object] объект схемы, `$ref` уже разрешены
+      # @param at [String] JSONPath схемы
+      # @param book [Rules::ConditionsBook] шаблоны условий в прозе
       # @param oas31 [Boolean]
       def initialize(name:, node:, at:, book:, oas31: false)
         @name = name
@@ -67,7 +67,7 @@ module SpecGen
         return listed.grep(String) if listed.is_a?(Array)
         return [] if listed.nil?
 
-        add_note(:spec_element_unsupported, '`required` must be a list of property names', at)
+        add_note(:spec_element_unsupported, Texts.t('analyzers.schema.required_not_list'), at)
         []
       end
 
@@ -82,14 +82,13 @@ module SpecGen
         list
       end
 
-      # An object with nothing in it cannot be built into a request, and the
-      # spec meant to say something; a scalar schema legitimately has none.
+      # Из объекта, в котором ничего нет, нельзя собрать запрос, а сказать
+      # спецификация что-то хотела; у скалярной схемы свойств нет законно.
       def no_properties
         return [] unless type_of(node) == OBJECT
 
-        add_note(:spec_element_unsupported,
-                 'the schema is an object but declares no properties, so nothing can be built ' \
-                 'from it', at)
+        add_note(:spec_element_unsupported, Texts.t('analyzers.schema.object_without_properties'),
+                 at)
         []
       end
 
@@ -112,8 +111,8 @@ module SpecGen
                       schema: nested_schema(name, merged, path))
       end
 
-      # A property with no type at all still goes into the IR - dropping it
-      # would lose a required field - but the report has to say so.
+      # Поле совсем без типа всё равно попадает в IR — выбросить его значило
+      # бы потерять обязательное поле, — но отчёт обязан об этом сказать.
       def type_and_nullability(merged, name, path)
         type, nullable = ConstraintReader.type_of(merged)
         return [type, nullable] if type.is_a?(String)
@@ -121,8 +120,7 @@ module SpecGen
         implied = implied_type(merged)
         if implied.nil?
           add_note(:format_unknown,
-                   "property `#{name}` declares no `type`, so the generated code cannot check " \
-                   'or coerce its value', path)
+                   Texts.t('analyzers.schema.property_without_type', name: name), path)
         end
         [implied, nullable]
       end
@@ -134,7 +132,7 @@ module SpecGen
         nil
       end
 
-      # @return [String, nil] name of the nested schema this field points at
+      # @return [String, nil] имя вложенной схемы, на которую смотрит поле
       def nested_schema(name, merged, path)
         return items_schema(name, merged, path) if type_of(merged) == ARRAY
 
@@ -145,18 +143,18 @@ module SpecGen
         items = merged['items']
         unless items.is_a?(Hash)
           add_note(:spec_element_unsupported,
-                   "array `#{name}` declares no `items`, so its element type is unknown", path)
+                   Texts.t('analyzers.schema.array_without_items', name: name), path)
           return nil
         end
 
         register(items, [@name, 'properties', name, 'items'], "#{path}.items")
       end
 
-      # A component keeps its name and its own JSONPath, whichever use site
-      # it was reached through - a warning or an overlay target has to point
-      # at the component, not at the copy the resolver left here. An inline
-      # object is named after where it sits, by the same rule SchemaNaming
-      # gives the operations.
+      # Компонентная схема сохраняет своё имя и свой JSONPath, через какое
+      # место использования её ни нашли бы: предупреждение или цель overlay
+      # обязаны указывать на компонент, а не на копию, которую оставил здесь
+      # резолвер. Инлайновый объект называется по месту, где стоит, — по тому
+      # же правилу, по которому SchemaNaming называет операции.
       def register(body, context, path)
         component = SchemaNaming.component_of(body)
         name = component || (SchemaNaming.synthetic(context) if body['properties'].is_a?(Hash))
@@ -167,13 +165,13 @@ module SpecGen
       end
 
       def skip_property(name, path)
-        add_note(:spec_element_unsupported, "property `#{name}` must be an object; it was skipped",
-                 path)
+        add_note(:spec_element_unsupported,
+                 Texts.t('analyzers.schema.property_not_object', name: name), path)
         nil
       end
 
       def pending_role
-        IR::Derived.unknown(evidence: ROLE_PENDING)
+        IR::Derived.unknown(evidence: Texts.t('analyzers.schema.role_pending'))
       end
 
       def text(value)

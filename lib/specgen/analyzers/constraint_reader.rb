@@ -2,35 +2,36 @@
 
 module SpecGen
   module Analyzers
-    # JSON Schema validation keywords, as IR::Field stores them.
+    # Ключевые слова валидации JSON Schema в том виде, в каком их хранит
+    # IR::Field.
     #
-    # Two spellings have to end up as one thing, because the generated
-    # service must not care which dialect the provider wrote in:
+    # Два написания обязаны свестись к одному, потому что сгенерированному
+    # сервису всё равно, на каком диалекте писал провайдер:
     #
-    #   nullable   OAS 3.0 writes `nullable: true`; JSON Schema 2020-12
-    #              (OAS 3.1) writes `type: ["string", "null"]`
-    #   exclusive  OAS 3.0 writes `exclusiveMinimum: true` as a modifier of
-    #              `minimum`; 2020-12 writes `exclusiveMinimum: 100` on its
-    #              own. Both are stored the 2020-12 way - as a number - so a
-    #              template renders one comparison instead of two.
+    #   nullable   OAS 3.0 пишет `nullable: true`; JSON Schema 2020-12
+    #              (OAS 3.1) пишет `type: ["string", "null"]`
+    #   exclusive  OAS 3.0 пишет `exclusiveMinimum: true` как модификатор к
+    #              `minimum`; 2020-12 пишет `exclusiveMinimum: 100`
+    #              самостоятельным ограничением. Храним по-2020-12 — числом,
+    #              чтобы шаблон рисовал одно сравнение, а не два.
     module ConstraintReader
-      # Keyword in the spec => key in IR::Field::CONSTRAINT_KEYS.
+      # Ключевое слово спецификации => ключ из IR::Field::CONSTRAINT_KEYS.
       KEYS = {
         'enum' => :enum, 'const' => :const, 'pattern' => :pattern, 'minimum' => :minimum,
         'maximum' => :maximum, 'minLength' => :min_length, 'maxLength' => :max_length,
         'minItems' => :min_items, 'maxItems' => :max_items, 'multipleOf' => :multiple_of,
         'default' => :default
       }.freeze
-      # Keyword => [constraint it sets, constraint it replaces when boolean].
+      # Ключевое слово => [что задаёт, что заменяет, когда задано булевым].
       EXCLUSIVE = {
         'exclusiveMinimum' => %i[exclusive_minimum minimum],
         'exclusiveMaximum' => %i[exclusive_maximum maximum]
       }.freeze
       NULL = 'null'
 
-      # @param node [Hash] a schema object
-      # @return [Array(String, Boolean)] the type as the IR keeps it, and
-      #   whether null is allowed
+      # @param node [Hash] объект схемы
+      # @return [Array(String, Boolean)] тип в том виде, в каком его держит
+      #   IR, и разрешён ли null
       def self.type_of(node)
         declared = node['type']
         nullable = node['nullable'] == true
@@ -40,9 +41,9 @@ module SpecGen
         [listed.reject { |type| type == NULL }.first, nullable || listed.include?(NULL)]
       end
 
-      # @param node [Hash] a schema object
-      # @param nullable [Boolean] as #type_of reported it
-      # @return [Hash{Symbol => Object}] keys from IR::Field::CONSTRAINT_KEYS
+      # @param node [Hash] объект схемы
+      # @param nullable [Boolean] как его вернул #type_of
+      # @return [Hash{Symbol => Object}] ключи из IR::Field::CONSTRAINT_KEYS
       def self.call(node, nullable: false)
         constraints = KEYS.filter_map { |keyword, key| [key, node[keyword]] if node.key?(keyword) }
                           .to_h
@@ -52,7 +53,7 @@ module SpecGen
 
       # @param node [Hash]
       # @param constraints [Hash]
-      # @return [Hash] the same constraints, with both dialects folded into one
+      # @return [Hash] те же ограничения, но оба диалекта сведены к одному
       def self.exclusives(node, constraints)
         EXCLUSIVE.each do |keyword, (key, replaces)|
           value = node[keyword]

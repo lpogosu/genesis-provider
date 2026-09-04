@@ -2,22 +2,24 @@
 
 module SpecGen
   module IR
-    # Identity of the provider and of the document it was derived from.
+    # Кто провайдер и из какого документа это выведено.
     #
-    #   name          Derived<String> provider slug used for class and file
-    #                 names, e.g. "acmepay" (from --provider or info.title)
-    #   title         info.title verbatim
-    #   spec_version  info.version verbatim
+    #   name          Derived<String> — slug провайдера для имён класса и
+    #                 файла, например "acmepay" (из --provider или info.title)
+    #   title         info.title дословно
+    #   spec_version  info.version дословно
     #   oas_version   "3.0.3", "3.1.0"
-    #   oas_family    :oas30 | :oas31 (decides which JSON Schema keywords exist)
-    #   base_url_env  Derived<String> ENV variable the generated service reads
-    #                 the base URL from
-    #   spec_file     spec file name as shown in reports (basename, not a path)
-    #   overlay_file  overlay file name when one was applied, else nil
+    #   oas_family    :oas30 | :oas31 (решает, какие ключевые слова JSON
+    #                 Schema доступны)
+    #   base_url_env  Derived<String> — переменная окружения, из которой
+    #                 сгенерированный сервис читает базовый URL
+    #   spec_file     имя файла спецификации, как его показывают отчёты (имя
+    #                 файла, не путь)
+    #   overlay_file  имя файла overlay, если он применялся, иначе nil
     Info = Struct.new(:name, :title, :spec_version, :oas_version, :oas_family,
                       :base_url_env, :spec_file, :overlay_file, keyword_init: true)
 
-    # Vocabulary and checks of Info.
+    # Словарь значений и проверки Info.
     class Info
       include Node
 
@@ -25,7 +27,7 @@ module SpecGen
 
       # @param name [Derived]
       # @param oas_version [String]
-      # @param oas_family [Symbol] one of FAMILIES
+      # @param oas_family [Symbol] одно из FAMILIES
       # @param base_url_env [Derived, nil]
       # @param title [String, nil]
       # @param spec_version [String, nil]
@@ -34,14 +36,14 @@ module SpecGen
       # @raise [ArgumentError]
       def initialize(name:, oas_version:, oas_family:, base_url_env: nil, title: nil,
                      spec_version: nil, spec_file: nil, overlay_file: nil)
-        Node.assert_derived!(name, 'provider name')
-        Node.assert_text!(oas_version, 'OAS version')
-        Node.assert_member!(FAMILIES, oas_family, 'OAS family')
-        Node.assert_derived!(base_url_env, 'base URL env') unless base_url_env.nil?
+        Node.assert_derived!(name, 'имя провайдера')
+        Node.assert_text!(oas_version, 'версия OAS')
+        Node.assert_member!(FAMILIES, oas_family, 'семейство OAS')
+        Node.assert_derived!(base_url_env, 'переменная базового URL') unless base_url_env.nil?
         super
       end
 
-      # @return [Boolean] JSON Schema 2020-12 keywords are native
+      # @return [Boolean] ключевые слова JSON Schema 2020-12 доступны нативно
       def oas31?
         oas_family == :oas31
       end

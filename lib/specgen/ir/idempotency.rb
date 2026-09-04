@@ -2,27 +2,28 @@
 
 module SpecGen
   module IR
-    # Idempotency-Key support of the provider and how the generated service
-    # produces the key. The header may be optional in the spec; the service
-    # sends it whenever one is known.
+    # Поддержка Idempotency-Key у провайдера и то, как сгенерированный сервис
+    # получает ключ. В спецификации заголовок может быть необязательным;
+    # сервис отправляет его всегда, когда ключ известен.
     #
-    #   header      Derived<String> header name, e.g. "Idempotency-Key"
-    #   strategy    Derived<Symbol> one of STRATEGIES
-    #   required    whether the spec marks the header as required
-    #   operations  Operation#key of every operation that accepts the header
-    #   json_path   where the header parameter is declared
+    #   header      Derived<String> — имя заголовка, например "Idempotency-Key"
+    #   strategy    Derived<Symbol>, одна из STRATEGIES
+    #   required    помечает ли спецификация заголовок обязательным
+    #   operations  Operation#key каждой операции, принимающей заголовок
+    #   json_path   где объявлен параметр-заголовок
     Idempotency = Struct.new(:header, :strategy, :required, :operations, :json_path,
                              keyword_init: true)
 
-    # Vocabulary and defaults of Idempotency.
+    # Словарь значений и значения по умолчанию Idempotency.
     class Idempotency
       include Node
 
-      # uuid_v5: deterministic UUID from operation.id, so repeats dedupe;
-      # external_id: send the platform's own operation id as the key;
-      # none: the provider offers no idempotency.
+      # uuid_v5: детерминированный UUID от operation.id, поэтому повторы
+      # дедуплицируются; external_id: отправить ключом собственный
+      # идентификатор операции платформы; none: провайдер идемпотентности не
+      # предлагает.
       STRATEGIES = %i[uuid_v5 external_id none].freeze
-      UNDERIVED = 'not derived'
+      UNDERIVED = 'не выведено'
 
       # @param header [Derived]
       # @param strategy [Derived]
@@ -33,12 +34,12 @@ module SpecGen
       def initialize(header: Derived.unknown(evidence: UNDERIVED),
                      strategy: Derived.unknown(evidence: UNDERIVED), required: false,
                      operations: [], json_path: nil)
-        Node.assert_derived!(header, 'idempotency header')
-        Node.assert_derived!(strategy, 'idempotency strategy', allowed: STRATEGIES)
+        Node.assert_derived!(header, 'заголовок идемпотентности')
+        Node.assert_derived!(strategy, 'стратегия идемпотентности', allowed: STRATEGIES)
         super
       end
 
-      # @return [Boolean] the service can send a key
+      # @return [Boolean] сервис может отправить ключ
       def supported?
         header.known? && strategy.known? && strategy.value != :none
       end

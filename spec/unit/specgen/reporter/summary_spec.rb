@@ -71,7 +71,7 @@ RSpec.describe SpecGen::Reporter::Summary do
     end
 
     it 'keeps evidence and overlays out of the default view' do
-      expect(text).not_to include('= rules/auth.yml')
+      expect(text).not_to include('= запись rules/auth.yml')
       expect(text).not_to include('overlay:')
     end
 
@@ -106,9 +106,9 @@ RSpec.describe SpecGen::Reporter::Summary do
     subject(:text) { render(explain: true) }
 
     it 'follows each derived value with the evidence it rests on' do
-      expect(text).to include('= info.title "NovaPay Payout API" -> novapay')
-        .and include('= rules/auth.yml entry "api_key_header" matched type=apikey, in=header')
-        .and include('= composite match: operation_id 5.0')
+      expect(text).to include('= из info.title "NovaPay Payout API" -> novapay')
+        .and include('= запись rules/auth.yml "api_key_header" совпала по type=apikey, in=header')
+        .and include('= композитное сопоставление: operation_id 5.0')
     end
 
     it 'prints the overlay fragment under a fixable warning' do

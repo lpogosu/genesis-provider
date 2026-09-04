@@ -2,8 +2,11 @@
 
 module SpecGen
   module SpecLoader
-    # Names a parsed value the way a spec author would read it in an error
-    # message: "object", "array", "string", never "Hash" or "NilClass".
+    # Называет разобранное значение так, как автор спецификации прочитает
+    # его в сообщении об ошибке: "object", "array", "string", а не "Hash" и
+    # не "NilClass". Имена типов JSON Schema не переводятся ни на один язык:
+    # это те же слова, что стоят в спецификации после `type:`, и
+    # пользователь ищет их в своём файле.
     module TypeName
       NAMES = {
         Hash => 'object', Array => 'array', String => 'string', Integer => 'number',

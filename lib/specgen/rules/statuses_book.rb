@@ -2,40 +2,42 @@
 
 module SpecGen
   module Rules
-    # Provider status strings → the internal statuses of IR::Roles.
+    # Строки статусов провайдера → внутренние статусы IR::Roles.
     #
-    # `canonical` is the mapping the case description fixes and the experts
-    # confirmed, `synonyms` extends it with the words other providers use,
-    # and `ambiguous` lists strings that mean different things at different
-    # providers and must never be mapped quietly — those become a warning
-    # and a question in report.md instead. A status belongs to exactly one
-    # of the three: mapped twice, it stops the load.
+    # `canonical` — маппинг, закреплённый описанием кейса и подтверждённый
+    # экспертами, `synonyms` расширяет его словами, которые используют другие
+    # провайдеры, а `ambiguous` перечисляет строки, означающие у разных
+    # провайдеров разное: их нельзя отображать молча — вместо этого
+    # предупреждение и вопрос в report.md. Статус принадлежит ровно одному из
+    # трёх разделов: отображённый дважды, он останавливает загрузку.
     class StatusesBook < Book
       FILE = 'statuses.yml'
 
-      # @return [Hash{String => Symbol}] every mapped status, normalized
+      # @return [Hash{String => Symbol}] все отображённые статусы,
+      #   нормализованные
       attr_reader :index
 
-      # @param status [String] status value from a spec or a response
-      # @return [Symbol, nil] internal status; nil when unknown or ambiguous
+      # @param status [String] значение статуса из спецификации или ответа
+      # @return [Symbol, nil] внутренний статус; nil, если статус неизвестен
+      #   или неоднозначен
       def internal_for(status)
         @index[Normalizer.call(status)]
       end
 
       # @param status [String]
-      # @return [Boolean] the word means different things at different providers
+      # @return [Boolean] слово означает у разных провайдеров разное
       def ambiguous?(status)
         @ambiguous.key?(Normalizer.call(status))
       end
 
       # @param status [String]
-      # @return [String, nil] why it is ambiguous, for report.md
+      # @return [String, nil] в чём неоднозначность, для report.md
       def ambiguity(status)
         @ambiguous[Normalizer.call(status)]
       end
 
       # @param status [String]
-      # @return [Boolean] the mapping comes from the case description itself
+      # @return [Boolean] маппинг взят из самого описания кейса
       def canonical?(status)
         @canonical.include?(Normalizer.call(status))
       end
@@ -57,7 +59,7 @@ module SpecGen
       def load_canonical
         section('canonical').each do |status, internal|
           at = path('canonical', status)
-          target = symbol_in(internal, IR::Roles::INTERNAL_STATUS, 'internal status', at)
+          target = symbol_in(internal, IR::Roles::INTERNAL_STATUS, noun(:internal_status), at)
           next if target.nil?
 
           key = map_status(status, target, at)
@@ -68,19 +70,18 @@ module SpecGen
       def load_synonyms
         section('synonyms').each do |internal, statuses|
           at = path('synonyms', internal)
-          target = symbol_in(internal, IR::Roles::INTERNAL_STATUS, 'internal status', at)
+          target = symbol_in(internal, IR::Roles::INTERNAL_STATUS, noun(:internal_status), at)
           next if target.nil?
 
-          string_list(statuses, "synonyms of #{internal}", at).each_with_index do |status, index|
-            map_status(status, target, "#{at}[#{index}]")
-          end
+          listed = string_list(statuses, noun(:synonyms_of, status: internal), at)
+          listed.each_with_index { |status, index| map_status(status, target, "#{at}[#{index}]") }
         end
       end
 
       def load_ambiguous
         section('ambiguous', Hash, required: false).each do |status, reason|
           at = path('ambiguous', status)
-          note = text(reason, "reason #{status} is ambiguous", at)
+          note = text(reason, noun(:ambiguity_reason, status: status), at)
           key = Normalizer.call(status)
           next if note.nil? || mapped_already?(key, at)
 
@@ -91,7 +92,7 @@ module SpecGen
       def map_status(status, internal, at)
         key = Normalizer.call(status)
         if key.empty?
-          complain("status #{status.inspect} normalizes to an empty name", at)
+          fault('statuses.empty', at, status: status.inspect)
           return nil
         end
         return nil if mapped_already?(key, at)
@@ -105,8 +106,8 @@ module SpecGen
         owner = @index[key]
         return false if owner.nil?
 
-        complain("status #{key.inspect} is already mapped to #{owner} at #{@origins[key]}; " \
-                 'one status means one internal state', at)
+        fault('statuses.mapped_twice', at, status: key.inspect, owner: owner,
+                                           origin: @origins[key])
         true
       end
 
@@ -114,7 +115,7 @@ module SpecGen
         missing = IR::Roles::INTERNAL_STATUS - @index.values.uniq
         return if missing.empty?
 
-        complain("no provider status maps to #{missing.join(', ')}", path('synonyms'))
+        fault('statuses.uncovered', path('synonyms'), statuses: missing.join(', '))
       end
     end
   end

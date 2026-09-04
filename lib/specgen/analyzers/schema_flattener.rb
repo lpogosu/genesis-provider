@@ -2,24 +2,24 @@
 
 module SpecGen
   module Analyzers
-    # Folds `allOf` into one schema object and reports the composition
-    # keywords we do not decompose.
+    # Сворачивает `allOf` в один объект схемы и сообщает о тех ключевых
+    # словах композиции, которые мы не раскладываем.
     #
-    # `allOf` is the common way to say "these fields plus those": losing a
-    # branch loses required fields from the generated request, so branches
-    # are merged - the outer schema first, then each branch in order, and a
-    # property already present is kept rather than overwritten.
+    # `allOf` — обычный способ сказать «эти поля плюс те»: потерять ветку
+    # значит потерять обязательные поля из сгенерированного запроса, поэтому
+    # ветки сливаются — сначала внешняя схема, затем каждая ветка по порядку,
+    # а уже присутствующее свойство сохраняется, а не перезаписывается.
     #
-    # `oneOf` and `anyOf` describe variants, not a sum, and turning them
-    # into one flat schema would invent fields the provider never accepts
-    # together. They are reported instead: the report says which variants
-    # exist and that a human has to pick.
+    # `oneOf` и `anyOf` описывают варианты, а не сумму, и превращение их в
+    # одну плоскую схему выдумало бы поля, которые провайдер никогда не
+    # принимает вместе. Поэтому о них сообщается: отчёт говорит, какие
+    # варианты есть и что выбрать обязан человек.
     module SchemaFlattener
       VARIANTS = %w[oneOf anyOf].freeze
 
-      # @param node [Object] a schema object
-      # @return [Array(Hash, Array<Array(Symbol, String)>)] the merged
-      #   schema and [warning code, message] pairs for the caller to record
+      # @param node [Object] объект схемы
+      # @return [Array(Hash, Array<Array(Symbol, String)>)] слитая схема и
+      #   пары [код предупреждения, сообщение], чтобы вызывающий их записал
       def self.call(node)
         return [{}, []] unless node.is_a?(Hash)
 
@@ -69,8 +69,8 @@ module SpecGen
         return if types.any?(&:nil?) || types.uniq.size == 1
 
         notes << [:spec_element_unsupported,
-                  "allOf branches disagree on the type of `#{name}` " \
-                  "(#{types.first} and #{types.last}); the first was kept"]
+                  Texts.t('analyzers.schema.allof_type_conflict',
+                          name: name, kept: types.first, incoming: types.last)]
       end
 
       # @return [void]
@@ -79,9 +79,8 @@ module SpecGen
         return unless branches.is_a?(Array) && !branches.empty?
 
         notes << [:spec_element_unsupported,
-                  "`#{keyword}` with #{branches.size} variants is not decomposed: the fields " \
-                  'of the variants are not in the IR, so a request built from this schema ' \
-                  'needs a human to choose the variant']
+                  Texts.t('analyzers.schema.variants_not_decomposed',
+                          keyword: keyword, count: branches.size)]
       end
 
       # @return [Array<String>]

@@ -2,16 +2,16 @@
 
 module SpecGen
   module IR
-    # One entry of the spec's `servers` list.
+    # Одна запись списка `servers` из спецификации.
     #
-    #   url          verbatim
-    #   environment  Derived<Symbol> :sandbox | :production; unknown when
-    #                neither description nor host says which it is
-    #   description  verbatim
+    #   url          дословно
+    #   environment  Derived<Symbol> :sandbox | :production; не выведено,
+    #                если ни описание, ни хост не говорят, что это за среда
+    #   description  дословно
     #   json_path    "$.servers[0]"
     Server = Struct.new(:url, :environment, :description, :json_path, keyword_init: true)
 
-    # Vocabulary and checks of Server.
+    # Словарь значений и проверки Server.
     class Server
       include Node
 
@@ -23,8 +23,8 @@ module SpecGen
       # @param json_path [String, nil]
       # @raise [ArgumentError]
       def initialize(url:, environment:, description: nil, json_path: nil)
-        Node.assert_text!(url, 'server url')
-        Node.assert_derived!(environment, 'server environment', allowed: ENVIRONMENTS)
+        Node.assert_text!(url, 'URL сервера')
+        Node.assert_derived!(environment, 'среда сервера', allowed: ENVIRONMENTS)
         super
       end
 

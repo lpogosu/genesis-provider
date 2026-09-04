@@ -31,7 +31,7 @@ RSpec.describe SpecGen::Rules::RolesBook do
 
       message = rules_error('roles.yml' => roles)
 
-      expect(message).to include('"bic" is already claimed by role bank_code')
+      expect(message).to include('синоним "bic" уже занят ролью bank_code')
         .and include('$.roles.bank_code.names[1]')
         .and include('$.roles.card_number.names[1]')
     end
@@ -42,7 +42,7 @@ RSpec.describe SpecGen::Rules::RolesBook do
       roles['roles']['bank_name']['names'] = %w[bank_name Bank-BIC]
 
       expect(rules_error('roles.yml' => roles))
-        .to include('"bank_bic" is already claimed by role bank_code')
+        .to include('синоним "bank_bic" уже занят ролью bank_code')
     end
 
     it 'lets one role list the same synonym twice' do
@@ -66,21 +66,21 @@ RSpec.describe SpecGen::Rules::RolesBook do
       roles = rule('roles.yml')
       roles['roles'].delete('signature')
 
-      expect(rules_error('roles.yml' => roles)).to include('no synonyms for signature')
+      expect(rules_error('roles.yml' => roles)).to include('нет синонимов для signature')
     end
 
     it 'refuses a role IR does not know' do
       roles = rule('roles.yml')
       roles['roles']['merchant_mood'] = { 'names' => ['mood'] }
 
-      expect(rules_error('roles.yml' => roles)).to include('unknown field role "merchant_mood"')
+      expect(rules_error('roles.yml' => roles)).to include('роль поля: неизвестное значение "merchant_mood"')
     end
 
     it 'refuses a role with no synonyms at all' do
       roles = rule('roles.yml')
       roles['roles']['amount'] = { 'names' => [] }
 
-      expect(rules_error('roles.yml' => roles)).to include('names must be a non-empty array')
+      expect(rules_error('roles.yml' => roles)).to include('список names: ожидается непустой массив')
     end
   end
 
@@ -97,14 +97,14 @@ RSpec.describe SpecGen::Rules::RolesBook do
       roles = rule('roles.yml')
       roles['roles']['recipient_phone']['patterns'] = ['^7\d{10}(']
 
-      expect(rules_error('roles.yml' => roles)).to include('not a valid regular expression')
+      expect(rules_error('roles.yml' => roles)).to include('регулярное выражение: не компилируется')
     end
 
     it 'refuses an OpenAPI type that does not exist' do
       roles = rule('roles.yml')
       roles['roles']['amount']['types'] = %w[integer decimal]
 
-      expect(rules_error('roles.yml' => roles)).to include('unknown OpenAPI type "decimal"')
+      expect(rules_error('roles.yml' => roles)).to include('тип OpenAPI: неизвестное значение "decimal"')
     end
   end
 end

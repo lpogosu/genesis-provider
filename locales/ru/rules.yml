@@ -1,0 +1,154 @@
+# locales/ru/rules.yml — сообщения загрузчика справочников rules/.
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с locales/en/rules.yml,
+# это проверяет spec/unit/specgen/texts_spec.rb.
+#
+# Стиль сообщения: «что проверяли: что не так». Названия проверяемых
+# элементов лежат отдельно, в разделе `noun`, и подставляются как %{what} —
+# так проверка остаётся одна на все справочники, а склонение и род русского
+# существительного не влияют на шаблон.
+
+rules:
+  problems:
+    headline: "Проблемы в справочниках (%{count}):"
+    at: "в %{path}"
+
+  # Общие проверки значения: Rules::Checks.
+  checks:
+    unknown_value: "%{what}: неизвестное значение %{value} (допустимо: %{allowed})"
+    text: "%{what}: ожидается непустая строка, получено: %{got}"
+    integer: "%{what}: ожидается целое число, получено: %{got}"
+    range: "%{what}: ожидается число в диапазоне %{range}, получено: %{got}"
+    list: "%{what}: ожидается непустой массив, получено: %{got}"
+    mapping: "%{what}: ожидается объект, получено: %{got}"
+    bad_pattern: "%{what}: не компилируется — %{error}"
+    nothing: "ничего"
+
+  # Названия проверяемых элементов. Ключи справочников (names, aliases,
+  # http_methods) остаются как написаны в YAML — их читает и машина.
+  noun:
+    entry: "%{what}, элемент"
+    list: "список %{key}"
+    field_role: "роль поля"
+    role_body: "описание роли %{role}"
+    openapi_type: "тип OpenAPI"
+    pattern: "регулярное выражение"
+    internal_status: "внутренний статус"
+    synonyms_of: "синонимы статуса %{status}"
+    ambiguity_reason: "причина неоднозначности статуса %{status}"
+    default_exponent: "экспонента по умолчанию"
+    currency_body: "описание валюты %{code}"
+    exponent: "экспонента"
+    currency_name: "название валюты"
+    signature_profile: "профиль подписи"
+    signature_algorithm: "алгоритм подписи"
+    signature_encoding: "кодирование подписи"
+    signature_payload: "подписываемое тело"
+    signature_header: "заголовок подписи"
+    secret_key: "имя ключа секрета"
+    id_header: "заголовок идентификатора доставки"
+    timestamp_header: "заголовок метки времени"
+    tolerance: "допуск на повтор"
+    profile_body: "описание профиля %{name}"
+    canonical_header: "канонический заголовок"
+    idempotency_strategy: "стратегия идемпотентности"
+    conflict_status: "код ответа на повтор"
+    uuid_namespace: "пространство имён UUID v5"
+    scheme_body: "описание схемы %{name}"
+    match_block: "блок match"
+    auth_type: "тип авторизации"
+    auth_location: "место учётных данных"
+    credential_keys: "ключи credentials"
+    fragments: "фрагменты кода"
+    fragment: "фрагмент %{key}"
+    weight_of: "вес сигнала %{signal}"
+    http_method: "HTTP-метод"
+    operation_role: "роль операции"
+    required_when: "раздел required_when"
+    pattern_entry: "описание шаблона"
+    pattern_name: "имя шаблона"
+    base_class: "базовый класс"
+    assumption: "пометка о допущении"
+    method_body: "описание метода %{name}"
+    helper_body: "описание хелпера %{key}"
+    request_method: "раздел request_method"
+    operation_section: "раздел operation"
+    amount_unit: "единица суммы"
+    alias_name: "алиас"
+
+  book:
+    version: "версия справочника: ожидается %{expected}, получено: %{got}"
+    section: "раздел справочника: ожидается %{expected}, получено: %{got}"
+
+  document:
+    not_found: "справочник не найден"
+    is_directory: "по этому пути каталог, а не файл"
+    unreadable: "справочник не читается: %{error}"
+    yaml_syntax: "ошибка синтаксиса YAML: %{problem}"
+    yaml_error: "ошибка YAML: %{error}"
+    location: "строке %{line}, столбце %{column}"
+    not_object: "справочник должен быть непустым объектом, получено: %{got}"
+    duplicates: "объявлено больше одного раза: %{keys}; YAML молча оставляет последнее значение"
+    duplicate_at: "%{path} (строка %{line})"
+
+  roles:
+    empty_synonym: "синоним %{name} после нормализации становится пустым"
+    conflict: "синоним %{name} уже занят ролью %{owner} в %{origin}; одно имя — одно значение"
+    missing: "нет синонимов для %{roles}; каждой роли из IR::Roles::FIELD нужна запись"
+
+  statuses:
+    empty: "статус %{status} после нормализации становится пустым"
+    mapped_twice: "статус %{status} уже отображён на %{owner} в %{origin}; один статус — одно внутреннее состояние"
+    uncovered: "ни один статус провайдера не отображён на %{statuses}"
+
+  currencies:
+    bad_code: "код валюты: ожидаются три заглавные латинские буквы, получено: %{code}"
+    empty: "таблица валют пуста"
+
+  signatures:
+    default_missing: "профиль %{profile} обязателен как профиль по умолчанию"
+    replay_not_applicable: "%{keys} применимы только к payload id_timestamp_body; в raw body нет метки времени, которую можно ограничить"
+
+  idempotency:
+    bad_namespace: "пространство имён UUID v5: ожидается UUID, получено: %{value}"
+    empty_alias: "алиас %{name} после нормализации становится пустым"
+    duplicate_alias: "алиас %{name} повторяет %{other}"
+    canonical_missing: "канонический заголовок %{header} отсутствует среди алиасов"
+
+  auth:
+    empty: "ни одна схема авторизации не описана"
+    unknown_match_key: "блок match не может опираться на %{keys} (допустимо: %{allowed})"
+    match_empty: "блок match должен задавать хотя бы type схемы"
+    unused_credentials: "ключи credentials, которые не читает ни один фрагмент: %{keys}"
+
+  operations:
+    weight_zero: "вес сигнала %{signal} должен быть больше нуля"
+    above_zero: "порог %{key}: ожидается число больше нуля, получено: %{got}"
+    fraction: "порог %{key}: ожидается число в диапазоне %{range}, получено: %{got}"
+    unmatchable: "роль %{role} не перечисляет ни одного слова для сопоставления"
+    missing: "нет записи для %{roles}; описана должна быть каждая роль IR::Roles::OPERATION, кроме :unmapped"
+    unknown_keys: "неизвестные ключи %{keys} (допустимо: %{allowed})"
+
+  conditions:
+    confidence: "уверенность: ожидается число в диапазоне %{range}, получено: %{got}"
+    kind: "kind: ожидается одно из %{allowed}, получено: %{got}"
+    captures: "шаблон должен захватывать %{groups} как именованную группу"
+
+  contract:
+    bad_class: "базовый класс %{name} не похож на путь константы Ruby"
+    no_methods: "нужен хотя бы один метод"
+    role_taken: "роль операции %{role} уже обслуживает %{method}"
+    helpers_missing: "не описаны хелперы: %{helpers}"
+    statuses_mismatch: "внутренние статусы должны быть ровно %{statuses}"
+    uncovered_roles: "ни один метод не обслуживает %{roles}; добавь список `roles:` тому методу, который это делает"
+
+  method:
+    bad_name: "имя метода %{name} не похоже на имя метода Ruby"
+    params_not_array: "params: ожидается массив"
+    param_not_object: "параметр: ожидается объект"
+    bad_param: "имя параметра %{name} не похоже на идентификатор"
+    default_order: "параметры со значением по умолчанию должны идти последними"
+
+  registry:
+    claimed: "%{what} %{name} занят ролью %{owner} в %{file}; одно имя — одно значение"

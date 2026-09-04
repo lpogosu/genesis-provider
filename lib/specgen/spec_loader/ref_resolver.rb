@@ -2,13 +2,14 @@
 
 module SpecGen
   module SpecLoader
-    # Replaces every `$ref` in a document with a deep copy of its target.
-    # Handles local JSON Pointers (#/components/schemas/X), references into
-    # other files relative to the referencing document, and refs inside those
-    # files. Each expanded object is tagged with `x-specgen-ref` so later
-    # stages still know the schema's name. Cycles and dangling pointers are
-    # reported with the JSONPath of the offending `$ref`; nesting is capped
-    # so pathological input fails with a message, not a stack overflow.
+    # Заменяет каждый `$ref` в документе глубокой копией его цели.
+    # Понимает локальные JSON Pointer (#/components/schemas/X), ссылки в
+    # другие файлы относительно ссылающегося документа и ссылки внутри этих
+    # файлов. Каждый развёрнутый объект помечается ключом `x-specgen-ref`,
+    # чтобы дальние стадии всё ещё знали имя схемы. Циклы и ссылки в пустоту
+    # сообщаются вместе с JSONPath виноватого `$ref`; глубина вложенности
+    # ограничена, поэтому патологический ввод падает с сообщением, а не с
+    # переполнением стека.
     class RefResolver
       REF = '$ref'
       MARKER = 'x-specgen-ref'
@@ -16,13 +17,13 @@ module SpecGen
       MISSING = JsonPointer::MISSING
       REMOTE = %r{\A[a-z][a-z0-9+.-]*://}i
 
-      # Where a `$ref` sits: the file (absolute), the key path of the `$ref`
-      # key itself, and the reference string.
+      # Где стоит `$ref`: файл (абсолютным путём), путь ключей до самого
+      # ключа `$ref` и строка ссылки.
       Site = Struct.new(:file, :keys, :ref)
 
-      # @param data [Hash] raw document
-      # @param file [String] path of that document; base for external refs
-      # @param reader [#call] loads a file path into a Hash (default: Reader)
+      # @param data [Hash] исходный документ
+      # @param file [String] путь этого документа; база для внешних ссылок
+      # @param reader [#call] читает путь к файлу в Hash (по умолчанию Reader)
       def initialize(data, file:, reader: Reader.method(:read))
         @root = File.expand_path(file)
         @documents = { @root => data }
@@ -32,13 +33,13 @@ module SpecGen
         @memo = {}
       end
 
-      # @return [Hash] resolved deep copy; the input is left untouched
+      # @return [Hash] разрешённая глубокая копия; вход остаётся нетронутым
       # @raise [SpecParseError, SpecLoadError]
       def resolve
         resolve_node(@documents[@root], @root, [], 0)
       end
 
-      # @return [Array<String>] external files that were loaded, as displayed
+      # @return [Array<String>] загруженные внешние файлы, как они печатаются
       def external_files
         (@documents.keys - [@root]).map { |path| @names[path] }
       end
@@ -65,7 +66,9 @@ module SpecGen
       def resolve_ref(node, file, keys, depth)
         ref = node[REF]
         site = Site.new(file, keys + [REF], ref)
-        fail_parse("$ref must be a string, got #{TypeName.of(ref)}", site) unless ref.is_a?(String)
+        unless ref.is_a?(String)
+          fail_parse(Texts.t('spec_loader.ref.not_string', type: TypeName.of(ref)), site)
+        end
 
         target_file, pointer = split(site)
         id = "#{target_file}##{pointer}"
@@ -74,15 +77,17 @@ module SpecGen
         merge_siblings(resolved, node, ref)
       end
 
-      # Shared targets are expanded once; every further use gets its own copy
-      # so that later stages can mutate one occurrence without touching others.
+      # Разделяемая цель разворачивается один раз; каждое следующее
+      # использование получает свою копию, чтобы дальние стадии могли менять
+      # одно вхождение, не задевая остальные.
       def cached(id)
         deep_copy(@memo[id]) if @memo.key?(id)
       end
 
       def expand(id, target_file, pointer, site, depth)
         target = JsonPointer.fetch(document(target_file, site), pointer)
-        fail_parse("$ref target not found: #{site.ref}", site) if target.equal?(MISSING)
+        missing = target.equal?(MISSING)
+        fail_parse(Texts.t('spec_loader.ref.target_missing', ref: site.ref), site) if missing
 
         @stack.push(id)
         resolved = resolve_node(target, target_file, JsonPointer.keys(pointer), depth + 1)
@@ -95,12 +100,10 @@ module SpecGen
         location, fragment = ref.split('#', 2)
         pointer = fragment.to_s
         unless pointer.empty? || pointer.start_with?('/')
-          fail_parse("$ref fragment must be a JSON Pointer starting with '/': #{ref}", site)
+          fail_parse(Texts.t('spec_loader.ref.fragment', ref: ref), site)
         end
-        if location.to_s.match?(REMOTE)
-          fail_parse("remote $ref is not supported, the generator makes no network calls: #{ref}",
-                     site)
-        end
+        fail_parse(Texts.t('spec_loader.ref.remote', ref: ref), site) if
+          location.to_s.match?(REMOTE)
 
         base = File.dirname(site.file)
         [location.to_s.empty? ? site.file : File.expand_path(location, base), pointer]
@@ -111,7 +114,7 @@ module SpecGen
         return unless start
 
         chain = (@stack[start..] + [id]).map { |entry| display(entry) }.join(' -> ')
-        fail_parse("cyclic $ref: #{chain}", site)
+        fail_parse(Texts.t('spec_loader.ref.cycle', chain: chain), site)
       end
 
       def document(target_file, site)
@@ -122,10 +125,16 @@ module SpecGen
         @names[target_file] = display_path(target_file)
         @reader.call(target_file)
       rescue SpecLoadError => e
-        location = e.path ? " (#{e.path})" : ''
-        raise SpecLoadError.new("referenced file #{@names[target_file]} could not be loaded: " \
-                                "#{e.detail}#{location}, referenced as #{site.ref}",
+        raise SpecLoadError.new(external_message(target_file, site, e),
                                 file: @names[site.file], path: JsonPath.build(site.keys))
+      end
+
+      # Ошибка внешнего файла пересказывается на месте ссылки: пользователь
+      # правит `$ref` в своём документе, а место проблемы — в чужом.
+      def external_message(target_file, site, error)
+        detail = error.path ? "#{error.detail} (#{error.path})" : error.detail
+        Texts.t('spec_loader.ref.external_unreadable', file: @names[target_file],
+                                                       detail: detail, ref: site.ref)
       end
 
       def merge_siblings(resolved, node, ref)
@@ -137,8 +146,7 @@ module SpecGen
       def check_depth(depth, file, keys)
         return if depth <= MAX_DEPTH
 
-        fail_parse("nesting deeper than #{MAX_DEPTH} levels, probably a runaway $ref chain",
-                   Site.new(file, keys, nil))
+        fail_parse(Texts.t('spec_loader.ref.too_deep', max: MAX_DEPTH), Site.new(file, keys, nil))
       end
 
       def deep_copy(value)

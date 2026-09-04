@@ -14,7 +14,7 @@ RSpec.describe SpecGen::IR::Derived do
     end
 
     it 'takes a value from a standard, just short of certain' do
-      derived = described_class.registry(2, evidence: 'ISO 4217: RUB exponent 2')
+      derived = described_class.registry(2, evidence: 'ISO 4217: экспонента RUB 2')
       expect([derived.source, derived.confidence]).to eq([:registry, 0.9])
       expect(derived.certain?).to be(false)
     end
@@ -57,17 +57,17 @@ RSpec.describe SpecGen::IR::Derived do
   describe 'validation' do
     it 'rejects a source outside the vocabulary and lists the accepted ones' do
       expect { described_class.new(value: 1, source: :guessed) }
-        .to raise_error(ArgumentError, /unknown derivation source :guessed.*structural, registry/)
+        .to raise_error(ArgumentError, /источник вывода: .*:guessed.*structural, registry/)
     end
 
     it 'rejects a confidence outside 0.0..1.0' do
       expect { described_class.heuristic(:amount, confidence: 1.4, evidence: 'x') }
-        .to raise_error(ArgumentError, /confidence must be within 0.0..1.0, got 1.4/)
+        .to raise_error(ArgumentError, /уверенность: ожидается число в диапазоне 0.0..1.0, получено 1.4/)
     end
 
     it 'rejects a confidence that is not a number' do
       expect { described_class.heuristic(:amount, confidence: 'high', evidence: 'x') }
-        .to raise_error(ArgumentError, /confidence must be a number/)
+        .to raise_error(ArgumentError, /уверенность: ожидается число, получено/)
     end
 
     it 'ignores a confidence given for a certain source rather than trusting it' do
@@ -87,8 +87,8 @@ RSpec.describe SpecGen::IR::Derived do
   end
 
   it 'prints value, source, confidence and evidence for the report' do
-    derived = described_class.registry(:minor, evidence: 'ISO 4217: RUB exponent 2')
-    expect(derived.to_s).to eq(':minor (registry 0.90: ISO 4217: RUB exponent 2)')
+    derived = described_class.registry(:minor, evidence: 'ISO 4217: экспонента RUB 2')
+    expect(derived.to_s).to eq(':minor (registry 0.90: ISO 4217: экспонента RUB 2)')
   end
 
   it 'compares by value, as a Struct does' do

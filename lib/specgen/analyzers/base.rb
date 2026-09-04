@@ -2,33 +2,35 @@
 
 module SpecGen
   module Analyzers
-    # What every analyzer is given and how it is run.
+    # Что получает каждый анализатор и как он запускается.
     #
-    # The four inputs are the same everywhere: the resolved `document`, the
-    # `profile` being filled, the `rules` dictionaries, and the CLI
-    # `options`. Subclasses implement `#call` and nothing else about the
-    # plumbing, so adding an analyzer is one file and one line in
-    # analyzers.rb.
+    # Четыре входа одни и те же везде: разрешённый `document`, заполняемый
+    # `profile`, справочники `rules` и опции CLI `options`. Подклассы
+    # реализуют только `#call` и ничего из этой обвязки, поэтому новый
+    # анализатор — это один файл и одна строка в analyzers.rb.
     #
-    # The helpers here are the ones every analyzer needs to keep its
-    # warnings actionable: a JSONPath pointing at the exact spec element a
-    # decision came from, in the same notation an OpenAPI Overlay uses for
-    # its targets, so a warning and its fix address the same place.
+    # Здешние хелперы — те, без которых предупреждение анализатора нельзя
+    # исправить: JSONPath, указывающий на тот самый элемент спецификации, из
+    # которого взялось решение, и в той же нотации, которой OpenAPI Overlay
+    # адресует свои target'ы, — так предупреждение и его исправление
+    # указывают на одно место.
     class Base
-      # Fixed fields of a Path Item Object that are operations (OpenAPI 3).
+      # Фиксированные поля Path Item Object, которые являются операциями
+      # (OpenAPI 3).
       HTTP_METHODS = %w[get put post delete options head patch trace].freeze
 
-      # Builds the analyzer and runs it; takes what #initialize takes.
-      # @return [Object] whatever the analyzer's #call returns
+      # Создаёт анализатор и запускает его; принимает то же, что #initialize.
+      # @return [Object] то, что вернул #call анализатора
       def self.call(**)
         new(**).call
       end
 
-      # @param document [SpecLoader::Document] spec with every `$ref` resolved
-      # @param profile [IR::ProviderProfile] the profile to fill
-      # @param rules [Rules::Registry, nil] dictionaries; explicitly nil for
-      #   an analyzer that reads none
-      # @param options [Hash] CLI options, string or symbol keyed
+      # @param document [SpecLoader::Document] спецификация со всеми
+      #   разрешёнными `$ref`
+      # @param profile [IR::ProviderProfile] профиль, который заполняем
+      # @param rules [Rules::Registry, nil] справочники; явный nil для
+      #   анализатора, который не читает ни одного
+      # @param options [Hash] опции CLI, ключи строками или символами
       def initialize(document:, profile:, rules:, options: {})
         @document = document
         @profile = profile
@@ -36,11 +38,11 @@ module SpecGen
         @options = options || {}
       end
 
-      # Reads the document and fills its part of the profile.
+      # Читает документ и заполняет свою часть профиля.
       # @return [IR::ProviderProfile]
-      # @raise [NotImplementedError] always; subclasses override this
+      # @raise [NotImplementedError] всегда; подклассы переопределяют метод
       def call
-        raise NotImplementedError, "#{self.class} must implement #call"
+        raise NotImplementedError, "#{self.class} обязан реализовать #call"
       end
 
       protected
@@ -54,27 +56,26 @@ module SpecGen
       # @return [Hash]
       attr_reader :options
 
-      # The resolved document. Empty when the root is not a mapping, so an
-      # analyzer never raises on input the loader let through.
+      # Разрешённый документ. Пустой, если корень не является отображением:
+      # анализатор никогда не падает на входе, который пропустил загрузчик.
       # @return [Hash]
       def data
         document.data.is_a?(Hash) ? document.data : {}
       end
 
-      # @param keys [Array<String, Integer>] key path from the document root
-      # @return [String] e.g. "$.servers[0].url"
+      # @param keys [Array<String, Integer>] путь ключей от корня документа
+      # @return [String] например "$.servers[0].url"
       def json_path(*keys)
         SpecLoader::JsonPath.build(keys)
       end
 
-      # Every operation of the document, in the order the file declares
-      # them. Path items and operations of the wrong shape are skipped: the
-      # loader guarantees `paths` exists, not that every corner of it is an
-      # object.
-      # @yieldparam path [String] template, e.g. "/payouts/{id}"
-      # @yieldparam http_method [String] lower case, one of HTTP_METHODS
-      # @yieldparam operation [Hash] the Operation Object
-      # @return [Enumerator] when called without a block
+      # Все операции документа в том порядке, в котором их объявляет файл.
+      # Path item и операции неверной формы пропускаются: загрузчик
+      # гарантирует, что `paths` есть, а не что каждый его угол — объект.
+      # @yieldparam path [String] шаблон, например "/payouts/{id}"
+      # @yieldparam http_method [String] в нижнем регистре, один из HTTP_METHODS
+      # @yieldparam operation [Hash] Operation Object
+      # @return [Enumerator] если вызван без блока
       def each_operation
         return enum_for(:each_operation) unless block_given?
 
@@ -92,8 +93,8 @@ module SpecGen
         end
       end
 
-      # Options arrive symbol-keyed from tests and string-keyed from Thor;
-      # an analyzer should not have to know which.
+      # Из тестов опции приходят с ключами-символами, из Thor — со строками;
+      # анализатор не обязан знать, с какими именно.
       # @param name [Symbol]
       # @return [Object, nil]
       def option(name)

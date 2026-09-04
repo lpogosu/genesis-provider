@@ -1,0 +1,51 @@
+# locales/ru/spec_loader.yml — тексты стадии загрузки спецификации и общий
+# префикс места ошибки, который собирает SpecGen::Error.
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с
+# locales/en/spec_loader.yml, это проверяет spec/unit/specgen/texts_spec.rb.
+#
+# Названия типов JSON Schema (object, string, number) и ключевые слова
+# спецификации (`paths`, `$ref`, path item) не переводятся: пользователь
+# ищет их в своём файле ровно в этом написании.
+
+errors:
+  # «файл, место: сообщение» — запятая, а не предлог, потому что второй
+  # половиной бывает и JSONPath, и позиция «строка 8, столбец 13».
+  location: "%{file}, %{path}"
+
+spec_loader:
+  position: "строка %{line}, столбец %{column}"
+  reader:
+    empty: "файл пуст"
+    no_document: "файл не содержит документа"
+    root_type: "корень документа должен иметь тип object, а не %{type}"
+    not_found: "файл не найден"
+    directory: "по этому пути каталог, а не файл"
+    unreadable: "файл не читается: %{reason}"
+    yaml_syntax: "ошибка синтаксиса YAML: %{problem}"
+    yaml_error: "ошибка YAML: %{reason}"
+    json_syntax: "ошибка синтаксиса JSON: %{problem}"
+  version:
+    unsupported: "версия OpenAPI %{version} не поддерживается; поддерживаются: %{supported}"
+    swagger: "Swagger %{version} не поддерживается; преобразуйте документ в OpenAPI 3
+      (например, утилитой swagger2openapi)"
+    not_openapi: "это не документ OpenAPI: нет поля `openapi` (ключи верхнего
+      уровня: %{keys})"
+  structure:
+    paths_missing: "нет секции `paths`, генерировать нечего"
+    paths_type: "секция `paths` должна иметь тип object, а не %{type}"
+    paths_empty: "секция `paths` пуста, генерировать нечего"
+    path_item_type: "path item должен иметь тип object, а не %{type}"
+    unknown_type: "неизвестный тип схемы %{type}; допустимы: %{types}"
+  ref:
+    not_string: "`$ref` должен иметь тип string, а не %{type}"
+    target_missing: "цель `$ref` не найдена: %{ref}"
+    fragment: "фрагмент `$ref` должен быть JSON Pointer и начинаться с '/': %{ref}"
+    remote: "`$ref` по сети не поддерживается, генератор не делает сетевых
+      запросов: %{ref}"
+    cycle: "циклический `$ref`: %{chain}"
+    external_unreadable: "не удалось загрузить файл %{file}, на который указывает
+      `$ref` %{ref}: %{detail}"
+    too_deep: "вложенность глубже %{max} уровней — похоже на неограниченную
+      цепочку `$ref`"

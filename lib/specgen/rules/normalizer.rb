@@ -2,11 +2,12 @@
 
 module SpecGen
   module Rules
-    # Reduces a field or header name to the form the dictionaries are keyed
-    # by: lower case, single underscores between words. "X-Payer-Phone",
-    # "payerPhone" and "payer phone" all become "payer_phone", so a synonym
-    # has to be curated once instead of once per spelling, and a collision
-    # between two roles is caught across spellings, not only within one.
+    # Сводит имя поля или заголовка к той форме, по которой ключуются
+    # справочники: нижний регистр, одиночные подчёркивания между словами.
+    # "X-Payer-Phone", "payerPhone" и "payer phone" дают одно и то же
+    # "payer_phone", поэтому синоним заводится один раз, а не по разу на
+    # каждое написание, и столкновение двух ролей ловится между написаниями,
+    # а не только внутри одного.
     module Normalizer
       ACRONYM_BOUNDARY = /([A-Z]+)([A-Z][a-z])/
       CAMEL_BOUNDARY = /([a-z\d])([A-Z])/
@@ -14,7 +15,8 @@ module SpecGen
       EDGES = /\A_+|_+\z/
 
       # @param name [String, Symbol, nil]
-      # @return [String] normalized name; empty when nothing is left of it
+      # @return [String] нормализованное имя; пустое, если от имени ничего
+      #   не осталось
       def self.call(name)
         name.to_s
             .gsub(ACRONYM_BOUNDARY, '\1_\2')
@@ -25,7 +27,7 @@ module SpecGen
       end
 
       # @param name [String, Symbol, nil]
-      # @return [Array<String>] the words of the normalized name
+      # @return [Array<String>] слова нормализованного имени
       def self.tokens(name)
         call(name).split('_')
       end

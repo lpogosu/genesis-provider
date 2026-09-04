@@ -19,23 +19,23 @@ require_relative 'rules/contract_book'
 require_relative 'rules/registry'
 
 module SpecGen
-  # The dictionaries under rules/: field-name synonyms for the roles of
-  # IR::Roles, status synonyms, ISO 4217 exponents, webhook signature
-  # profiles, idempotency header aliases, security schemes, the words and
-  # weights that recognise an operation role, the patterns that spot a
-  # conditional requirement stated in prose, and the Provider::BaseService
-  # contract itself.
+  # Справочники из rules/: синонимы имён полей для ролей IR::Roles, синонимы
+  # статусов, экспоненты ISO 4217, профили подписи вебхуков, алиасы
+  # заголовка идемпотентности, схемы авторизации, слова и веса, по которым
+  # распознаётся роль операции, шаблоны, замечающие условную обязательность,
+  # высказанную прозой, и сам контракт Provider::BaseService.
   #
-  # Supporting a new provider is meant to be new lines in these files and
-  # never a new branch in lib/, which only holds if the data is trustworthy.
-  # So the loader is strict: an unknown role, a synonym two roles claim, a
-  # currency exponent outside ISO 4217, a contract role no method serves, a
-  # key written twice in one file - each stops the run at startup, with
-  # every problem in every dictionary listed at once.
+  # Поддержка нового провайдера задумана как новые строки в этих файлах и
+  # никогда как новая ветка в lib/, а это держится только на том, что данным
+  # можно доверять. Поэтому загрузчик строг: неизвестная роль, синоним,
+  # занятый двумя ролями, экспонента валюты вне ISO 4217, роль контракта,
+  # которую не обслуживает ни один метод, ключ, написанный в одном файле
+  # дважды, — каждое останавливает прогон на старте, и все проблемы всех
+  # справочников перечисляются сразу.
   module Rules
-    # @param dir [String] directory holding the dictionaries
-    # @return [Registry] all nine dictionaries, validated
-    # @raise [RulesError] listing every problem found
+    # @param dir [String] каталог со справочниками
+    # @return [Registry] все девять справочников, проверенные
+    # @raise [RulesError] со списком всех найденных проблем
     def self.load(dir = SpecGen::RULES_DIR)
       Registry.load(dir)
     end

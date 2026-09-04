@@ -1,0 +1,47 @@
+# locales/en/schemas.yml — texts of the schema analysis stage: warnings about
+# schemas and fields, evidence of a conditional requirement, overlay drafts.
+#
+# One file per pipeline stage, so two stages never edit the same file.
+# Placeholders are %{name}; the key set must match locales/ru/schemas.yml,
+# which spec/unit/specgen/texts_spec.rb checks.
+#
+# The overlay_* values are the YAML fragment a human pastes into their own
+# overlay file. That text is for a machine: it is the same in every locale
+# and its indentation matters.
+
+analyzers:
+  schema:
+    components_not_object: "`components.schemas` must be an object"
+    body_schema_unreadable: "the body of %{operation} declares no readable schema, so nothing describes what it carries"
+    nesting_too_deep: "schemas nest deeper than %{limit} levels here, so %{name} was left undescribed; check the spec for a schema that contains itself"
+    field_schema_missing: "`%{field}` refers to schema %{schema}, which is not described anywhere"
+    role_pending: "field roles are matched by the field matchers, a later stage"
+    required_not_list: "`required` must be a list of property names"
+    object_without_properties: "the schema is an object but declares no properties, so nothing can be built from it"
+    property_without_type: "property `%{name}` declares no `type`, so the generated code cannot check or coerce its value"
+    property_not_object: "property `%{name}` must be an object; it was skipped"
+    array_without_items: "array `%{name}` declares no `items`, so its element type is unknown"
+    allof_type_conflict: "allOf branches disagree on the type of `%{name}` (%{kept} and %{incoming}); the first was kept"
+    variants_not_decomposed: "`%{keyword}` with %{count} variants is not decomposed: the fields of the variants are not in the IR, so a request built from this schema needs a human to choose the variant"
+    condition:
+      presence: "`%{trigger}` present"
+      equals: "`%{trigger}` = %{value}"
+      dependent_required: "dependentRequired: `%{trigger}` present makes `%{field}` required"
+      if_then: "%{keywords}: %{condition} makes `%{field}` required"
+      description_hint: "description hint (%{pattern}): %{sentence} reads as %{condition}"
+      hint_warning: "`%{field}` looks conditionally required (%{condition}), but the schema states no condition; the fragment below states it formally"
+      negative_branch: "`%{field}` is required by the `%{keyword}` branch, a negative condition the IR cannot express; state it as a positive condition in an overlay"
+      overlay_equals: |
+        - target: "%{schema_path}"
+          update:
+            %{if_key}:
+              properties:
+                %{trigger}:
+                  const: %{value}
+            %{then_key}:
+              required: [%{field}]
+      overlay_presence: |
+        - target: "%{schema_path}"
+          update:
+            %{keyword}:
+              %{trigger}: [%{field}]

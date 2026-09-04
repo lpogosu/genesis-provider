@@ -2,31 +2,32 @@
 
 module SpecGen
   module Rules
-    # Collects everything wrong with the dictionaries and raises once, so a
-    # run reports every conflict instead of the first one. The dictionaries
-    # are our own data: a problem here is a bug to fix before the tool ships,
-    # not user input to work around, and the load has to stop rather than
-    # quietly keep the first of two synonyms.
+    # Собирает всё, что не так со справочниками, и поднимает ошибку один раз,
+    # чтобы прогон сообщил обо всех конфликтах, а не о первом. Справочники —
+    # наши собственные данные: проблема здесь не пользовательский ввод, а
+    # наша ошибка, которую надо починить до релиза, и загрузка обязана
+    # остановиться, а не тихо оставить первый из двух синонимов.
     class Problems
-      # One thing wrong with one dictionary.
+      # Одна проблема в одном справочнике.
       Issue = Struct.new(:file, :path, :message) do
-        # @return [String] "roles.yml at $.roles.amount.names[2]: message"
+        # @return [String] "roles.yml в $.roles.amount.names[2]: сообщение"
         def to_s
-          where = [file && File.basename(file), path && "at #{path}"].compact.join(' ')
+          at = path && Texts.t('rules.problems.at', path: path)
+          where = [file && File.basename(file), at].compact.join(' ')
           where.empty? ? message.to_s : "#{where}: #{message}"
         end
       end
 
-      # @return [Array<Issue>] in the order they were found
+      # @return [Array<Issue>] в порядке обнаружения
       attr_reader :issues
 
       def initialize
         @issues = []
       end
 
-      # @param message [String] what is wrong, in one sentence
-      # @param file [String, nil] dictionary the problem is in
-      # @param path [String, nil] JSONPath of the offending element
+      # @param message [String] что не так, одной фразой
+      # @param file [String, nil] справочник, в котором проблема
+      # @param path [String, nil] JSONPath элемента, вызвавшего проблему
       # @return [void]
       def add(message, file: nil, path: nil)
         @issues << Issue.new(file, path, message)
@@ -38,7 +39,7 @@ module SpecGen
         !@issues.empty?
       end
 
-      # @raise [RulesError] listing every issue, when there is at least one
+      # @raise [RulesError] со списком всех проблем, если есть хотя бы одна
       # @return [void]
       def raise!
         return unless any?
@@ -49,7 +50,7 @@ module SpecGen
       private
 
       def headline
-        "#{issues.size} #{issues.size == 1 ? 'problem' : 'problems'} in the rules dictionaries:"
+        Texts.t('rules.problems.headline', count: issues.size)
       end
     end
   end

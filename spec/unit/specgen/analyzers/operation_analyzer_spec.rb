@@ -41,7 +41,7 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
       expect(role.source).to eq(:heuristic)
       expect(role.confidence).to eq(0.95)
       expect(role.evidence).to include('operation_id 5.0', 'path_tail 3.0', 'http_method 2.0')
-        .and include('of 14.0 votes cast')
+        .and include('из 14.0 поданных голосов')
     end
 
     it 'tells a deposit from a payout by the noun, not by the verb' do
@@ -82,7 +82,7 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
       expect(operation.contract?).to be(false)
       expect(operation.unmapped?).to be(false)
       expect(profile.warnings.first).to have_attributes(code: :operation_unmapped, severity: :info)
-      expect(profile.warnings.first.message).to include('not mapped to the contract')
+      expect(profile.warnings.first.message).to include('вне контракта')
     end
 
     it 'recognises a balance endpoint the same way' do
@@ -102,7 +102,8 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
       expect(profile.operations.first.unmapped?).to be(true)
       expect(warning).to have_attributes(code: :operation_role_ambiguous, severity: :warning,
                                          json_path: "$.paths['/payouts'].post")
-      expect(warning.message).to include('create_payout 8.0', 'webhook 8.0', 'of 13.0 votes cast')
+      expect(warning.message)
+        .to include('create_payout 8.0', 'webhook 8.0', 'из 13.0 поданных голосов')
     end
 
     it 'assigns no role when nothing but the method and the body voted' do
@@ -112,7 +113,7 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
       expect(profile.operations.first.role.confidence).to eq(0.0)
       expect(codes(profile)).to include(:operation_unmapped)
       expect(profile.warnings.map(&:message).join)
-        .to include('too little in the spec says what this operation is for')
+        .to include('слишком мало признаков того, для чего эта операция')
     end
 
     it 'still derives a role from method, path and tag when there is no operationId' do
@@ -156,7 +157,7 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
       expect(parameter).to have_attributes(name: 'payout_id', location: :path, required: true,
                                            type: 'string', format: 'uuid', example: 'np_1')
       expect(parameter.role).to be_unknown
-      expect(parameter.role.evidence).to include('field matchers')
+      expect(parameter.role.evidence).to include('матчеры полей')
     end
   end
 
@@ -253,7 +254,7 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
 
       expect(profile.operations.map(&:responses)).to eq([[], []])
       expect(profile.warnings.map(&:message).join)
-        .to include('"okay" is not a status code').and include('`responses` must be an object')
+        .to include('ключ ответа "okay"').and include('`responses` должен быть объектом')
     end
 
     it 'reports tags of the wrong shape without losing the operation' do

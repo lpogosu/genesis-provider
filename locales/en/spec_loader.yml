@@ -1,0 +1,49 @@
+# locales/en/spec_loader.yml — loading-stage texts plus the shared location
+# prefix that SpecGen::Error builds.
+#
+# One file per pipeline stage, so two stages never edit the same file.
+# Placeholders are %{name}; the key set must match
+# locales/ru/spec_loader.yml, which spec/unit/specgen/texts_spec.rb checks.
+#
+# JSON Schema type names (object, string, number) and spec keywords
+# (`paths`, `$ref`, path item) are never translated: the user looks for them
+# in their own file exactly as written.
+
+errors:
+  location: "%{file} at %{path}"
+
+spec_loader:
+  position: "line %{line}, column %{column}"
+  reader:
+    empty: "file is empty"
+    no_document: "file contains no document"
+    root_type: "root must be an object, got %{type}"
+    not_found: "file not found"
+    directory: "path is a directory, not a file"
+    unreadable: "cannot read file: %{reason}"
+    yaml_syntax: "YAML syntax error: %{problem}"
+    yaml_error: "YAML error: %{reason}"
+    json_syntax: "JSON syntax error: %{problem}"
+  version:
+    unsupported: "unsupported OpenAPI version %{version}; supported: %{supported}"
+    swagger: "Swagger %{version} is not supported; convert the document to OpenAPI 3
+      first (for example with swagger2openapi)"
+    not_openapi: "not an OpenAPI document: no `openapi` field (top-level
+      keys: %{keys})"
+  structure:
+    paths_missing: "`paths` is missing, nothing to generate"
+    paths_type: "`paths` must be an object, got %{type}"
+    paths_empty: "`paths` is empty, nothing to generate"
+    path_item_type: "path item must be an object, got %{type}"
+    unknown_type: "unknown schema type %{type}; expected one of %{types}"
+  ref:
+    not_string: "$ref must be a string, got %{type}"
+    target_missing: "$ref target not found: %{ref}"
+    fragment: "$ref fragment must be a JSON Pointer starting with '/': %{ref}"
+    remote: "remote $ref is not supported, the generator makes no network
+      calls: %{ref}"
+    cycle: "cyclic $ref: %{chain}"
+    external_unreadable: "referenced file %{file} could not be loaded:
+      %{detail}, referenced as %{ref}"
+    too_deep: "nesting deeper than %{max} levels, probably a runaway $ref
+      chain"

@@ -2,37 +2,41 @@
 
 module SpecGen
   module IR
-    # Something the generator could not settle, or settled with doubt.
-    # Warnings are a product, not a side effect: report.md is a paid
-    # criterion, and `--fix` turns `suggested_overlay` into an overlay
-    # skeleton the user fills in and feeds back through `--overlay`.
+    # То, что генератор не смог решить или решил с сомнением.
+    # Предупреждения — это продукт, а не побочный эффект: report.md
+    # оплачивается отдельным критерием, а `--fix` превращает
+    # `suggested_overlay` в заготовку overlay, которую пользователь
+    # заполняет и возвращает через `--overlay`.
     #
-    #   code               one of CODES, the machine-readable kind
-    #   message            one sentence for a human
-    #   json_path          the spec element to look at, in the same JSONPath
-    #                      notation an Overlay uses for its targets, so a
-    #                      warning and its fix address the same place
-    #   severity           one of SEVERITIES
-    #   suggested_overlay  YAML fragment that would resolve it, or nil
+    #   code               один из CODES, машиночитаемый вид проблемы
+    #   message            одна фраза для человека
+    #   json_path          элемент спецификации, на который надо посмотреть,
+    #                      в той же нотации JSONPath, которой Overlay
+    #                      адресует свои target, — так предупреждение и его
+    #                      исправление указывают на одно и то же место
+    #   severity           одна из SEVERITIES
+    #   suggested_overlay  фрагмент YAML, который это решил бы, либо nil
     Warning = Struct.new(:code, :message, :json_path, :severity, :suggested_overlay,
                          keyword_init: true)
 
-    # Vocabulary, checks and ordering of Warning.
+    # Словарь значений, проверки и порядок Warning.
     class Warning
       include Node
 
-      # Ordered by urgency; sorting and report sections rely on this order.
+      # По убыванию срочности; на этот порядок опираются сортировка и
+      # разделы отчёта.
       SEVERITIES = %i[error warning info].freeze
 
-      # Every kind of doubt the pipeline can produce. Grouped by stage:
-      # loading and structure, operations, fields and schemas, amounts,
-      # statuses and errors, webhooks, idempotency, auth, overlays.
+      # Каждый вид сомнения, который может произвести конвейер. Сгруппированы
+      # по стадиям: загрузка и структура, операции, поля и схемы, суммы,
+      # статусы и ошибки, вебхуки, идемпотентность, авторизация, overlay.
       #
-      # Two of the auth codes report what the spec plainly says rather than
-      # what could not be derived: `auth_absent` (no security declared
-      # anywhere) and `auth_key_in_query` (a credential the provider chose
-      # to put in the query string, where proxy logs keep it). Both are
-      # :info in the report, because a reader still has to see them.
+      # Два кода про авторизацию сообщают не о том, что не удалось вывести, а
+      # о том, что спецификация говорит прямо: `auth_absent` (нигде не
+      # объявлена никакая авторизация) и `auth_key_in_query` (учётные данные,
+      # которые провайдер решил положить в query, где их сохранят логи
+      # прокси). Оба идут в отчёт как :info, потому что читателю их всё равно
+      # надо увидеть.
       CODES = %i[
         spec_element_unsupported schema_unresolved example_missing
         provider_name_unknown server_environment_unknown
@@ -50,38 +54,40 @@ module SpecGen
         contract_gap
       ].freeze
 
-      # @param code [Symbol] one of CODES
+      # @param code [Symbol] один из CODES
       # @param message [String]
-      # @param json_path [String, nil] JSONPath of the element in question
-      # @param severity [Symbol] one of SEVERITIES
-      # @param suggested_overlay [String, nil] YAML fragment that would fix it
-      # @raise [ArgumentError] on an unknown code or severity
+      # @param json_path [String, nil] JSONPath элемента, о котором речь
+      # @param severity [Symbol] одна из SEVERITIES
+      # @param suggested_overlay [String, nil] фрагмент YAML, который это
+      #   исправил бы
+      # @raise [ArgumentError] при неизвестном коде или серьёзности
       def initialize(code:, message:, json_path: nil, severity: :warning, suggested_overlay: nil)
-        Node.assert_member!(CODES, code, 'warning code')
-        Node.assert_text!(message, 'warning message')
-        Node.assert_member!(SEVERITIES, severity, 'warning severity')
+        Node.assert_member!(CODES, code, 'код предупреждения')
+        Node.assert_text!(message, 'текст предупреждения')
+        Node.assert_member!(SEVERITIES, severity, 'серьёзность предупреждения')
         super
         freeze
       end
 
-      # Deterministic order: urgency first, then location, then kind, so two
-      # runs on the same spec produce byte-identical reports.
+      # Детерминированный порядок: сначала срочность, потом место, потом вид,
+      # чтобы два прогона на одной спецификации давали байт-в-байт
+      # одинаковые отчёты.
       # @return [Array]
       def sort_key
         [SEVERITIES.index(severity), json_path.to_s, code.to_s]
       end
 
-      # @return [Boolean] generation cannot be considered complete
+      # @return [Boolean] генерацию нельзя считать завершённой
       def blocking?
         severity == :error
       end
 
-      # @return [Boolean] a ready-made overlay fragment is available
+      # @return [Boolean] готовый фрагмент overlay доступен
       def fixable?
         !suggested_overlay.nil?
       end
 
-      # @return [String] one line of report.md
+      # @return [String] одна строка report.md
       def to_s
         [severity.to_s.upcase, json_path, message].compact.join(' ')
       end

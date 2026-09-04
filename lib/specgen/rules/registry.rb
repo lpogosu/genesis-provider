@@ -2,14 +2,15 @@
 
 module SpecGen
   module Rules
-    # Every dictionary, loaded and cross-checked as one unit.
+    # Все справочники, загруженные и сверенные между собой как одно целое.
     #
-    # Loading is all or nothing. If a file is missing, malformed, or says
-    # something a neighbouring file contradicts, the load raises a single
-    # RulesError listing every problem, and the pipeline never starts on half
-    # a dictionary. That is the whole point of doing this at startup: a
-    # synonym claimed by two roles has to be a failure someone reads, not a
-    # coin flip inside a generated payment request.
+    # Загрузка либо целиком удаётся, либо целиком нет. Если файла нет, он
+    # битый или говорит то, чему противоречит соседний файл, загрузка
+    # поднимает одну RulesError со списком всех проблем, и конвейер никогда
+    # не стартует на половине справочника. В этом весь смысл делать проверку
+    # на старте: синоним, занятый двумя ролями, обязан быть отказом, который
+    # кто-то прочитает, а не подбрасыванием монетки внутри сгенерированного
+    # платёжного запроса.
     class Registry
       BOOKS = {
         roles: RolesBook, statuses: StatusesBook, currencies: CurrenciesBook,
@@ -18,7 +19,7 @@ module SpecGen
         contract: ContractBook
       }.freeze
 
-      # @return [String] directory the dictionaries were read from
+      # @return [String] каталог, из которого прочитаны справочники
       attr_reader :dir
       # @return [RolesBook]
       attr_reader :roles
@@ -39,7 +40,7 @@ module SpecGen
       # @return [ContractBook]
       attr_reader :contract
 
-      # @param dir [String] directory holding the dictionaries
+      # @param dir [String] каталог со справочниками
       # @return [Registry]
       # @raise [RulesError]
       def self.load(dir)
@@ -47,7 +48,7 @@ module SpecGen
       end
 
       # @param dir [String]
-      # @raise [RulesError] listing every problem in every dictionary
+      # @raise [RulesError] со списком всех проблем во всех справочниках
       def initialize(dir)
         @dir = dir
         @problems = Problems.new
@@ -57,7 +58,7 @@ module SpecGen
         freeze
       end
 
-      # @return [Array<String>] the files that were read
+      # @return [Array<String>] прочитанные файлы
       def files
         BOOKS.each_value.map { |klass| File.join(dir, klass::FILE) }
       end
@@ -71,14 +72,17 @@ module SpecGen
         nil
       end
 
-      # Two dictionaries may not claim the same name for different meanings:
-      # `x_request_id` is either a role synonym or an idempotency header, and
-      # whichever way it is read, it has to be read the same way everywhere.
+      # Два справочника не могут занимать одно имя под разные смыслы:
+      # `x_request_id` — это либо синоним роли, либо заголовок
+      # идемпотентности, и как бы он ни читался, читаться он обязан одинаково
+      # всюду.
       def cross_check
         return if roles.nil?
 
-        check_names(idempotency&.normalized, :idempotency_key, IdempotencyBook::FILE, 'alias')
-        check_names(signatures&.headers, :signature, SignaturesBook::FILE, 'signature header')
+        check_names(idempotency&.normalized, :idempotency_key, IdempotencyBook::FILE,
+                    Texts.t('rules.noun.alias_name'))
+        check_names(signatures&.headers, :signature, SignaturesBook::FILE,
+                    Texts.t('rules.noun.signature_header'))
       end
 
       def check_names(names, expected, file, what)
@@ -86,9 +90,13 @@ module SpecGen
           owner = roles.role_for(name)
           next if owner.nil? || owner == expected
 
-          @problems.add("#{what} #{name.inspect} is claimed by role #{owner} in " \
-                        "#{RolesBook::FILE}; a name may mean one thing only", file: file)
+          @problems.add(claimed(what, name, owner), file: file)
         end
+      end
+
+      def claimed(what, name, owner)
+        Texts.t('rules.registry.claimed', what: what, name: name.inspect, owner: owner,
+                                          file: RolesBook::FILE)
       end
     end
   end

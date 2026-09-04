@@ -1,0 +1,153 @@
+# locales/en/rules.yml — messages of the rules/ dictionary loader.
+#
+# One file per pipeline stage, so two stages never edit the same file.
+# Placeholders are %{name}; the key set must match locales/ru/rules.yml,
+# which spec/unit/specgen/texts_spec.rb checks.
+#
+# The name of the element under check lives apart, under `noun`, and reaches
+# a message as %{what}: one check then serves every dictionary, and a
+# language whose nouns inflect can phrase the sentence its own way.
+
+rules:
+  problems:
+    headline: "Problems in the rules dictionaries (%{count}):"
+    at: "at %{path}"
+
+  # Shared value checks: Rules::Checks.
+  checks:
+    unknown_value: "unknown %{what} %{value} (expected one of: %{allowed})"
+    text: "%{what} must be a non-empty string, got %{got}"
+    integer: "%{what} must be a whole number, got %{got}"
+    range: "%{what} must be within %{range}, got %{got}"
+    list: "%{what} must be a non-empty array, got %{got}"
+    mapping: "%{what} must be an object, got %{got}"
+    bad_pattern: "%{what} is not a valid regular expression: %{error}"
+    nothing: "nothing"
+
+  # Names of the elements under check. Dictionary keys (names, aliases,
+  # http_methods) stay as the YAML spells them: a machine reads them too.
+  noun:
+    entry: "%{what} entry"
+    list: "%{key}"
+    field_role: "field role"
+    role_body: "role %{role}"
+    openapi_type: "OpenAPI type"
+    pattern: "pattern"
+    internal_status: "internal status"
+    synonyms_of: "synonyms of %{status}"
+    ambiguity_reason: "reason %{status} is ambiguous"
+    default_exponent: "default exponent"
+    currency_body: "currency %{code}"
+    exponent: "exponent"
+    currency_name: "currency name"
+    signature_profile: "signature profile"
+    signature_algorithm: "signature algorithm"
+    signature_encoding: "signature encoding"
+    signature_payload: "signature payload"
+    signature_header: "signature header"
+    secret_key: "secret key name"
+    id_header: "delivery id header"
+    timestamp_header: "timestamp header"
+    tolerance: "replay tolerance"
+    profile_body: "profile %{name}"
+    canonical_header: "canonical header"
+    idempotency_strategy: "idempotency strategy"
+    conflict_status: "conflict status"
+    uuid_namespace: "UUID v5 namespace"
+    scheme_body: "scheme %{name}"
+    match_block: "match block"
+    auth_type: "auth type"
+    auth_location: "auth location"
+    credential_keys: "credential keys"
+    fragments: "code fragments"
+    fragment: "fragment %{key}"
+    weight_of: "weight of %{signal}"
+    http_method: "HTTP method"
+    operation_role: "operation role"
+    required_when: "required_when"
+    pattern_entry: "pattern entry"
+    pattern_name: "pattern name"
+    base_class: "base class"
+    assumption: "assumption note"
+    method_body: "method %{name}"
+    helper_body: "helper %{key}"
+    request_method: "request_method"
+    operation_section: "operation"
+    amount_unit: "amount unit"
+    alias_name: "alias"
+
+  book:
+    version: "dictionary version must be %{expected}, got %{got}"
+    section: "section must be an %{expected}, got %{got}"
+
+  document:
+    not_found: "dictionary not found"
+    is_directory: "path is a directory, not a file"
+    unreadable: "cannot read dictionary: %{error}"
+    yaml_syntax: "YAML syntax error: %{problem}"
+    yaml_error: "YAML error: %{error}"
+    location: "line %{line}, column %{column}"
+    not_object: "dictionary must be a non-empty object, got %{got}"
+    duplicates: "declared more than once: %{keys}; YAML silently keeps the last value"
+    duplicate_at: "%{path} (line %{line})"
+
+  roles:
+    empty_synonym: "synonym %{name} normalizes to an empty name"
+    conflict: "synonym %{name} is already claimed by role %{owner} at %{origin}; a name may mean one thing only"
+    missing: "no synonyms for %{roles}; every role of IR::Roles::FIELD needs an entry"
+
+  statuses:
+    empty: "status %{status} normalizes to an empty name"
+    mapped_twice: "status %{status} is already mapped to %{owner} at %{origin}; one status means one internal state"
+    uncovered: "no provider status maps to %{statuses}"
+
+  currencies:
+    bad_code: "currency code must be three capital letters, got %{code}"
+    empty: "the table is empty"
+
+  signatures:
+    default_missing: "profile %{profile} is required as the default"
+    replay_not_applicable: "%{keys} only apply to an id_timestamp_body payload; a raw body carries no timestamp to bound"
+
+  idempotency:
+    bad_namespace: "UUID v5 namespace must be a UUID, got %{value}"
+    empty_alias: "alias %{name} normalizes to an empty name"
+    duplicate_alias: "alias %{name} repeats %{other}"
+    canonical_missing: "canonical header %{header} is missing from the aliases"
+
+  auth:
+    empty: "no security scheme is described"
+    unknown_match_key: "match cannot key on %{keys} (allowed: %{allowed})"
+    match_empty: "match must name at least the scheme type"
+    unused_credentials: "credential keys no fragment reads: %{keys}"
+
+  operations:
+    weight_zero: "weight of %{signal} must be greater than zero"
+    above_zero: "%{key} must be a number greater than zero, got %{got}"
+    fraction: "%{key} must be a number within %{range}, got %{got}"
+    unmatchable: "role %{role} lists no word to match on"
+    missing: "no entry describes %{roles}; every role of IR::Roles::OPERATION but :unmapped must be described"
+    unknown_keys: "unknown keys %{keys} (allowed: %{allowed})"
+
+  conditions:
+    confidence: "confidence must be a number within %{range}, got %{got}"
+    kind: "kind must be one of %{allowed}, got %{got}"
+    captures: "pattern must capture %{groups} as a named group"
+
+  contract:
+    bad_class: "base class %{name} is not a Ruby constant path"
+    no_methods: "at least one method is required"
+    role_taken: "operation role %{role} is already served by %{method}"
+    helpers_missing: "helpers missing: %{helpers}"
+    statuses_mismatch: "internal statuses must be exactly %{statuses}"
+    uncovered_roles: "no method serves %{roles}; add a `roles:` list to the method that handles it"
+
+  method:
+    bad_name: "method name %{name} is not a Ruby method name"
+    params_not_array: "params must be an array"
+    param_not_object: "parameter must be an object"
+    bad_param: "parameter name %{name} is not an identifier"
+    default_order: "parameters with defaults must come last"
+
+  registry:
+    claimed: "%{what} %{name} is claimed by role %{owner} in %{file}; a name may mean one thing only"

@@ -2,62 +2,68 @@
 
 module SpecGen
   module Rules
-    # The checks every dictionary needs: a value out of a closed vocabulary,
-    # a non-empty string, a whole number in range, a list of strings, a
-    # pattern that compiles. Each records the problem and returns nil (or an
-    # empty list) rather than raising, so one load reports every mistake in
-    # every file instead of stopping at the first.
+    # Проверки, которые нужны каждому справочнику: значение вне закрытого
+    # набора, непустая строка, целое число в диапазоне, список строк,
+    # компилируемый шаблон. Каждая записывает проблему и возвращает nil (или
+    # пустой список), а не поднимает ошибку, — так одна загрузка сообщает обо
+    # всех промахах во всех файлах, а не останавливается на первом.
     #
-    # Mixed into Book, which supplies #complain.
+    # Подмешивается в Book, который даёт #complain.
+    #
+    # Сообщение собирается из шаблона локали и названия проверяемого элемента
+    # (%{what}), которое приходит из того же слоя: одна проверка обслуживает
+    # все справочники, а язык сообщения меняется без правки кода.
     module Checks
-      # @param value [Object] value as written in the dictionary
-      # @param allowed [Array<Symbol>] the closed vocabulary
-      # @param what [String] noun for the message, e.g. "field role"
-      # @param at [String] JSONPath of the value
+      # @param value [Object] значение, как написано в справочнике
+      # @param allowed [Array<Symbol>] закрытый набор
+      # @param what [String] название элемента для сообщения
+      # @param at [String] JSONPath значения
       # @return [Symbol, nil]
       def symbol_in(value, allowed, what, at)
         symbol = value.is_a?(String) ? value.to_sym : value
         return symbol if allowed.include?(symbol)
 
-        complain("unknown #{what} #{value.inspect} (expected one of: #{allowed.join(', ')})", at)
+        fault('checks.unknown_value', at, what: what, value: value.inspect,
+                                          allowed: allowed.join(', '))
         nil
       end
 
-      # @param what [String] noun for the message
-      # @param at [String] JSONPath of the value
+      # @param what [String] название элемента для сообщения
+      # @param at [String] JSONPath значения
       # @return [String, nil]
       def text(value, what, at)
         return value if value.is_a?(String) && !value.strip.empty?
 
-        complain("#{what} must be a non-empty string, got #{describe(value)}", at)
+        fault('checks.text', at, what: what, got: describe(value))
         nil
       end
 
-      # @param range [Range, nil] accepted values, nil for any whole number
+      # @param range [Range, nil] допустимые значения, nil — любое целое
       # @return [Integer, nil]
       def integer(value, what, at, range: nil)
         unless value.is_a?(Integer)
-          complain("#{what} must be a whole number, got #{describe(value)}", at)
+          fault('checks.integer', at, what: what, got: describe(value))
           return nil
         end
         return value if range.nil? || range.cover?(value)
 
-        complain("#{what} must be within #{range}, got #{value}", at)
+        fault('checks.range', at, what: what, range: range, got: value)
         nil
       end
 
-      # @param required [Boolean] whether an absent list is a problem
-      # @return [Array<String>] the entries that passed; empty on a bad list
+      # @param required [Boolean] считать ли отсутствие списка проблемой
+      # @return [Array<String>] прошедшие проверку элементы; пустой список,
+      #   если сам список негоден
       def string_list(value, what, at, required: true)
         return [] if value.nil? && !required
 
         unless value.is_a?(Array) && !value.empty?
-          complain("#{what} must be a non-empty array, got #{describe(value)}", at)
+          fault('checks.list', at, what: what, got: describe(value))
           return []
         end
 
         value.each_with_index.filter_map do |item, index|
-          text(item, "#{what} entry", "#{at}[#{index}]")
+          text(item, noun(:entry, what: what), "#{at}[#{index}]")
         end
       end
 
@@ -68,25 +74,41 @@ module SpecGen
 
         Regexp.new(source)
       rescue RegexpError => e
-        complain("#{what} is not a valid regular expression: #{e.message}", at)
+        fault('checks.bad_pattern', at, what: what, error: e.message)
         nil
       end
 
-      # @param required [Boolean] whether an absent object is a problem
-      # @return [Hash] the object itself, or an empty one with a problem recorded
+      # @param required [Boolean] считать ли отсутствие объекта проблемой
+      # @return [Hash] сам объект или пустой, с записанной проблемой
       def mapping(value, what, at, required: true)
         return value if value.is_a?(Hash)
         return {} if value.nil? && !required
 
-        complain("#{what} must be an object, got #{describe(value)}", at)
+        fault('checks.mapping', at, what: what, got: describe(value))
         {}
       end
 
-      # @return [String] the value the way a dictionary author reads it
+      # @return [String] значение так, как его читает автор справочника
       def describe(value)
-        return 'nothing' if value.nil?
+        return Texts.t('rules.checks.nothing') if value.nil?
 
         "#{SpecLoader::TypeName.of(value)} #{value.inspect}"
+      end
+
+      # Записывает проблему по ключу локали внутри `rules.`.
+      # @param key [String] ключ без префикса, например "checks.text"
+      # @param at [String, nil] JSONPath элемента
+      # @param params [Hash{Symbol => Object}] подстановки шаблона
+      # @return [nil]
+      def fault(key, at, **params)
+        complain(Texts.t("rules.#{key}", **params), at)
+      end
+
+      # @param key [Symbol] ключ под `rules.noun.`
+      # @param params [Hash{Symbol => Object}] подстановки шаблона
+      # @return [String] название проверяемого элемента для сообщения
+      def noun(key, **params)
+        Texts.t("rules.noun.#{key}", **params)
       end
     end
   end

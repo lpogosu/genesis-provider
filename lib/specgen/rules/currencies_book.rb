@@ -2,35 +2,36 @@
 
 module SpecGen
   module Rules
-    # ISO 4217: the minor-unit exponent of every currency code.
+    # ISO 4217: экспонента минорной единицы для каждого кода валюты.
     #
-    # The exponent decides the multiplier the generated service applies to
-    # `operation.amount`, so it is read from the standard and never from the
-    # word "копейки" in a description. A provider that deviates from the
-    # standard is corrected with an OpenAPI Overlay, not by editing this
-    # table: the table states what ISO says, the overlay states what the
-    # provider does.
+    # Экспонента решает, какой множитель сгенерированный сервис применит к
+    # `operation.amount`, поэтому она читается из стандарта, а не из слова
+    # «копейки» в описании. Провайдера, который от стандарта отклоняется,
+    # правит OpenAPI Overlay, а не эта таблица: таблица говорит, что сказано
+    # в ISO, overlay — что делает провайдер.
     class CurrenciesBook < Book
       FILE = 'currencies.yml'
       CODE = /\A[A-Z]{3}\z/
-      # ISO 4217 uses 0 to 4; anything else is a typo in the table.
+      # ISO 4217 использует значения от 0 до 4; всё остальное — опечатка в
+      # таблице.
       EXPONENT_RANGE = (0..4)
-      # Only reached when the table itself is invalid and the load is about
-      # to raise anyway; it keeps the remaining checks running.
+      # Нужна только тогда, когда сама таблица негодна и загрузка всё равно
+      # уже обречена упасть; позволяет доработать остальные проверки.
       FALLBACK_EXPONENT = 2
 
-      # @return [Integer] exponent for an unknown code; usable only together
-      #   with a warning, never silently
+      # @return [Integer] экспонента для неизвестного кода; годится только
+      #   вместе с предупреждением, никогда молча
       attr_reader :default_exponent
 
-      # @param code [String] ISO 4217 alphabetic code
-      # @return [Integer, nil] minor unit exponent, nil when the code is unknown
+      # @param code [String] буквенный код ISO 4217
+      # @return [Integer, nil] экспонента минорной единицы; nil, если код
+      #   неизвестен
       def exponent(code)
         entry(code)&.fetch(:exponent)
       end
 
       # @param code [String]
-      # @return [String, nil] English name of the currency
+      # @return [String, nil] название валюты по ISO 4217
       def name_of(code)
         entry(code)&.fetch(:name)
       end
@@ -41,7 +42,7 @@ module SpecGen
         !entry(code).nil?
       end
 
-      # @return [Array<String>] every code in the table
+      # @return [Array<String>] все коды таблицы
       def codes
         @currencies.keys
       end
@@ -53,29 +54,29 @@ module SpecGen
       end
 
       def build
-        @default_exponent = integer(data['default_exponent'], 'default exponent',
+        @default_exponent = integer(data['default_exponent'], noun(:default_exponent),
                                     path('default_exponent'),
                                     range: EXPONENT_RANGE) || FALLBACK_EXPONENT
         @currencies = {}
         section('currencies').each { |code, body| add(code, body) }
-        complain('the table is empty', path('currencies')) if @currencies.empty?
+        fault('currencies.empty', path('currencies')) if @currencies.empty?
         @currencies.freeze
       end
 
       def add(code, body)
         at = path('currencies', code)
         unless code.is_a?(String) && code.match?(CODE)
-          complain("currency code must be three capital letters, got #{code.inspect}", at)
+          fault('currencies.bad_code', at, code: code.inspect)
           return
         end
-        fields = mapping(body, "currency #{code}", at)
+        fields = mapping(body, noun(:currency_body, code: code), at)
         record(code, fields, at)
       end
 
       def record(code, fields, at)
-        exponent = integer(fields['exponent'], 'exponent', "#{at}.exponent",
+        exponent = integer(fields['exponent'], noun(:exponent), "#{at}.exponent",
                            range: EXPONENT_RANGE)
-        name = text(fields['name'], 'currency name', "#{at}.name")
+        name = text(fields['name'], noun(:currency_name), "#{at}.name")
         return if exponent.nil? || name.nil?
 
         @currencies[code] = { exponent: exponent, name: name }.freeze

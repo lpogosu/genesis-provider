@@ -2,37 +2,38 @@
 
 module SpecGen
   module Analyzers
-    # Why a field is required only sometimes.
+    # Почему поле обязательно только иногда.
     #
-    # The order is the order of trust from CLAUDE.md. `dependentRequired`
-    # and `if/then` are formal JSON Schema and are read as fact. OAS 3.0
-    # forbids those keywords, so the registered `x-jsonschema-if` and
-    # `x-jsonschema-then` extensions are read the same way. Only when the
-    # schema says nothing formal do we look at the description - and a
-    # condition read out of prose is a heuristic with a low confidence, a
-    # warning and a ready-made overlay fragment, never a silent rule.
+    # Порядок здесь — порядок доверия из CLAUDE.md. `dependentRequired` и
+    # `if/then` — формальная JSON Schema, они читаются как факт. OAS 3.0 эти
+    # ключевые слова запрещает, поэтому зарегистрированные расширения
+    # `x-jsonschema-if` и `x-jsonschema-then` читаются точно так же. И только
+    # когда формально схема не говорит ничего, мы смотрим в описание — а
+    # условие, вычитанное из прозы, это эвристика с низкой уверенностью,
+    # предупреждением и готовым фрагментом overlay, но никогда не тихое
+    # правило.
     #
-    # A hint is accepted only when the name it captured is a sibling
-    # property of the same schema. That single check throws out matches like
-    # "minimum is 100" without any understanding of the sentence.
+    # Намёк принимается только тогда, когда захваченное имя — соседнее
+    # свойство той же схемы. Эта единственная проверка отбрасывает
+    # совпадения вида «minimum is 100» без всякого понимания предложения.
     class ConditionReader
-      # Keyword pairs that express "if this, then required", in the order
-      # they are trusted: native JSON Schema first, then the OpenAPI
-      # extension registry spelling for 3.0.
+      # Пары ключевых слов, выражающие «если это, то обязательно», в порядке
+      # доверия: сначала родная JSON Schema, затем написание из реестра
+      # расширений OpenAPI для 3.0.
       IF_KEYWORDS = [
         ['if', 'then', 'else', :if_then],
         ['x-jsonschema-if', 'x-jsonschema-then', 'x-jsonschema-else', :x_jsonschema_if]
       ].freeze
       DEPENDENT = 'dependentRequired'
 
-      # @return [Array<Note>] what the caller should warn about
+      # @return [Array<Note>] о чём вызывающий должен предупредить
       attr_reader :notes
 
-      # @param parent [Hash] the schema the field belongs to
-      # @param properties [Array<String>] its property names
-      # @param book [Rules::ConditionsBook] prose patterns
-      # @param schema_path [String] JSONPath of the schema, for overlays
-      # @param oas31 [Boolean] whether if/then may be written natively
+      # @param parent [Hash] схема, которой принадлежит поле
+      # @param properties [Array<String>] имена её свойств
+      # @param book [Rules::ConditionsBook] шаблоны для прозы
+      # @param schema_path [String] JSONPath схемы, нужен для overlay
+      # @param oas31 [Boolean] можно ли писать if/then нативно
       def initialize(parent:, properties:, book:, schema_path:, oas31: false)
         @parent = parent
         @properties = properties
@@ -42,8 +43,8 @@ module SpecGen
         @notes = []
       end
 
-      # @param name [String] field name
-      # @param node [Hash] the field's schema
+      # @param name [String] имя поля
+      # @param node [Hash] схема этого поля
       # @return [IR::RequiredWhen, nil]
       def for(name, node)
         dependent_required(name) || conditional(name) || hint(name, node)
@@ -61,7 +62,8 @@ module SpecGen
         return nil if trigger.nil?
 
         condition(field: trigger.to_s, equals: nil, origin: :dependent_required,
-                  evidence: "#{DEPENDENT}: `#{trigger}` present makes `#{name}` required")
+                  evidence: Texts.t('analyzers.schema.condition.dependent_required',
+                                    trigger: trigger, field: name))
       end
 
       def conditional(name)
@@ -72,13 +74,19 @@ module SpecGen
 
           trigger, value = found
           return condition(field: trigger, equals: value, origin: origin,
-                           evidence: "#{if_key}/#{then_key}: #{describe(trigger, value)} makes " \
-                                     "`#{name}` required")
+                           evidence: if_then_evidence(if_key, then_key, trigger, value, name))
         end
         nil
       end
 
-      # @return [Array(String, Object), nil] the sibling and the value it takes
+      def if_then_evidence(if_key, then_key, trigger, value, name)
+        Texts.t('analyzers.schema.condition.if_then', keywords: "#{if_key}/#{then_key}",
+                                                      condition: describe(trigger, value),
+                                                      field: name)
+      end
+
+      # @return [Array(String, Object), nil] соседнее поле и значение, которое
+      #   оно принимает
       def branch(if_key, then_key, name)
         test = parent[if_key]
         return nil unless test.is_a?(Hash)
@@ -89,15 +97,15 @@ module SpecGen
         trigger_of(test)
       end
 
-      # A negative branch cannot be expressed as "required when X equals Y",
-      # so it is reported rather than silently dropped.
+      # Отрицательную ветку нельзя выразить как «обязательно, когда X равен
+      # Y», поэтому о ней сообщается, а не молчится.
       def note_negative(if_key, else_key, name)
         otherwise = parent[else_key] || (parent[if_key].is_a?(Hash) ? parent[if_key]['else'] : nil)
         return unless otherwise.is_a?(Hash) && required?(otherwise, name)
 
         add_note(:conditional_required_hint,
-                 "`#{name}` is required by the `#{else_key}` branch, a negative condition the " \
-                 'IR cannot express; state it as a positive condition in an overlay',
+                 Texts.t('analyzers.schema.condition.negative_branch', field: name,
+                                                                       keyword: else_key),
                  severity: :warning)
       end
 
@@ -128,20 +136,20 @@ module SpecGen
         hinted(name, node, trigger, value, pattern)
       end
 
-      # The captured name has to be a property of the same schema, and not
-      # the field itself; anything else is a sentence that happened to look
-      # like a rule.
+      # Захваченное имя обязано быть свойством той же схемы и не самим полем;
+      # всё остальное — предложение, случайно похожее на правило.
       def sibling?(trigger, name)
         !trigger.nil? && trigger != name && @properties.include?(trigger)
       end
 
       def hinted(name, node, trigger, value, pattern)
-        sentence = node['description'].to_s.strip
-        evidence = "description hint (#{pattern.name}): #{sentence.inspect} reads as " \
-                   "#{describe(trigger, value)}"
+        reads_as = describe(trigger, value)
+        evidence = Texts.t('analyzers.schema.condition.description_hint',
+                           pattern: pattern.name, condition: reads_as,
+                           sentence: node['description'].to_s.strip.inspect)
         add_note(:conditional_required_hint,
-                 "`#{name}` looks conditionally required (#{describe(trigger, value)}), but the " \
-                 'schema states no condition; the fragment below states it formally',
+                 Texts.t('analyzers.schema.condition.hint_warning', field: name,
+                                                                    condition: reads_as),
                  suggested_overlay: overlay(name, trigger, value))
         condition(field: trigger, equals: value, origin: :description_hint, evidence: evidence,
                   confidence: book.hint_confidence)
@@ -153,37 +161,29 @@ module SpecGen
       end
 
       def describe(trigger, value)
-        return "`#{trigger}` present" if value.nil?
+        return Texts.t('analyzers.schema.condition.presence', trigger: trigger) if value.nil?
 
-        "`#{trigger}` = #{Array(value).join(' | ')}"
+        Texts.t('analyzers.schema.condition.equals', trigger: trigger,
+                                                     value: Array(value).join(' | '))
       end
 
-      # 3.1 takes if/then natively; 3.0 forbids them and takes the
-      # registered extension instead. A presence condition is
-      # dependentRequired in both.
+      # 3.1 принимает if/then нативно; 3.0 их запрещает и принимает вместо
+      # них зарегистрированное расширение. Условие на наличие — это
+      # dependentRequired в обеих версиях.
       def overlay(name, trigger, value)
         return presence_overlay(name, trigger) if value.nil?
 
         if_key, then_key = @oas31 ? %w[if then] : %w[x-jsonschema-if x-jsonschema-then]
-        <<~YAML
-          - target: "#{schema_path}"
-            update:
-              #{if_key}:
-                properties:
-                  #{trigger}:
-                    const: #{value}
-              #{then_key}:
-                required: [#{name}]
-        YAML
+        Texts.t('analyzers.schema.condition.overlay_equals', schema_path: schema_path,
+                                                             if_key: if_key, then_key: then_key,
+                                                             trigger: trigger, value: value,
+                                                             field: name)
       end
 
       def presence_overlay(name, trigger)
-        <<~YAML
-          - target: "#{schema_path}"
-            update:
-              #{DEPENDENT}:
-                #{trigger}: [#{name}]
-        YAML
+        Texts.t('analyzers.schema.condition.overlay_presence', schema_path: schema_path,
+                                                               keyword: DEPENDENT,
+                                                               trigger: trigger, field: name)
       end
 
       def add_note(code, message, severity: :warning, suggested_overlay: nil)

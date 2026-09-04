@@ -2,24 +2,24 @@
 
 module SpecGen
   module IR
-    # In which unit the provider expects amounts, and the multiplier the
-    # generated service applies to `operation.amount` (major units). Every
-    # member is a Derived because each comes from a different place: the
-    # currency from an enum or example, the unit from the type and example,
-    # the exponent from ISO 4217.
+    # В каких единицах провайдер ждёт сумму и какой множитель
+    # сгенерированный сервис применяет к `operation.amount` (мажорные
+    # единицы). Каждое поле — Derived, потому что каждое приходит из своего
+    # места: валюта из enum или примера, единица из типа и примера,
+    # экспонента из ISO 4217.
     #
-    #   currency   Derived<String> ISO 4217 code
+    #   currency   Derived<String> — код ISO 4217
     #   unit       Derived<Symbol> :minor | :major
-    #   exponent   Derived<Integer> ISO 4217 minor unit exponent
-    #   json_path  the amount field the units were derived for
+    #   exponent   Derived<Integer> — экспонента минорной единицы ISO 4217
+    #   json_path  поле суммы, для которого выведены единицы
     Units = Struct.new(:currency, :unit, :exponent, :json_path, keyword_init: true)
 
-    # Vocabulary, defaults and arithmetic of Units.
+    # Словарь значений, значения по умолчанию и арифметика Units.
     class Units
       include Node
 
       UNITS = %i[minor major].freeze
-      UNDERIVED = 'not derived'
+      UNDERIVED = 'не выведено'
 
       # @param currency [Derived]
       # @param unit [Derived]
@@ -29,14 +29,14 @@ module SpecGen
       def initialize(currency: Derived.unknown(evidence: UNDERIVED),
                      unit: Derived.unknown(evidence: UNDERIVED),
                      exponent: Derived.unknown(evidence: UNDERIVED), json_path: nil)
-        Node.assert_derived!(currency, 'currency')
-        Node.assert_derived!(unit, 'amount unit', allowed: UNITS)
-        Node.assert_derived!(exponent, 'currency exponent')
+        Node.assert_derived!(currency, 'валюта')
+        Node.assert_derived!(unit, 'единица суммы', allowed: UNITS)
+        Node.assert_derived!(exponent, 'экспонента валюты')
         super
       end
 
-      # @return [Integer, nil] factor from major to provider units; nil when
-      #   it cannot be computed yet
+      # @return [Integer, nil] множитель от мажорных единиц к единицам
+      #   провайдера; nil, если посчитать его пока нельзя
       def multiplier
         return 1 if unit.value == :major
         return nil unless unit.value == :minor && exponent.known?
@@ -49,8 +49,8 @@ module SpecGen
         !multiplier.nil?
       end
 
-      # @return [Float] lowest confidence among the members the multiplier
-      #   depends on; 0.0 when unknown
+      # @return [Float] наименьшая уверенность среди полей, от которых
+      #   зависит множитель; 0.0, если множитель не выведен
       def confidence
         return 0.0 unless known?
 

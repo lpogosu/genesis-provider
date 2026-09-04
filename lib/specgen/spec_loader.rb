@@ -12,13 +12,13 @@ require_relative 'spec_loader/document'
 require_relative 'spec_loader/loader'
 
 module SpecGen
-  # First pipeline stage. Turns a YAML or JSON file into a Document with a
-  # known OpenAPI version and every `$ref` resolved. Any bad input becomes a
-  # SpecLoadError (file level) or SpecParseError (structure level) that names
-  # the file and the location of the problem; the caller never sees a stack
-  # trace or a Psych/JSON exception.
+  # Первая стадия конвейера. Превращает файл YAML или JSON в Document с
+  # известной версией OpenAPI и разрешёнными `$ref`. Любой плохой ввод
+  # становится SpecLoadError (уровень файла) или SpecParseError (уровень
+  # структуры), которая называет файл и место проблемы; вызывающий никогда
+  # не видит ни стектрейса, ни исключения из Psych или JSON.
   module SpecLoader
-    # @param path [String] path to the spec file
+    # @param path [String] путь к файлу спецификации
     # @return [Document]
     # @raise [SpecLoadError, SpecParseError]
     def self.load(path)

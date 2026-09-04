@@ -2,39 +2,41 @@
 
 module SpecGen
   module Rules
-    # The Idempotency-Key header: the names the industry gives it, and how
-    # the generated service produces a value.
+    # Заголовок Idempotency-Key: как его называют в индустрии и как
+    # сгенерированный сервис получает значение.
     #
-    # The key is derived from `operation.id` with UUID v5 and a fixed
-    # namespace, so a retry produces the same key and the provider returns
-    # the earlier result instead of paying twice. That is also why nothing
-    # here may be random: the namespace is a constant in the dictionary, and
-    # a namespace that is not a UUID stops the load.
+    # Ключ выводится из `operation.id` по UUID v5 с фиксированным
+    # пространством имён, поэтому повтор даёт тот же ключ, и провайдер
+    # возвращает прежний результат вместо второй выплаты. Поэтому же здесь
+    # ничто не может быть случайным: пространство имён — константа в
+    # справочнике, а пространство имён, не являющееся UUID, останавливает
+    # загрузку.
     class IdempotencyBook < Book
       FILE = 'idempotency.yml'
       UUID = /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/
       STATUS_RANGE = (100..599)
 
-      # @return [String, nil] the name the generated service sends
+      # @return [String, nil] имя, которое отправляет сгенерированный сервис
       attr_reader :canonical_header
-      # @return [Array<String>] header names as written in the dictionary
+      # @return [Array<String>] имена заголовков, как написаны в справочнике
       attr_reader :aliases
-      # @return [Array<String>] the same names, normalized for lookup
+      # @return [Array<String>] те же имена, нормализованные для поиска
       attr_reader :normalized
-      # @return [Symbol, nil] one of IR::Idempotency::STRATEGIES
+      # @return [Symbol, nil] одна из IR::Idempotency::STRATEGIES
       attr_reader :default_strategy
-      # @return [String, nil] fixed UUID v5 namespace
+      # @return [String, nil] фиксированное пространство имён UUID v5
       attr_reader :namespace
-      # @return [Integer, nil] status the provider answers a repeat with
+      # @return [Integer, nil] код, которым провайдер отвечает на повтор
       attr_reader :conflict_status
 
-      # @param header [String] header name seen in a spec
-      # @return [Boolean] the header is a known idempotency key
+      # @param header [String] имя заголовка, встреченное в спецификации
+      # @return [Boolean] заголовок — известный ключ идемпотентности
       def alias?(header)
         @normalized.include?(Normalizer.call(header))
       end
 
-      # @return [Boolean] send the key even where the spec marks it optional
+      # @return [Boolean] отправлять ключ и там, где спецификация помечает
+      #   заголовок необязательным
       def send_when_optional?
         @send_when_optional
       end
@@ -42,17 +44,17 @@ module SpecGen
       private
 
       def build
-        @canonical_header = text(data['canonical_header'], 'canonical header',
+        @canonical_header = text(data['canonical_header'], noun(:canonical_header),
                                  path('canonical_header'))
-        @aliases = string_list(data['aliases'], 'aliases', path('aliases'))
+        @aliases = string_list(data['aliases'], noun(:list, key: 'aliases'), path('aliases'))
         @normalized = collect_aliases.freeze
         load_strategy
       end
 
       def load_strategy
         @default_strategy = symbol_in(data['default_strategy'], IR::Idempotency::STRATEGIES,
-                                      'idempotency strategy', path('default_strategy'))
-        @conflict_status = integer(data['conflict_status'], 'conflict status',
+                                      noun(:idempotency_strategy), path('default_strategy'))
+        @conflict_status = integer(data['conflict_status'], noun(:conflict_status),
                                    path('conflict_status'), range: STATUS_RANGE)
         @send_when_optional = data.fetch('send_when_optional', true) == true
         @namespace = uuid_namespace
@@ -60,12 +62,11 @@ module SpecGen
 
       def uuid_namespace
         at = path('uuid_v5_namespace')
-        value = text(data['uuid_v5_namespace'], 'UUID v5 namespace', at)
+        value = text(data['uuid_v5_namespace'], noun(:uuid_namespace), at)
         return nil if value.nil?
         return value if value.match?(UUID)
 
-        complain("UUID v5 namespace must be a UUID, got #{value.inspect}", at)
-        nil
+        fault('idempotency.bad_namespace', at, value: value.inspect)
       end
 
       def collect_aliases
@@ -79,18 +80,21 @@ module SpecGen
 
       def record(seen, name, at)
         key = Normalizer.call(name)
-        return complain("alias #{name.inspect} normalizes to an empty name", at) if key.empty?
-        return complain("alias #{name.inspect} repeats #{seen[key].inspect}", at) if seen.key?(key)
+        return fault('idempotency.empty_alias', at, name: name.inspect) if key.empty?
+        return duplicate(name, seen[key], at) if seen.key?(key)
 
         seen[key] = name
+      end
+
+      def duplicate(name, other, at)
+        fault('idempotency.duplicate_alias', at, name: name.inspect, other: other.inspect)
       end
 
       def check_canonical(seen)
         return if @canonical_header.nil?
         return if seen.key?(Normalizer.call(@canonical_header))
 
-        complain("canonical header #{@canonical_header.inspect} is missing from the aliases",
-                 path('aliases'))
+        fault('idempotency.canonical_missing', path('aliases'), header: @canonical_header.inspect)
       end
     end
   end

@@ -2,24 +2,25 @@
 
 module SpecGen
   module IR
-    # One declared response of an operation.
+    # Один объявленный ответ операции.
     #
-    #   status       "201", "4XX" or "default", verbatim
-    #   description  verbatim
-    #   schema       name of the body schema in profile.schemas, or nil
-    #   headers      declared response header names, e.g. ["Retry-After"]
-    #   examples     {name => value}; a bare `example` is stored under
-    #                "default"
+    #   status       "201", "4XX" или "default", дословно
+    #   description  дословно
+    #   schema       имя схемы тела в profile.schemas или nil
+    #   headers      имена объявленных заголовков ответа, например
+    #                ["Retry-After"]
+    #   examples     {имя => значение}; одиночный `example` кладётся под
+    #                ключ "default"
     #   json_path    "$.paths['/x'].post.responses['201']"
     Response = Struct.new(:status, :description, :schema, :headers, :examples, :json_path,
                           keyword_init: true)
 
-    # Checks and predicates of Response.
+    # Проверки и предикаты Response.
     class Response
       include Node
 
       STATUS = /\A(?:[1-5]\d{2}|[1-5]XX|default)\z/
-      # Key under which a bare `example` is stored in `examples`.
+      # Ключ, под которым в `examples` лежит одиночный `example`.
       DEFAULT_EXAMPLE = 'default'
 
       # @param status [String]
@@ -33,13 +34,14 @@ module SpecGen
                      json_path: nil)
         unless status.is_a?(String) && status.match?(STATUS)
           raise ArgumentError,
-                "response status must be \"NNN\", \"NXX\" or \"default\", got #{status.inspect}"
+                'код ответа: ожидается "NNN", "NXX" или "default", ' \
+                "получено #{status.inspect}"
         end
 
         super
       end
 
-      # @return [Integer, nil] numeric status, nil for ranges and default
+      # @return [Integer, nil] числовой код; nil для диапазонов и default
       def code
         Integer(status, exception: false)
       end
@@ -49,7 +51,7 @@ module SpecGen
         status.start_with?('2')
       end
 
-      # @return [Boolean] whether a named header is declared
+      # @return [Boolean] объявлен ли заголовок с таким именем
       def header?(name)
         headers.any? { |header| header.casecmp?(name) }
       end

@@ -2,34 +2,27 @@
 
 module SpecGen
   module Analyzers
-    # One declared security scheme, translated into IR::Auth.
+    # Одна объявленная схема авторизации, переведённая в IR::Auth.
     #
-    # The translation carries no knowledge of any scheme: the declaration
-    # goes to rules/auth.yml through AuthBook, and what comes back - type,
-    # location, credential keys, the parameter that carries the credential -
-    # is copied into the IR with the dictionary entry named as evidence.
-    # Everything the dictionary does not cover (an unknown scheme, an OAuth2
-    # flow without a tokenUrl, an apiKey with no name) becomes a warning
-    # instead of an invented value.
+    # Перевод не несёт знания ни об одной конкретной схеме: объявление
+    # уходит в rules/auth.yml через AuthBook, а то, что вернулось — тип,
+    # место, ключи учётных данных, параметр, который несёт учётные данные, —
+    # копируется в IR, а обоснованием служит имя записи справочника. Всё,
+    # чего справочник не покрывает (незнакомая схема, поток OAuth2 без
+    # tokenUrl, apiKey без имени), становится предупреждением, а не
+    # выдуманным значением.
     class AuthScheme
-      # What a human would write to make an unknown scheme recognisable,
-      # as an OpenAPI Overlay action.
-      UNKNOWN_OVERLAY = "- target: %{path}\n  update:\n    " \
-                        "# restate the scheme in terms rules/auth.yml knows,\n    " \
-                        "# or add an entry to that dictionary\n    " \
-                        "type: http\n    scheme: bearer\n"
-
-      # @param kwargs [Hash] see #initialize
+      # @param kwargs [Hash] см. #initialize
       # @return [IR::Auth]
       def self.call(**)
         new(**).call
       end
 
-      # @param name [String] key under components.securitySchemes
-      # @param declaration [Hash] the security scheme as the spec wrote it
-      # @param book [Rules::AuthBook] the dictionary that recognises schemes
-      # @param profile [IR::ProviderProfile] receives the warnings
-      # @param asked_scopes [Array<String>] scopes operations asked for
+      # @param name [String] ключ внутри components.securitySchemes
+      # @param declaration [Hash] схема авторизации, как её написала спецификация
+      # @param book [Rules::AuthBook] справочник, распознающий схемы
+      # @param profile [IR::ProviderProfile] принимает предупреждения
+      # @param asked_scopes [Array<String>] scopes, запрошенные операциями
       def initialize(name:, declaration:, book:, profile:, asked_scopes: [])
         @name = name
         @declaration = declaration
@@ -39,8 +32,8 @@ module SpecGen
         @path = SpecLoader::JsonPath.build(['components', 'securitySchemes', name])
       end
 
-      # @return [IR::Auth] with an unknown type when the dictionary has no
-      #   entry for this scheme
+      # @return [IR::Auth] с типом «не выведено», если в справочнике нет
+      #   записи для этой схемы
       def call
         entry, flow = match
         return unknown if entry.nil?
@@ -52,10 +45,10 @@ module SpecGen
 
       attr_reader :name, :declaration, :book, :profile, :path
 
-      # Lets the dictionary decide which OAuth2 flow it supports: every
-      # declared flow is offered in spec order and the first one an entry
-      # matches wins.
-      # @return [Array(Hash, String), Array(nil, nil)] entry and flow name
+      # Решать, какой поток OAuth2 поддержан, оставлено справочнику: каждый
+      # объявленный поток предлагается ему в порядке спецификации, побеждает
+      # первый, с которым совпала запись.
+      # @return [Array(Hash, String), Array(nil, nil)] запись и имя потока
       def match
         flows = declaration['flows']
         return [book.scheme_for(declaration), nil] unless flows.is_a?(Hash)
@@ -78,38 +71,39 @@ module SpecGen
                      json_path: path)
       end
 
-      # @return [IR::Derived] the type, naming both the dictionary entry and
-      #   the facts of the spec that selected it
+      # @return [IR::Derived] тип, названный вместе с записью справочника и
+      #   теми фактами спецификации, которые её выбрали
       def type_of(entry)
         facts = entry[:match].map { |key, value| "#{key}=#{value}" }.join(', ')
         IR::Derived.registry(entry[:ir_type],
-                             evidence: "rules/auth.yml entry #{entry_name(entry)} " \
-                                       "matched #{facts}")
+                             evidence: Texts.t('analyzers.auth.type_evidence',
+                                               entry: entry_name(entry), facts: facts))
       end
 
       # @return [IR::Derived]
       def credential_keys(entry)
         keys = entry[:credential_keys]
         IR::Derived.registry(keys,
-                             evidence: "rules/auth.yml entry #{entry_name(entry)} reads " \
-                                       "provider.credentials #{keys.join(', ')}")
+                             evidence: Texts.t('analyzers.auth.credentials_evidence',
+                                               entry: entry_name(entry),
+                                               keys: keys.join(', ')))
       end
 
-      # @return [String, nil] token endpoint, when the entry needs one
+      # @return [String, nil] эндпоинт токена, если запись его требует
       def token_url(entry, flow)
         return nil unless entry[:token_url_required]
 
         url = flow_body(flow)['tokenUrl']
         return url if url.is_a?(String) && !url.strip.empty?
 
-        warn(:auth_unknown, "the #{flow} flow declares no tokenUrl, so the generated " \
-                            'service has nowhere to ask for a token',
+        warn(:auth_unknown, Texts.t('analyzers.auth.token_url_missing', flow: flow),
              at: "#{path}.flows#{SpecLoader::JsonPath.segment(flow)}", severity: :error)
         nil
       end
 
-      # Scopes the scheme declares in its flows plus those the operations
-      # asked for, sorted, so two runs generate the same code.
+      # Scopes, которые схема объявляет в своих потоках, плюс те, что
+      # запросили операции; отсортированы, чтобы два прогона давали один и
+      # тот же код.
       # @return [Array<String>]
       def scopes
         (declared_scopes | @asked_scopes).sort
@@ -129,38 +123,34 @@ module SpecGen
         scopes.is_a?(Hash) ? scopes.keys.map(&:to_s) : []
       end
 
-      # @return [Hash] the flow object, empty when the spec has none
+      # @return [Hash] объект потока, пустой, если в спецификации его нет
       def flow_body(flow)
         flows = declaration['flows']
         body = flows.is_a?(Hash) ? flows[flow] : nil
         body.is_a?(Hash) ? body : {}
       end
 
-      # rules/auth.yml documents the risk of a credential in the query
-      # string; the report repeats it, because the provider chose it.
+      # rules/auth.yml документирует риск учётных данных в query-строке;
+      # отчёт его повторяет, потому что так выбрал провайдер.
       def note_query_risk(entry)
         return unless entry[:location] == :query
 
-        warn(:auth_key_in_query,
-             'the credential travels in the query string, where proxy logs and browser ' \
-             'history keep it; the provider chose this, not the generator', severity: :info)
+        warn(:auth_key_in_query, Texts.t('analyzers.auth.key_in_query'), severity: :info)
       end
 
       def missing_param_name
-        warn(:auth_unknown,
-             "security scheme #{name} names no parameter, so there is nothing to put the " \
-             'credential in', severity: :error)
+        warn(:auth_unknown, Texts.t('analyzers.auth.param_name_missing', name: name),
+             severity: :error)
       end
 
       # @return [IR::Auth]
       def unknown
-        overlay = format(UNKNOWN_OVERLAY, path: path.inspect)
-        warn(:auth_unknown,
-             "security scheme #{name} matches no entry in rules/auth.yml, so the generated " \
-             'service cannot authenticate',
+        overlay = Texts.t('analyzers.auth.unknown_overlay', path: path.inspect)
+        warn(:auth_unknown, Texts.t('analyzers.auth.scheme_unknown_message', name: name),
              severity: :error, overlay: overlay)
+        evidence = Texts.t('analyzers.auth.scheme_unknown_evidence', name: name)
         IR::Auth.new(scheme_name: name, json_path: path,
-                     type: IR::Derived.unknown(evidence: "#{name} matches no dictionary entry"))
+                     type: IR::Derived.unknown(evidence: evidence))
       end
 
       def entry_name(entry)

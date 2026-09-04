@@ -11,17 +11,24 @@ RSpec.describe SpecGen::Error do
   end
 
   it 'prefixes the message with file and JSONPath when both are known' do
-    error = SpecGen::SpecParseError.new('paths is missing', file: 'x.yaml', path: '$.paths')
-    expect(error.message).to eq('x.yaml at $.paths: paths is missing')
+    error = SpecGen::SpecParseError.new('нет секции `paths`', file: 'x.yaml', path: '$.paths')
+    expect(error.message).to eq('x.yaml, $.paths: нет секции `paths`')
+  end
+
+  it 'joins file and location the way the locale says' do
+    SpecGen::Texts.locale = 'en'
+    error = SpecGen::SpecParseError.new('`paths` is missing', file: 'x.yaml', path: '$.paths')
+    expect(error.message).to eq('x.yaml at $.paths: `paths` is missing')
   end
 
   it 'prefixes the message with the file alone when the path is unknown' do
-    error = SpecGen::SpecLoadError.new('not valid YAML', file: 'x.yaml')
-    expect(error.message).to eq('x.yaml: not valid YAML')
+    error = SpecGen::SpecLoadError.new('это не YAML', file: 'x.yaml')
+    expect(error.message).to eq('x.yaml: это не YAML')
   end
 
   it 'keeps a bare message when no location is known' do
-    expect(SpecGen::GenerationError.new('template failed').message).to eq('template failed')
+    expect(SpecGen::GenerationError.new('шаблон не отрендерился').message)
+      .to eq('шаблон не отрендерился')
   end
 
   it 'exposes file and path separately for the reporter' do

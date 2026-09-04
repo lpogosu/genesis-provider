@@ -2,20 +2,21 @@
 
 module SpecGen
   module Rules
-    # Patterns that recognise a conditional requirement stated in prose.
+    # Шаблоны, распознающие условную обязательность, высказанную прозой.
     #
-    # Formal conditions - `dependentRequired`, `if/then/else`, the registered
-    # `x-jsonschema-*` extensions - are read straight from the schema and
-    # need no dictionary. This file is for the other case: the only place
-    # the spec says "required when the sibling equals this" is a sentence in
-    # a description. Those words differ per provider and per language, and
-    # the confidence of such a reading is a number to tune, so both live in
-    # rules/ rather than in lib/.
+    # Формальные условия — `dependentRequired`, `if/then/else`,
+    # зарегистрированные расширения `x-jsonschema-*` — читаются прямо из
+    # схемы и справочника не требуют. Этот файл — про другой случай: когда
+    # единственное место, где спецификация говорит «обязательно, если у
+    # соседа такое значение», это фраза в описании. Такие слова у каждого
+    # провайдера и в каждом языке свои, а уверенность такого прочтения —
+    # число, которое нужно настраивать, поэтому и то и другое живёт в rules/,
+    # а не в lib/.
     #
-    # A pattern must capture `field`, the sibling the requirement depends
-    # on. Capturing `value` as well makes it an equality condition; without
-    # it the condition is about presence, which is what dependentRequired
-    # means.
+    # Шаблон обязан захватывать `field` — соседнее поле, от которого зависит
+    # обязательность. Если он захватывает ещё и `value`, условие становится
+    # условием равенства; без `value` условие про наличие, а это и есть
+    # смысл dependentRequired.
     class ConditionsBook < Book
       FILE = 'conditions.yml'
       KINDS = %w[equals presence].freeze
@@ -23,23 +24,24 @@ module SpecGen
       VALUE_GROUP = 'value'
       FRACTION = (0.0..1.0)
 
-      # One pattern as the analyzer uses it.
+      # Один шаблон в том виде, в котором его использует анализатор.
       #
-      #   name       for the evidence line
-      #   regexp     with a named group `field`, optionally `value`
-      #   kind       "equals" or "presence"
+      #   name       для строки обоснования
+      #   regexp     с именованной группой `field`, необязательно `value`
+      #   kind       "equals" или "presence"
       Hint = Struct.new(:name, :regexp, :kind, keyword_init: true)
 
-      # @return [Array<Hint>] in dictionary order
+      # @return [Array<Hint>] в порядке справочника
       attr_reader :hints
-      # @return [Float, nil] confidence of a condition read from prose
+      # @return [Float, nil] уверенность условия, прочитанного из прозы
       attr_reader :hint_confidence
 
-      # Text from a spec is UTF-8, but a file read in another encoding would
-      # make Regexp#match raise rather than simply not match; a description
-      # we cannot read is a description with no hint in it.
+      # Текст спецификации приходит в UTF-8, но файл, прочитанный в другой
+      # кодировке, заставил бы Regexp#match поднять ошибку вместо простого
+      # несовпадения; описание, которое мы не можем прочитать, — это описание
+      # без подсказки.
       # @param description [String, nil]
-      # @return [Array(Hint, MatchData), nil] the first pattern that matches
+      # @return [Array(Hint, MatchData), nil] первый совпавший шаблон
       def match(description)
         return nil unless description.is_a?(String) && description.valid_encoding?
 
@@ -55,7 +57,8 @@ module SpecGen
       private
 
       def build
-        section = mapping(data['required_when'], 'required_when', path('required_when'))
+        at = path('required_when')
+        section = mapping(data['required_when'], noun(:required_when), at)
         @hint_confidence = confidence_of(section['confidence'])
         @hints = load_hints(section['patterns'])
       end
@@ -64,14 +67,13 @@ module SpecGen
         at = path('required_when', 'confidence')
         return value.to_f if value.is_a?(Numeric) && FRACTION.cover?(value)
 
-        complain("confidence must be a number within #{FRACTION}, got #{describe(value)}", at)
-        nil
+        fault('conditions.confidence', at, range: FRACTION, got: describe(value))
       end
 
       def load_hints(listed)
         at = path('required_when', 'patterns')
         unless listed.is_a?(Array) && !listed.empty?
-          complain("patterns must be a non-empty array, got #{describe(listed)}", at)
+          fault('checks.list', at, what: noun(:list, key: 'patterns'), got: describe(listed))
           return [].freeze
         end
 
@@ -79,9 +81,9 @@ module SpecGen
       end
 
       def hint(body, at)
-        fields = mapping(body, 'pattern entry', at)
-        name = text(fields['name'], 'pattern name', "#{at}.name")
-        regexp = pattern(fields['pattern'], 'pattern', "#{at}.pattern")
+        fields = mapping(body, noun(:pattern_entry), at)
+        name = text(fields['name'], noun(:pattern_name), "#{at}.name")
+        regexp = pattern(fields['pattern'], noun(:pattern), "#{at}.pattern")
         kind = kind_of(fields['kind'], at)
         return nil if name.nil? || regexp.nil? || kind.nil? || !captures?(regexp, kind, at)
 
@@ -91,19 +93,18 @@ module SpecGen
       def kind_of(value, at)
         return value if KINDS.include?(value)
 
-        complain("kind must be one of #{KINDS.join(', ')}, got #{describe(value)}", "#{at}.kind")
-        nil
+        fault('conditions.kind', "#{at}.kind", allowed: KINDS.join(', '), got: describe(value))
       end
 
-      # Without the named groups the analyzer has nothing to build a
-      # condition from, so a pattern that lacks them is a broken entry.
+      # Без именованных групп анализатору нечего превращать в условие,
+      # поэтому шаблон без них — сломанная запись.
       def captures?(regexp, kind, at)
         names = regexp.names
         missing = [FIELD_GROUP] - names
         missing << VALUE_GROUP if kind == 'equals' && !names.include?(VALUE_GROUP)
         return true if missing.empty?
 
-        complain("pattern must capture #{missing.join(', ')} as a named group", "#{at}.pattern")
+        fault('conditions.captures', "#{at}.pattern", groups: missing.join(', '))
         false
       end
     end

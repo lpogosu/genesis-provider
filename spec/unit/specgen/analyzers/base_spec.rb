@@ -39,6 +39,6 @@ RSpec.describe SpecGen::Analyzers::Base do
 
   it 'refuses to run the base class, which analyzes nothing of its own' do
     expect { described_class.call(document: document, profile: SpecGen::IR::ProviderProfile.new, rules: nil) }
-      .to raise_error(NotImplementedError, /must implement #call/)
+      .to raise_error(NotImplementedError, /обязан реализовать #call/)
   end
 end

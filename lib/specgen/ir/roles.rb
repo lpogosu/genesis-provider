@@ -2,85 +2,89 @@
 
 module SpecGen
   module IR
-    # The closed vocabularies the core works with. Field names in payment
-    # specs are unlimited; roles are not. Supporting a new provider means new
-    # synonyms in rules/, never a new entry here: adding one is a deliberate
-    # change to the model, made together with CLAUDE.md and docs/IR.md.
+    # Закрытые словари, с которыми работает ядро. Имён полей в платёжных
+    # спецификациях бесконечно много, ролей — нет. Поддержка нового
+    # провайдера означает новые синонимы в rules/, но никогда новую запись
+    # здесь: добавить её — это осознанное изменение модели, которое делается
+    # вместе с CLAUDE.md и docs/IR.md.
     #
-    # The bang methods raise ArgumentError, because a value outside a
-    # vocabulary is a programmer error inside the generator, never bad user
-    # input; bad user input becomes a Warning or a SpecGen::Error instead.
+    # Методы с восклицательным знаком поднимают ArgumentError, потому что
+    # значение вне словаря — ошибка программиста внутри генератора, а никогда
+    # не плохой пользовательский ввод; плохой ввод становится предупреждением
+    # или SpecGen::Error.
     module Roles
-      # The roles of the payment domain, from CLAUDE.md.
+      # Роли платёжной области, из CLAUDE.md.
       FIELD = %i[
         amount currency external_id provider_operation_id recipient_type recipient_phone
         bank_code bank_name card_number status error_code error_message created_at
         completed_at idempotency_key signature
       ].freeze
 
-      # What an endpoint does. :unmapped is a result, not a failure: the
-      # operation exists and gets reported, it just has no place in the
-      # contract, and dropping it silently would look like lost functionality.
+      # Что делает эндпоинт. :unmapped — это результат, а не провал: операция
+      # существует и попадает в отчёт, просто ей нет места в контракте, а
+      # молча выбросить её выглядело бы как потерянная функциональность.
       OPERATION = %i[
         create_payout create_deposit fetch_status cancel balance webhook unmapped
       ].freeze
 
-      # Roles that map onto a Provider::BaseService method. Cancel and balance
-      # deliberately stay out: CLAUDE.md generates them as extra public
-      # methods and lists them in report.md as "not mapped to the contract".
+      # Роли, которые отображаются на метод Provider::BaseService. Отмена и
+      # баланс сознательно остаются снаружи: по CLAUDE.md они генерируются
+      # отдельными публичными методами и попадают в report.md с пометкой «не
+      # отображено на контракт».
       CONTRACT = %i[create_payout create_deposit fetch_status webhook].freeze
 
-      # Internal operation states of the host platform.
+      # Внутренние состояния операции на стороне платформы.
       INTERNAL_STATUS = %i[in_progress approved rejected].freeze
 
-      # What the generated service does with a response. :dedup is the
-      # Idempotency-Key case: a conflict that returns the earlier result and
-      # is therefore a success path, not an error.
+      # Что сгенерированный сервис делает с ответом. :dedup — это случай
+      # Idempotency-Key: конфликт, который возвращает прежний результат и
+      # потому идёт по успешному пути, а не по ошибочному.
       ERROR_ACTION = %i[reject retry retry_backoff alert escalate dedup].freeze
 
-      # Where a value came from; decides whether a warning is needed.
+      # Откуда взялось значение; решает, нужно ли предупреждение.
       SOURCE = %i[structural registry heuristic overlay unknown].freeze
 
-      # Sources that carry no doubt: read from the spec, or stated by a human.
+      # Источники, в которых нет сомнения: прочитано из спецификации или
+      # сказано человеком.
       CERTAIN_SOURCE = %i[structural overlay].freeze
 
       # @param role [Symbol]
-      # @return [Symbol] the role itself
-      # @raise [ArgumentError] when it is not a known field role
+      # @return [Symbol] сама роль
+      # @raise [ArgumentError] если это не известная роль поля
       def self.field!(role)
-        Node.assert_member!(FIELD, role, 'field role')
+        Node.assert_member!(FIELD, role, 'роль поля')
       end
 
       # @param role [Symbol]
-      # @return [Symbol] the role itself
-      # @raise [ArgumentError] when it is not a known operation role
+      # @return [Symbol] сама роль
+      # @raise [ArgumentError] если это не известная роль операции
       def self.operation!(role)
-        Node.assert_member!(OPERATION, role, 'operation role')
+        Node.assert_member!(OPERATION, role, 'роль операции')
       end
 
       # @param status [Symbol]
-      # @return [Symbol] the status itself
-      # @raise [ArgumentError] when it is not an internal status
+      # @return [Symbol] сам статус
+      # @raise [ArgumentError] если это не внутренний статус
       def self.internal_status!(status)
-        Node.assert_member!(INTERNAL_STATUS, status, 'internal status')
+        Node.assert_member!(INTERNAL_STATUS, status, 'внутренний статус')
       end
 
       # @param action [Symbol]
-      # @return [Symbol] the action itself
-      # @raise [ArgumentError] when it is not a known error action
+      # @return [Symbol] само действие
+      # @raise [ArgumentError] если это не известное действие по ошибке
       def self.error_action!(action)
-        Node.assert_member!(ERROR_ACTION, action, 'error action')
+        Node.assert_member!(ERROR_ACTION, action, 'действие по ошибке')
       end
 
       # @param source [Symbol]
-      # @return [Symbol] the source itself
-      # @raise [ArgumentError] when it is not a known derivation source
+      # @return [Symbol] сам источник
+      # @raise [ArgumentError] если это не известный источник вывода
       def self.source!(source)
-        Node.assert_member!(SOURCE, source, 'derivation source')
+        Node.assert_member!(SOURCE, source, 'источник вывода')
       end
 
-      # @param role [Symbol, nil] operation role
-      # @return [Boolean] whether it maps onto a Provider::BaseService method
+      # @param role [Symbol, nil] роль операции
+      # @return [Boolean] отображается ли она на метод Provider::BaseService
       def self.contract?(role)
         CONTRACT.include?(role)
       end

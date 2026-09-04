@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 module SpecGen
-  # Third pipeline stage. Each analyzer reads the loaded Document and fills
-  # one part of the IR::ProviderProfile: identity, auth, operations, fields,
-  # amounts, statuses, webhooks.
+  # Третья стадия конвейера. Каждый анализатор читает загруженный Document
+  # и заполняет свою часть IR::ProviderProfile: провайдера, авторизацию,
+  # операции, поля, суммы, статусы, вебхуки.
   #
-  # Analyzers are independent by contract (docs/IR.md): none of them reads
-  # what another one wrote, so the order they run in can never change the
-  # output. Whatever an analyzer cannot derive becomes a `Derived.unknown`
-  # plus a `profile.warn`, never a plausible-looking guess: a silent mistake
-  # in a payment integration costs more than one manual step.
+  # Анализаторы независимы по контракту (docs/IR.md): ни один не читает то,
+  # что записал другой, поэтому порядок запуска не может повлиять на
+  # результат. Всё, что анализатор вывести не смог, становится
+  # `Derived.unknown` плюс `profile.warn`, а не правдоподобной догадкой:
+  # молчаливая ошибка в платёжной интеграции дороже одного ручного шага.
   module Analyzers
   end
 end

@@ -54,13 +54,13 @@ RSpec.describe SpecGen::Rules::OperationsBook do
     it 'refuses a role outside IR::Roles::OPERATION' do
       message = error_for { |doc| doc['roles']['refund'] = { 'verbs' => ['refund'] } }
 
-      expect(message).to include('unknown operation role "refund"')
+      expect(message).to include('роль операции: неизвестное значение "refund"')
     end
 
     it 'refuses to leave a role undescribed, so the matcher can never silently lose one' do
       message = error_for { |doc| doc['roles'].delete('balance') }
 
-      expect(message).to include('no entry describes balance')
+      expect(message).to include('нет записи для balance')
     end
 
     it 'refuses a role with no word to match on' do
@@ -68,29 +68,29 @@ RSpec.describe SpecGen::Rules::OperationsBook do
         doc['roles']['balance'] = { 'http_methods' => ['get'], 'request_body' => false }
       end
 
-      expect(message).to include('role balance lists no word to match on')
+      expect(message).to include('роль balance не перечисляет ни одного слова для сопоставления')
     end
 
     it 'refuses a weight of zero, which would switch a signal off in silence' do
       expect(error_for { |doc| doc['weights']['tag'] = 0 })
-        .to include('weight of tag must be greater than zero')
+        .to include('вес сигнала tag должен быть больше нуля')
     end
 
     it 'refuses a signal it does not know' do
       expect(error_for { |doc| doc['weights']['vibes'] = 3 })
-        .to include('unknown keys vibes').and include('$.weights')
+        .to include('неизвестные ключи vibes').and include('$.weights')
     end
 
     it 'refuses a threshold outside 0..1 and a floor of zero' do
       expect(error_for { |doc| doc['scoring']['minimum'] = 2 })
-        .to include('minimum must be a number within 0.0..1.0')
+        .to include('порог minimum: ожидается число в диапазоне 0.0..1.0')
       expect(error_for { |doc| doc['scoring']['floor'] = 0 })
-        .to include('floor must be a number greater than zero')
+        .to include('порог floor: ожидается число больше нуля')
     end
 
     it 'refuses an HTTP method the IR does not know' do
       expect(error_for { |doc| doc['roles']['cancel']['http_methods'] = ['fly'] })
-        .to include('unknown HTTP method "fly"')
+        .to include('HTTP-метод: неизвестное значение "fly"')
     end
   end
 end

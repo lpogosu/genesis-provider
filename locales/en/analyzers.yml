@@ -1,0 +1,90 @@
+# locales/en/analyzers.yml — texts of the analysis stage: warnings, the
+# evidence behind derived values and overlay skeletons.
+#
+# One file per pipeline stage, so two stages never edit the same file.
+# Placeholders are %{name}; the key set must match locales/ru/analyzers.yml,
+# which spec/unit/specgen/texts_spec.rb checks.
+#
+# Values inside the overlay fragments (`url`, `description: Production`) stay
+# as they are in every locale: they are read by the spec itself and by the
+# ASCII lexicon of EnvironmentDetector, not by a human.
+
+analyzers:
+  # Wording shared by several analyzers: a spec breaks the shape OpenAPI
+  # prescribes in the same way in different places.
+  common:
+    must_be_object: "`%{key}` must be an object"
+    must_be_list: "`%{key}` must be a list"
+
+  info:
+    name_from_option: "--provider %{given}"
+    name_from_title: "info.title %{title} -> %{slug}"
+    name_unknown_message: "provider name could not be derived: pass --provider to name the service class, its file and its ENV variables"
+    name_unknown_evidence: "neither --provider nor info.title yielded a name"
+    base_url_env_evidence: "convention: <PROVIDER>%{suffix} from provider name %{name}"
+    base_url_env_unknown: "no provider name to build an ENV name from"
+    servers_absent: "the spec declares no `servers`; the generated service has no base URL to default to"
+    servers_malformed: "the spec has an empty or malformed `servers` list; the generated service has no base URL to default to"
+    servers_overlay: |
+      - target: "$"
+        update:
+          servers:
+            - url: https://api.example.com
+              description: Production
+    server_url_missing: "server entry carries no usable `url` string and was skipped"
+    environment_evidence: "server %{place} %{text} contains %{word} -> %{environment}"
+    environment_place:
+      description: "description"
+      host: "host"
+    environment_unknown_message: "neither the description nor the host says whether this server is the sandbox or production; requests may go to the wrong one"
+    environment_unknown_evidence: "no environment word in description or host"
+    environment_overlay: |
+      - target: "%{path}"
+        update:
+          description: Production
+
+  auth:
+    type_evidence: "rules/auth.yml entry %{entry} matched %{facts}"
+    credentials_evidence: "rules/auth.yml entry %{entry} reads provider.credentials %{keys}"
+    token_url_missing: "the %{flow} flow declares no tokenUrl, so the generated service has nowhere to ask for a token"
+    key_in_query: "the credential travels in the query string, where proxy logs and browser history keep it; the provider chose this, not the generator"
+    param_name_missing: "security scheme %{name} names no parameter, so there is nothing to put the credential in"
+    scheme_unknown_message: "security scheme %{name} matches no entry in rules/auth.yml, so the generated service cannot authenticate"
+    scheme_unknown_evidence: "%{name} matches no dictionary entry"
+    unknown_overlay: |
+      - target: %{path}
+        update:
+          # restate the scheme in terms rules/auth.yml knows,
+          # or add an entry to that dictionary
+          type: http
+          scheme: bearer
+    security_shape: "`security` must be a list of requirement objects; it was ignored"
+    scheme_shape: "security scheme %{name} must be an object; it was skipped"
+    undeclared_message: "operations require security scheme %{names}, which components.securitySchemes does not declare"
+    undeclared_evidence: "%{name} is required by operations but declared nowhere"
+    multiple_schemes: "security schemes declared: %{total}; chose %{chosen}, required by %{operations}; ignored: %{ignored}"
+    absent_message: "the spec declares no security at all, so generated requests carry no credentials; unusual for a payment API, check it against the contract"
+    absent_evidence: "no components.securitySchemes, no operation declares security"
+
+  operation:
+    id_missing: "the operation declares no operationId; it is referred to as %{key} in this report and in the generated code"
+    unmapped: "too little in the spec says what this operation is for, so no role was assigned (%{scores}); it needs a role in an overlay"
+    ambiguous: "two roles fit this operation equally well, so neither was assigned (%{scores}); pick one in an overlay"
+    off_contract: "recognised as %{role}, which Provider::BaseService has no method for; it is generated as a separate public method and not mapped to the contract"
+    tags_shape: "`tags` must be a list of strings"
+    status_unknown: "response key %{code} is not a status code, a range or `default`"
+    scores: "%{scores} of %{cast} votes cast"
+    match_evidence: "composite match: %{parts} = %{score} of %{cast} votes cast; %{runner_up}"
+    runner_up: "next %{role} %{score}"
+    no_runner_up: "nothing else scored"
+    no_signal_evidence: "no signal matched any role"
+    lost_evidence: "%{reason}: %{scores} of %{cast} votes cast (floor %{floor}, minimum %{minimum}, margin %{margin})"
+    # Why no role was assigned; printed at the start of the evidence.
+    reason:
+      below_threshold: "below threshold"
+      ambiguous: "ambiguous"
+
+  parameter:
+    role_pending: "parameter roles are matched by the field matchers, a later stage"
+    shape: "parameter must be an object"
+    name_missing: "parameter needs a `name` and a known `in`"

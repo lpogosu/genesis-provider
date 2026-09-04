@@ -3,10 +3,11 @@
 require 'tmpdir'
 require 'psych'
 
-# Builds a valid set of dictionaries in a temporary directory, so an example
-# can break exactly one thing and assert on the message. The defaults are
-# deliberately minimal: they satisfy every rule the loader enforces and
-# nothing more, which keeps each example about the one field it changes.
+# Собирает годный набор справочников во временном каталоге, чтобы пример мог
+# сломать ровно одну вещь и проверить сообщение. Значения по умолчанию
+# сознательно минимальны: они удовлетворяют каждому правилу загрузчика и
+# ничему больше, поэтому каждый пример остаётся про то одно поле, которое он
+# меняет.
 module RulesFixtures
   DEFAULTS = {
     'roles.yml' => lambda {
@@ -19,7 +20,7 @@ module RulesFixtures
                          'failed' => 'rejected' },
         'synonyms' => { 'approved' => ['paid'], 'rejected' => ['declined'],
                         'in_progress' => ['queued'] },
-        'ambiguous' => { 'on_hold' => 'a freeze at some providers, a manual review at others' } }
+        'ambiguous' => { 'on_hold' => 'у одних провайдеров заморозка, у других ручная проверка' } }
     },
     'currencies.yml' => lambda {
       { 'version' => 1, 'default_exponent' => 2,
@@ -81,24 +82,24 @@ module RulesFixtures
     },
     'contract.yml' => lambda {
       { 'version' => 1, 'base_class' => 'Provider::BaseService',
-        'assumption' => 'Modelled from the case description; the real class was never handed out.',
+        'assumption' => 'Восстановлен по описанию кейса; реального класса нам не выдали.',
         'methods' => CONTRACT_METHODS, 'helpers' => CONTRACT_HELPERS,
         'internal_statuses' => %w[in_progress approved rejected],
-        'request_method' => { 'semantics' => 'logical action type, not an HTTP verb',
+        'request_method' => { 'semantics' => 'логический тип действия, а не HTTP-метод',
                               'known_values' => %w[create status] },
         'operation' => { 'amount_unit' => 'major' } }
     }
   }.freeze
 
-  # Enough to prove the loader and the analyzer agree on the shape; the
-  # patterns that ship live in rules/conditions.yml.
+  # Достаточно, чтобы доказать: загрузчик и анализатор согласны о форме
+  # записи. Шаблоны, которые идут в поставке, живут в rules/conditions.yml.
   HINT_PATTERN = {
     'name' => 'equals', 'kind' => 'equals',
     'pattern' => '(?i)required[^.;]{0,40}?(?<field>[a-z_][a-z0-9_]*)\s*(?:=|\bis\b)\s*(?<value>[a-z0-9_]+)'
   }.freeze
 
-  # One line per role: the loader only needs each list to be non-empty, and
-  # spec files carry no line-length limit.
+  # По строке на роль: загрузчику достаточно, чтобы каждый список был
+  # непустым, а на файлы тестов не распространяется ограничение длины строки.
   OPERATION_ROLES = {
     'create_payout' => { 'verbs' => %w[create new], 'nouns' => %w[payout payouts], 'resources' => %w[payout payouts], 'tail' => %w[payouts], 'http_methods' => %w[post], 'tags' => %w[payouts], 'request_body' => true },
     'create_deposit' => { 'verbs' => %w[create new], 'nouns' => %w[deposit deposits], 'resources' => %w[deposit deposits], 'tail' => %w[deposits], 'http_methods' => %w[post], 'request_body' => true },
@@ -129,11 +130,11 @@ module RulesFixtures
     'reject_operation' => { 'params' => [{ 'name' => 'operation' }] }
   }.freeze
 
-  # Writes the dictionaries into a temporary directory and yields its path.
+  # Пишет справочники во временный каталог и отдаёт его путь блоку.
   #
-  # @param patch [Hash] file name => replacement. A Hash replaces the whole
-  #   document, a String is written verbatim (for syntax and duplicate-key
-  #   examples), and :delete leaves the file out entirely.
+  # @param patch [Hash] имя файла => замена. Hash заменяет весь документ,
+  #   String пишется дословно (для примеров с битым синтаксисом и
+  #   продублированным ключом), а :delete вообще не создаёт файл.
   # @yieldparam dir [String]
   def with_rules(patch = {})
     Dir.mktmpdir('specgen-rules') do |dir|
@@ -147,13 +148,13 @@ module RulesFixtures
     end
   end
 
-  # Loads a patched set of dictionaries.
+  # Загружает набор справочников с наложенными изменениями.
   # @return [SpecGen::Rules::Registry]
   def load_rules(patch = {})
     with_rules(patch) { |dir| SpecGen::Rules.load(dir) }
   end
 
-  # @return [String] the message of the RulesError a patched set raises
+  # @return [String] сообщение RulesError, которую поднимает такой набор
   def rules_error(patch = {})
     load_rules(patch)
     raise 'expected the dictionaries to be rejected'
@@ -161,7 +162,7 @@ module RulesFixtures
     e.message
   end
 
-  # @param document [Hash] a default document, deep-copied for patching
+  # @param document [Hash] документ по умолчанию, скопированный для правок
   def rule(name)
     Psych.safe_load(Psych.dump(DEFAULTS.fetch(name).call))
   end

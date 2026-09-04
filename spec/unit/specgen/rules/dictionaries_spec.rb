@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# The dictionaries the tool actually ships with. Everything else under
-# spec/unit/specgen/rules exercises the loader on hand-made fixtures; this
-# file is the acceptance test for the data in rules/ itself, and it is the
-# reason a bad synonym cannot reach a release: the suite goes red first.
+# Справочники, с которыми инструмент действительно поставляется. Всё
+# остальное в spec/unit/specgen/rules гоняет загрузчик на самодельных
+# фикстурах; этот файл — приёмочный тест самих данных из rules/ и причина,
+# по которой плохой синоним не может попасть в релиз: сначала краснеет прогон.
 RSpec.describe 'the shipped dictionaries' do
   subject(:rules) { SpecGen::Rules.load }
 

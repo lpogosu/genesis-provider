@@ -2,61 +2,64 @@
 
 module SpecGen
   module IR
-    # Conditional requirement of a field: "required when sibling `field`
-    # equals `equals`", or, with `equals` nil, "required when sibling
-    # `field` is present" (the dependentRequired semantics).
+    # Условная обязательность поля: «обязательно, когда соседнее `field`
+    # равно `equals`» или, при `equals` равном nil, «обязательно, когда
+    # соседнее `field` присутствует» (семантика dependentRequired).
     #
-    #   field       name of the sibling the condition looks at
-    #   equals      value or Array of values; nil for a presence condition
-    #   origin      one of ORIGINS; where the condition was read from
-    #   evidence    one line for the report
-    #   confidence  1.0 for formal origins, given explicitly for a
-    #               description hint
+    #   field       имя соседнего поля, на которое смотрит условие
+    #   equals      значение или Array значений; nil для условия о наличии
+    #   origin      один из ORIGINS; откуда прочитано условие
+    #   evidence    одна строка для отчёта
+    #   confidence  1.0 для формальных источников, задаётся явно для намёка
+    #               в описании
     RequiredWhen = Struct.new(:field, :equals, :origin, :evidence, :confidence, keyword_init: true)
 
-    # Vocabulary and checks of RequiredWhen.
+    # Словарь значений и проверки RequiredWhen.
     class RequiredWhen
       include Node
 
       ORIGINS = %i[
         dependent_required if_then x_jsonschema_if discriminator overlay description_hint
       ].freeze
-      # Which Derived source each origin corresponds to.
+      # Какому источнику Derived соответствует каждый origin.
       SOURCE_BY_ORIGIN = {
         dependent_required: :structural, if_then: :structural, x_jsonschema_if: :structural,
         discriminator: :structural, overlay: :overlay, description_hint: :heuristic
       }.freeze
 
-      # @param field [String] sibling field name
-      # @param origin [Symbol] one of ORIGINS
+      # @param field [String] имя соседнего поля
+      # @param origin [Symbol] один из ORIGINS
       # @param evidence [String]
       # @param equals [Object, Array, nil]
-      # @param confidence [Float, nil] required for :description_hint only
+      # @param confidence [Float, nil] нужна только для :description_hint
       # @raise [ArgumentError]
       def initialize(field:, origin:, evidence:, equals: nil, confidence: nil)
-        Node.assert_text!(field, 'condition field')
-        Node.assert_member!(ORIGINS, origin, 'condition origin')
-        Node.assert_text!(evidence, 'condition evidence')
+        Node.assert_text!(field, 'поле условия')
+        Node.assert_member!(ORIGINS, origin, 'источник условия')
+        Node.assert_text!(evidence, 'обоснование условия')
         confidence = resolve_confidence(origin, confidence)
         super
       end
 
-      # @return [Symbol] Derived source implied by the origin
+      # @return [Symbol] источник Derived, который подразумевает origin
       def source
         SOURCE_BY_ORIGIN.fetch(origin)
       end
 
-      # @return [Boolean] read from schema keywords or an overlay, not prose
+      # @return [Boolean] прочитано из ключевых слов схемы или из overlay, а
+      #   не из прозы
       def formal?
         source != :heuristic
       end
 
-      # @return [Boolean] "required when `field` is present" rather than equal
+      # @return [Boolean] «обязательно при наличии `field`», а не при
+      #   равенстве
       def presence?
         equals.nil?
       end
 
-      # @return [Array] the accepted values of the sibling, empty for presence
+      # @return [Array] допустимые значения соседа; пусто для условия о
+      #   наличии
       def values
         Array(equals)
       end
@@ -66,21 +69,23 @@ module SpecGen
       def resolve_confidence(origin, given)
         return formal_confidence(origin, given) if SOURCE_BY_ORIGIN.fetch(origin) != :heuristic
 
-        raise ArgumentError, "confidence is required for #{origin.inspect}" if given.nil?
+        raise ArgumentError, "для источника #{origin.inspect} уверенность обязательна" if given.nil?
         unless given.is_a?(Numeric) && given.between?(0.0, 1.0)
-          raise ArgumentError, "confidence must be within 0.0..1.0, got #{given.inspect}"
+          raise ArgumentError,
+                "уверенность: ожидается число в диапазоне 0.0..1.0, получено #{given.inspect}"
         end
 
         given.to_f
       end
 
-      # A condition read from schema keywords or stated in an overlay is not
-      # a guess, so its confidence is fixed rather than taken on trust.
+      # Условие, прочитанное из ключевых слов схемы или высказанное в
+      # overlay, — не догадка, поэтому его уверенность закреплена, а не
+      # принимается на веру.
       def formal_confidence(origin, given)
         return 1.0 if given.nil? || full?(given)
 
         raise ArgumentError,
-              "confidence for #{origin.inspect} is fixed at 1.0, got #{given.inspect}"
+              "уверенность для #{origin.inspect} закреплена на 1.0, получено #{given.inspect}"
       end
 
       def full?(given)

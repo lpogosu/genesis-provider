@@ -2,20 +2,22 @@
 
 module SpecGen
   module Analyzers
-    # Runs every analyzer over one document and returns the filled profile.
+    # Прогоняет все анализаторы по одному документу и возвращает
+    # заполненный профиль.
     #
-    # The order is fixed for reproducibility only: analyzers are independent
-    # by contract and none reads what another wrote, so the output would be
-    # the same in any order. Keeping the list here, in one place, is what
-    # lets `integrate analyze` and the generation pipeline share exactly the
-    # same analysis stage.
+    # Порядок фиксирован только ради воспроизводимости: анализаторы
+    # независимы по контракту и ни один не читает то, что записал другой,
+    # поэтому при любом порядке результат был бы тем же. Список в одном
+    # месте — то, что позволяет `integrate analyze` и конвейеру генерации
+    # использовать ровно одну и ту же стадию анализа.
     class Runner
       ORDER = [InfoAnalyzer, AuthAnalyzer, OperationAnalyzer, SchemaAnalyzer].freeze
 
-      # @param document [SpecLoader::Document] spec with every `$ref` resolved
-      # @param rules [Rules::Registry] the dictionaries
-      # @param options [Hash] CLI options, string or symbol keyed
-      # @return [IR::ProviderProfile] filled by every analyzer in ORDER
+      # @param document [SpecLoader::Document] спецификация со всеми
+      #   разрешёнными `$ref`
+      # @param rules [Rules::Registry] справочники
+      # @param options [Hash] опции CLI, ключи строками или символами
+      # @return [IR::ProviderProfile] заполненный всеми анализаторами из ORDER
       def self.call(document:, rules:, options: {})
         profile = IR::ProviderProfile.new
         ORDER.each do |analyzer|

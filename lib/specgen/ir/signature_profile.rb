@@ -2,28 +2,31 @@
 
 module SpecGen
   module IR
-    # How webhook signatures are verified. The default profile is Standard
-    # Webhooks; anything else is :custom and each parameter has to be
-    # derived separately, which a spec rarely states in full. Every
-    # parameter is therefore a Derived that defaults to unknown, and
-    # `missing` lists what the report has to ask for.
+    # Как проверяется подпись вебхука. Профиль по умолчанию — Standard
+    # Webhooks; всё остальное — :custom, и каждый параметр приходится выводить
+    # отдельно, а полностью такое спецификации описывают редко. Поэтому
+    # каждый параметр — Derived, по умолчанию не выведенный, а `missing`
+    # перечисляет то, о чём отчёт обязан спросить.
     #
     #   profile           Derived<Symbol> :standard_webhooks | :custom
-    #   header            Derived<String> signature header name
-    #   algorithm         Derived<Symbol> one of ALGORITHMS
+    #   header            Derived<String> — имя заголовка с подписью
+    #   algorithm         Derived<Symbol>, один из ALGORITHMS
     #   encoding          Derived<Symbol> :hex | :base64
     #   payload           Derived<Symbol> :raw_body | :id_timestamp_body
-    #   tolerance         Derived<Integer> replay window in seconds; only
-    #                     needed when payload includes a timestamp
-    #   secret_key        Derived<String> key in provider.credentials
-    #   id_header         delivery id header for :id_timestamp_body, or nil
-    #   timestamp_header  timestamp header for :id_timestamp_body, or nil
-    #   json_path         where the signature is documented
+    #   tolerance         Derived<Integer> — окно защиты от повтора в
+    #                     секундах; нужно только тогда, когда в подписываемое
+    #                     тело входит метка времени
+    #   secret_key        Derived<String> — ключ в provider.credentials
+    #   id_header         заголовок идентификатора доставки для
+    #                     :id_timestamp_body, иначе nil
+    #   timestamp_header  заголовок метки времени для :id_timestamp_body,
+    #                     иначе nil
+    #   json_path         где подпись задокументирована
     SignatureProfile = Struct.new(:profile, :header, :algorithm, :encoding, :payload, :tolerance,
                                   :secret_key, :id_header, :timestamp_header, :json_path,
                                   keyword_init: true)
 
-    # Vocabulary, defaults and completeness of SignatureProfile.
+    # Словарь значений, значения по умолчанию и полнота SignatureProfile.
     class SignatureProfile
       include Node
 
@@ -31,9 +34,10 @@ module SpecGen
       ALGORITHMS = %i[hmac_sha256 hmac_sha512 hmac_sha1].freeze
       ENCODINGS = %i[hex base64].freeze
       PAYLOADS = %i[raw_body id_timestamp_body].freeze
-      # Members that must be known before a verifier can be generated.
+      # Поля, которые обязаны быть выведены, прежде чем можно генерировать
+      # верификатор.
       REQUIRED = %i[profile header algorithm encoding payload secret_key].freeze
-      UNDERIVED = 'not derived'
+      UNDERIVED = 'не выведено'
 
       # @param profile [Derived]
       # @param header [Derived]
@@ -54,24 +58,25 @@ module SpecGen
                      tolerance: Derived.unknown(evidence: UNDERIVED),
                      secret_key: Derived.unknown(evidence: UNDERIVED),
                      id_header: nil, timestamp_header: nil, json_path: nil)
-        Node.assert_derived!(profile, 'signature profile', allowed: PROFILES)
-        Node.assert_derived!(header, 'signature header')
-        Node.assert_derived!(algorithm, 'signature algorithm', allowed: ALGORITHMS)
-        Node.assert_derived!(encoding, 'signature encoding', allowed: ENCODINGS)
-        Node.assert_derived!(payload, 'signature payload', allowed: PAYLOADS)
-        Node.assert_derived!(tolerance, 'signature tolerance')
-        Node.assert_derived!(secret_key, 'signature secret key')
+        Node.assert_derived!(profile, 'профиль подписи', allowed: PROFILES)
+        Node.assert_derived!(header, 'заголовок подписи')
+        Node.assert_derived!(algorithm, 'алгоритм подписи', allowed: ALGORITHMS)
+        Node.assert_derived!(encoding, 'кодирование подписи', allowed: ENCODINGS)
+        Node.assert_derived!(payload, 'подписываемое тело', allowed: PAYLOADS)
+        Node.assert_derived!(tolerance, 'допуск на повтор')
+        Node.assert_derived!(secret_key, 'ключ секрета подписи')
         super
       end
 
-      # @return [Array<Symbol>] members still unknown, in member order
+      # @return [Array<Symbol>] поля, которые ещё не выведены, в порядке
+      #   объявления
       def missing
         needed = REQUIRED.dup
         needed << :tolerance if payload.value == :id_timestamp_body
         needed.reject { |member| self[member].known? }
       end
 
-      # @return [Boolean] a verifier can be generated without TODOs
+      # @return [Boolean] верификатор можно сгенерировать без TODO
       def complete?
         missing.empty?
       end

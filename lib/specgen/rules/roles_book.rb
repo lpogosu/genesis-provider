@@ -2,29 +2,30 @@
 
 module SpecGen
   module Rules
-    # Field names as providers spell them → the roles of IR::Roles::FIELD.
+    # Имена полей так, как их пишут провайдеры, → роли IR::Roles::FIELD.
     #
-    # `names` are synonyms: an exact match after normalization, and no name
-    # may belong to two roles. A collision stops the load with both roles
-    # named, because silently keeping the first match is how a synonym of one
-    # role ends up filling another role's field in a generated payment
-    # request. The other hints — `tokens`, `types`, `formats`, `patterns`,
-    # `parents` — are weighed by the matchers rather than trusted outright,
-    # so they may overlap freely.
+    # `names` — синонимы: точное совпадение после нормализации, и ни одно
+    # имя не может принадлежать двум ролям. Столкновение останавливает
+    # загрузку с указанием обеих ролей, потому что молча оставить первое
+    # совпадение — это ровно тот путь, которым синоним одной роли попадает в
+    # поле другой роли в сгенерированном платёжном запросе. Остальные
+    # подсказки — `tokens`, `types`, `formats`, `patterns`, `parents` — не
+    # принимаются на веру, а взвешиваются матчерами, поэтому им можно
+    # пересекаться свободно.
     class RolesBook < Book
       FILE = 'roles.yml'
-      # OpenAPI data types a field carrying the role may be declared with.
+      # Типы данных OpenAPI, с которыми может быть объявлено поле роли.
       TYPES = %i[array boolean integer number object string].freeze
       NO_HINTS = { names: [], tokens: [], types: [], formats: [], patterns: [],
                    parents: [] }.freeze
 
-      # @param name [String] field name as written in a spec
-      # @return [Symbol, nil] field role, nil when no synonym matches
+      # @param name [String] имя поля, как написано в спецификации
+      # @return [Symbol, nil] роль поля; nil, если синоним не совпал
       def role_for(name)
         @names[Normalizer.call(name)]
       end
 
-      # @return [Array<Symbol>] roles the dictionary defines, in IR order
+      # @return [Array<Symbol>] роли, описанные справочником, в порядке IR
       def roles
         IR::Roles::FIELD & @entries.keys
       end
@@ -36,12 +37,12 @@ module SpecGen
       end
 
       # @param role [Symbol]
-      # @return [Array<String>] normalized synonyms of the role
+      # @return [Array<String>] нормализованные синонимы роли
       def names(role)
         hints(role)[:names]
       end
 
-      # @return [Hash{String => Symbol}] every synonym, normalized
+      # @return [Hash{String => Symbol}] все синонимы, нормализованные
       def index
         @names
       end
@@ -59,10 +60,10 @@ module SpecGen
 
       def add(key, body)
         at = path('roles', key)
-        role = symbol_in(key, IR::Roles::FIELD, 'field role', at)
+        role = symbol_in(key, IR::Roles::FIELD, noun(:field_role), at)
         return if role.nil?
 
-        @entries[role] = compile(role, mapping(body, "role #{key}", at), at)
+        @entries[role] = compile(role, mapping(body, noun(:role_body, role: key), at), at)
       end
 
       def compile(role, hints, at)
@@ -77,7 +78,7 @@ module SpecGen
       end
 
       def list(hints, key, at, required: false)
-        string_list(hints[key], key, "#{at}.#{key}", required: required)
+        string_list(hints[key], noun(:list, key: key), "#{at}.#{key}", required: required)
       end
 
       def normalized(values)
@@ -93,7 +94,7 @@ module SpecGen
       def claim(role, value, at)
         name = Normalizer.call(value)
         if name.empty?
-          complain("synonym #{value.inspect} normalizes to an empty name", at)
+          fault('roles.empty_synonym', at, name: value.inspect)
           return nil
         end
         owner = @names[name]
@@ -105,21 +106,20 @@ module SpecGen
       end
 
       def conflict(name, owner, at)
-        complain("synonym #{name.inspect} is already claimed by role #{owner} " \
-                 "at #{@origins[name]}; a name may mean one thing only", at)
-        nil
+        fault('roles.conflict', at, name: name.inspect, owner: owner, origin: @origins[name])
       end
 
       def types_of(value, at)
-        string_list(value, 'types', at, required: false).each_with_index.filter_map do |type, index|
-          symbol_in(type, TYPES, 'OpenAPI type', "#{at}[#{index}]")
+        listed = string_list(value, noun(:list, key: 'types'), at, required: false)
+        listed.each_with_index.filter_map do |type, index|
+          symbol_in(type, TYPES, noun(:openapi_type), "#{at}[#{index}]")
         end
       end
 
       def patterns_of(value, at)
-        sources = string_list(value, 'patterns', at, required: false)
+        sources = string_list(value, noun(:list, key: 'patterns'), at, required: false)
         sources.each_with_index.filter_map do |source, index|
-          pattern(source, 'pattern', "#{at}[#{index}]")
+          pattern(source, noun(:pattern), "#{at}[#{index}]")
         end
       end
 
@@ -127,8 +127,7 @@ module SpecGen
         missing = IR::Roles::FIELD - @entries.keys
         return if missing.empty?
 
-        complain("no synonyms for #{missing.join(', ')}; every role of IR::Roles::FIELD needs " \
-                 'an entry', path('roles'))
+        fault('roles.missing', path('roles'), roles: missing.join(', '))
       end
     end
   end

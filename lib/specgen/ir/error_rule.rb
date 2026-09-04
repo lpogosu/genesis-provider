@@ -2,64 +2,65 @@
 
 module SpecGen
   module IR
-    # One row of the generated ERROR_MAP / RETRY_POLICY tables: what the
-    # service does when it sees a given HTTP status and/or provider error
-    # code. Either selector may be nil ("any"); a rule scoped to one
-    # operation names it by Operation#key, because the same status can mean
-    # different things (409 on create is dedup, 409 on cancel is reject).
+    # Одна строка сгенерированных таблиц ERROR_MAP / RETRY_POLICY: что делает
+    # сервис, увидев заданный HTTP-код и/или код ошибки провайдера. Любой из
+    # двух селекторов может быть nil («любой»); правило, ограниченное одной
+    # операцией, называет её через Operation#key, потому что один и тот же
+    # код может означать разное (409 при создании — это дедупликация, 409 при
+    # отмене — отказ).
     #
-    #   http_status    Integer or nil
-    #   provider_code  error code string or nil
-    #   operation      Operation#key or nil for every operation
-    #   action         Derived<Symbol> one of Roles::ERROR_ACTION
-    #   retry_after    true when the response declares a Retry-After header
-    #   seen_in        where the code was found: subset of SEEN_IN
-    #   json_path      the response or enum value the rule was read from
+    #   http_status    Integer или nil
+    #   provider_code  строка кода ошибки или nil
+    #   operation      Operation#key или nil для любой операции
+    #   action         Derived<Symbol>, одно из Roles::ERROR_ACTION
+    #   retry_after    true, если ответ объявляет заголовок Retry-After
+    #   seen_in        где найден код: подмножество SEEN_IN
+    #   json_path      ответ или значение enum, из которого прочитано правило
     ErrorRule = Struct.new(:http_status, :provider_code, :operation, :action, :retry_after,
                            :seen_in, :json_path, keyword_init: true)
 
-    # Vocabulary and checks of ErrorRule.
+    # Словарь значений и проверки ErrorRule.
     class ErrorRule
       include Node
 
       SEEN_IN = %i[enum example response].freeze
       HTTP_STATUS = (100..599)
 
-      # @param action [Derived] known, one of Roles::ERROR_ACTION
+      # @param action [Derived] выведенное, одно из Roles::ERROR_ACTION
       # @param http_status [Integer, nil]
       # @param provider_code [String, nil]
       # @param operation [String, nil]
       # @param retry_after [Boolean]
-      # @param seen_in [Array<Symbol>] subset of SEEN_IN
+      # @param seen_in [Array<Symbol>] подмножество SEEN_IN
       # @param json_path [String, nil]
       # @raise [ArgumentError]
       def initialize(action:, http_status: nil, provider_code: nil, operation: nil,
                      retry_after: false, seen_in: [], json_path: nil)
-        Node.assert_derived!(action, 'error action', allowed: Roles::ERROR_ACTION,
-                                                     allow_unknown: false)
+        Node.assert_derived!(action, 'действие по ошибке', allowed: Roles::ERROR_ACTION,
+                                                           allow_unknown: false)
         check_selectors!(http_status, provider_code)
-        seen_in.each { |place| Node.assert_member!(SEEN_IN, place, 'seen_in entry') }
+        seen_in.each { |place| Node.assert_member!(SEEN_IN, place, 'элемент seen_in') }
         super
       end
 
-      # Deterministic table order: operation-specific rules after generic
-      # ones, then by status, then by code.
+      # Детерминированный порядок таблицы: правила для конкретной операции
+      # после общих, затем по коду ответа, затем по коду ошибки.
       # @return [Array]
       def sort_key
         [operation.to_s, http_status || 0, provider_code.to_s]
       end
 
-      # @return [Boolean] whether the rule applies to every operation
+      # @return [Boolean] применимо ли правило к любой операции
       def generic?
         operation.nil?
       end
 
-      # @return [Boolean] the idempotency path, not an error
+      # @return [Boolean] путь идемпотентности, а не ошибка
       def dedup?
         action.value == :dedup
       end
 
-      # @return [Boolean] found in an enum, not only in examples
+      # @return [Boolean] найдено в enum, а не только в примерах
       def declared?
         seen_in.include?(:enum)
       end
@@ -69,14 +70,15 @@ module SpecGen
       def check_selectors!(http_status, provider_code)
         if http_status.nil? && provider_code.nil?
           raise ArgumentError,
-                'an error rule needs an HTTP status or a provider code'
+                'правилу ошибки нужен HTTP-код или код ошибки провайдера'
         end
         if http_status.nil? || (http_status.is_a?(Integer) && HTTP_STATUS.cover?(http_status))
           return
         end
 
         raise ArgumentError,
-              "http_status must be an Integer in #{HTTP_STATUS}, got #{http_status.inspect}"
+              "http_status: ожидается Integer в диапазоне #{HTTP_STATUS}, " \
+              "получено #{http_status.inspect}"
       end
     end
   end

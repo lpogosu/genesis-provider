@@ -2,20 +2,21 @@
 
 module SpecGen
   module SpecLoader
-    # Determines which flavour of OpenAPI a document is written in. Only 3.x
-    # is accepted: 3.0 restricts JSON Schema keywords, 3.1 and later use JSON
-    # Schema 2020-12 (dependentRequired, if/then/else natively). Swagger 2.0
-    # and anything else is rejected with a hint on what to do.
+    # Определяет, на каком диалекте OpenAPI написан документ. Принимаем
+    # только 3.x: в 3.0 часть ключевых слов JSON Schema запрещена, а 3.1 и
+    # выше используют JSON Schema 2020-12 (`dependentRequired`, if/then/else
+    # нативно). Swagger 2.0 и всё остальное отклоняем с подсказкой, что
+    # делать дальше.
     class VersionDetector
       Result = Struct.new(:version, :family, keyword_init: true)
 
       FAMILIES = { '3.0' => :oas30, '3.1' => :oas31, '3.2' => :oas31 }.freeze
       MAJOR_MINOR = /\A(\d+\.\d+)(?:\.\d+)?\z/
-      SUPPORTED = 'supported: 3.0.x, 3.1.x, 3.2.x'
+      SUPPORTED = '3.0.x, 3.1.x, 3.2.x'
 
-      # @param data [Hash] parsed document
-      # @param file [String] for error messages
-      # @return [Result] version string and family (:oas30 | :oas31)
+      # @param data [Hash] разобранный документ
+      # @param file [String] для сообщений об ошибках
+      # @return [Result] строка версии и семейство (:oas30 | :oas31)
       # @raise [SpecLoadError]
       def self.call(data, file:)
         new(data, file).call
@@ -35,10 +36,7 @@ module SpecGen
 
         version = @data['openapi'].to_s
         family = FAMILIES[version[MAJOR_MINOR, 1]]
-        unless family
-          fail_load("unsupported OpenAPI version #{version.inspect}; #{SUPPORTED}",
-                    '$.openapi')
-        end
+        reject_version(version) unless family
 
         Result.new(version: version, family: family)
       end
@@ -46,14 +44,19 @@ module SpecGen
       private
 
       def reject_swagger
-        version = @data['swagger']
-        fail_load("Swagger #{version} is not supported; convert the document to OpenAPI 3 " \
-                  'first (for example with swagger2openapi)', '$.swagger')
+        fail_load(Texts.t('spec_loader.version.swagger', version: @data['swagger']),
+                  '$.swagger')
+      end
+
+      def reject_version(version)
+        fail_load(Texts.t('spec_loader.version.unsupported', version: version.inspect,
+                                                             supported: SUPPORTED),
+                  '$.openapi')
       end
 
       def reject_not_openapi
         keys = @data.keys.first(5).join(', ')
-        fail_load("not an OpenAPI document: no `openapi` field (top-level keys: #{keys})", '$')
+        fail_load(Texts.t('spec_loader.version.not_openapi', keys: keys), '$')
       end
 
       def fail_load(message, location)

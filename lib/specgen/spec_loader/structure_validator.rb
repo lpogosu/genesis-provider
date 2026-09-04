@@ -2,15 +2,15 @@
 
 module SpecGen
   module SpecLoader
-    # Checks the parts of a document the pipeline cannot work without:
-    # `paths` must be a non-empty object of objects, and every schema `type`
-    # must be a JSON Schema type. The first violation is reported as a
-    # SpecParseError with the JSONPath of the offending element.
+    # Проверяет то, без чего конвейер работать не может: `paths` должен быть
+    # непустым объектом объектов, а `type` каждой схемы — типом JSON Schema.
+    # Первое нарушение становится SpecParseError с JSONPath виноватого
+    # элемента.
     class StructureValidator
       TYPES = %w[string number integer boolean array object null].freeze
 
-      # @param data [Hash] raw document
-      # @param file [String] for error messages
+      # @param data [Hash] исходный документ
+      # @param file [String] для сообщений об ошибках
       # @raise [SpecParseError]
       def self.call(data, file:)
         new(data, file).call
@@ -33,17 +33,22 @@ module SpecGen
 
       def validate_paths
         paths = @data['paths']
-        fail_parse('`paths` is missing, nothing to generate', ['paths']) if paths.nil?
+        fail_parse(Texts.t('spec_loader.structure.paths_missing'), ['paths']) if paths.nil?
         unless paths.is_a?(Hash)
-          fail_parse("`paths` must be an object, got #{TypeName.of(paths)}",
+          fail_parse(Texts.t('spec_loader.structure.paths_type', type: TypeName.of(paths)),
                      ['paths'])
         end
-        fail_parse('`paths` is empty, nothing to generate', ['paths']) if paths.empty?
+        fail_parse(Texts.t('spec_loader.structure.paths_empty'), ['paths']) if paths.empty?
 
+        validate_path_items(paths)
+      end
+
+      def validate_path_items(paths)
         paths.each do |route, item|
           next if item.is_a?(Hash)
 
-          fail_parse("path item must be an object, got #{TypeName.of(item)}", ['paths', route])
+          fail_parse(Texts.t('spec_loader.structure.path_item_type', type: TypeName.of(item)),
+                     ['paths', route])
         end
       end
 
@@ -52,10 +57,14 @@ module SpecGen
           Array(schema['type']).each do |type|
             next if TYPES.include?(type)
 
-            fail_parse("unknown schema type #{type.inspect}; expected one of #{TYPES.join(', ')}",
-                       keys + ['type'])
+            fail_parse(unknown_type_message(type), keys + ['type'])
           end
         end
+      end
+
+      def unknown_type_message(type)
+        Texts.t('spec_loader.structure.unknown_type', type: type.inspect,
+                                                      types: TYPES.join(', '))
       end
 
       def fail_parse(message, keys)

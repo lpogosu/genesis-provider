@@ -41,7 +41,7 @@ RSpec.describe SpecGen::Analyzers::AuthAnalyzer do
                                       param_name: 'X-API-Key', token_url: nil, scopes: [],
                                       json_path: '$.components.securitySchemes.Scheme')
       expect(auth.type).to have_attributes(value: :api_key, source: :registry)
-      expect(auth.type.evidence).to eq('rules/auth.yml entry "api_key_header" matched ' \
+      expect(auth.type.evidence).to eq('запись rules/auth.yml "api_key_header" совпала по ' \
                                        'type=apikey, in=header')
       expect(auth.credential_keys.value).to eq(['api_key'])
     end
@@ -54,7 +54,7 @@ RSpec.describe SpecGen::Analyzers::AuthAnalyzer do
       expect(profile.auth.type.value).to eq(:api_key)
       expect(warning).to have_attributes(code: :auth_key_in_query, severity: :info,
                                          json_path: '$.components.securitySchemes.Scheme')
-      expect(warning.message).to include('query string')
+      expect(warning.message).to include('query-строке')
     end
 
     it 'reads HTTP bearer, taking the header name from the dictionary, not the spec' do
@@ -128,7 +128,7 @@ RSpec.describe SpecGen::Analyzers::AuthAnalyzer do
       expect(profile.auth.scheme_name).to eq('BearerAuth')
       expect(warning).to have_attributes(code: :auth_multiple_schemes, severity: :warning,
                                          json_path: '$.components.securitySchemes')
-      expect(warning.message).to include('chose BearerAuth', 'required by 2 operation(s)')
+      expect(warning.message).to include('выбрана BearerAuth', 'её требуют 2 операции')
         .and include('ApiKeyAuth ($.components.securitySchemes.ApiKeyAuth)')
     end
 
@@ -155,7 +155,7 @@ RSpec.describe SpecGen::Analyzers::AuthAnalyzer do
       profile = analyze(data.merge('security' => [{ 'BearerAuth' => [] }]))
 
       expect(profile.auth.scheme_name).to eq('BearerAuth')
-      expect(profile.warnings.first.message).to include('required by 2 operation(s)')
+      expect(profile.warnings.first.message).to include('её требуют 2 операции')
     end
 
     it 'says nothing when the spec declares exactly one scheme' do
@@ -214,7 +214,7 @@ RSpec.describe SpecGen::Analyzers::AuthAnalyzer do
 
       expect(profile.auth.none?).to be(true)
       expect(profile.auth.type).to have_attributes(source: :structural, confidence: 1.0)
-      expect(profile.auth.type.evidence).to include('no components.securitySchemes')
+      expect(profile.auth.type.evidence).to include('нет components.securitySchemes')
       expect(profile.warnings.first).to have_attributes(code: :auth_absent, severity: :info)
     end
 

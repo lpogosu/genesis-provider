@@ -2,26 +2,28 @@
 
 module SpecGen
   module Analyzers
-    # Fills profile.schemas: every schema the generated service has to build
-    # or read, under the name the rest of the IR refers to it by.
+    # Заполняет profile.schemas: каждую схему, которую сгенерированный сервис
+    # обязан собрать или прочитать, под тем именем, которым её называет
+    # остальной IR.
     #
-    # Three sources, in a fixed order so two runs produce the same file:
-    # the components in spec order, then the bodies of requests and
-    # responses in operation order, then whatever those two reach through
-    # nested objects and array items. A component nobody references is kept
-    # as well - it is part of what the provider offers, and the report is
-    # the place to notice it is unused.
+    # Три источника в фиксированном порядке, чтобы два прогона давали один и
+    # тот же файл: сначала компоненты в порядке спецификации, затем тела
+    # запросов и ответов в порядке операций, затем всё, до чего эти два
+    # добрались через вложенные объекты и элементы массивов. Компонент, на
+    # который никто не ссылается, тоже остаётся: он часть того, что предлагает
+    # провайдер, а заметить, что он не используется, — дело отчёта.
     #
-    # Names come from SchemaNaming, the same module the OperationAnalyzer
-    # uses, so `Operation#request_schema` and `Response#schema` are keys of
-    # this hash and never dangling strings.
+    # Имена даёт SchemaNaming, тот же модуль, которым пользуется
+    # OperationAnalyzer, поэтому `Operation#request_schema` и
+    # `Response#schema` — ключи этого хеша, а не висящие в воздухе строки.
     class SchemaAnalyzer < Base
-      # Deep enough for any payment payload; a cycle the resolver did not
-      # catch stops here with a warning instead of a stack overflow.
+      # Достаточно глубоко для любого платёжного тела; цикл, который не
+      # поймал резолвер, останавливается здесь предупреждением, а не
+      # переполнением стека.
       MAX_DEPTH = 8
 
-      # Fills `profile.schemas`.
-      # @return [IR::ProviderProfile] the profile it was given
+      # Заполняет `profile.schemas`.
+      # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
         component_schemas.each { |name, node, at| register(name, node, at) }
         body_schemas.each { |name, node, at| register(name, node, at) }
@@ -31,23 +33,24 @@ module SpecGen
 
       private
 
-      # @return [Array<Array(String, Object, String)>] name, node, JSONPath
+      # @return [Array<Array(String, Object, String)>] имя, узел, JSONPath
       def component_schemas
         components = data['components']
         listed = components.is_a?(Hash) ? components['schemas'] : nil
         return [] if listed.nil?
-        return unusable('`components.schemas` must be an object') unless listed.is_a?(Hash)
+        return unusable unless listed.is_a?(Hash)
 
         listed.map { |name, node| [name.to_s, node, schema_path(name)] }
       end
 
-      def unusable(message)
-        profile.warn(:spec_element_unsupported, message,
+      def unusable
+        profile.warn(:spec_element_unsupported,
+                     Texts.t('analyzers.schema.components_not_object'),
                      json_path: json_path('components', 'schemas'))
         []
       end
 
-      # @return [Array<Array(String, Object, String)>] in operation order
+      # @return [Array<Array(String, Object, String)>] в порядке операций
       def body_schemas
         each_operation.flat_map do |path, http_method, node|
           at = json_path('paths', path, http_method)
@@ -93,15 +96,14 @@ module SpecGen
         return nil unless context
 
         profile.warn(:schema_unresolved,
-                     "the body of #{context.first} declares no readable schema, so nothing " \
-                     'describes what it carries',
+                     Texts.t('analyzers.schema.body_schema_unreadable', operation: context.first),
                      json_path: at)
         nil
       end
 
-      # Registers the schema and everything it nests. The name is written
-      # before the fields are read, so a schema that reaches itself finds
-      # the name taken and stops instead of recursing.
+      # Регистрирует схему и всё, что в неё вложено. Имя записывается раньше,
+      # чем читаются поля, поэтому схема, которая добралась до самой себя,
+      # находит имя занятым и останавливается, а не рекурсирует.
       def register(name, node, at, depth = 0)
         return if name.nil? || profile.schemas.key?(name)
         return too_deep(name, at) if depth > MAX_DEPTH
@@ -119,21 +121,20 @@ module SpecGen
 
       def too_deep(name, at)
         profile.warn(:spec_element_unsupported,
-                     "schemas nest deeper than #{MAX_DEPTH} levels here, so #{name} was left " \
-                     'undescribed; check the spec for a schema that contains itself',
+                     Texts.t('analyzers.schema.nesting_too_deep', limit: MAX_DEPTH, name: name),
                      json_path: at)
       end
 
-      # Every name a field points at has to be a key of profile.schemas, or
-      # the generator would emit a reference to nothing.
+      # Каждое имя, на которое смотрит поле, обязано быть ключом
+      # profile.schemas, иначе генератор выдал бы ссылку в никуда.
       def check_links
         profile.schemas.each_value do |schema|
           schema.fields.each do |field|
             next if field.schema.nil? || profile.schemas.key?(field.schema)
 
             profile.warn(:schema_unresolved,
-                         "`#{schema.name}.#{field.name}` refers to schema #{field.schema}, " \
-                         'which is not described anywhere',
+                         Texts.t('analyzers.schema.field_schema_missing',
+                                 field: "#{schema.name}.#{field.name}", schema: field.schema),
                          json_path: field.json_path)
           end
         end

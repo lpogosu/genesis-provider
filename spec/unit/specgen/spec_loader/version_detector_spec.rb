@@ -21,21 +21,22 @@ RSpec.describe SpecGen::SpecLoader::VersionDetector do
   it 'rejects Swagger 2.0 with the location of the swagger key' do
     expect { detect('swagger' => '2.0') }.to raise_error(SpecGen::SpecLoadError) do |error|
       expect(error.path).to eq('$.swagger')
-      expect(error.message).to include('x.yaml').and include('Swagger 2.0 is not supported')
+      expect(error.message).to include('x.yaml').and include('Swagger 2.0 не поддерживается')
     end
   end
 
   it 'rejects unknown versions with the location of the openapi key' do
     expect { detect('openapi' => '4.0.0') }.to raise_error(SpecGen::SpecLoadError) do |error|
       expect(error.path).to eq('$.openapi')
-      expect(error.message).to include('unsupported OpenAPI version "4.0.0"')
+      expect(error.message).to include('версия OpenAPI "4.0.0" не поддерживается')
+        .and include('3.0.x, 3.1.x, 3.2.x')
     end
   end
 
   it 'rejects documents without an openapi key' do
     expect { detect('title' => 'x') }.to raise_error(SpecGen::SpecLoadError) do |error|
       expect(error.path).to eq('$')
-      expect(error.message).to include('not an OpenAPI document')
+      expect(error.message).to include('это не документ OpenAPI')
     end
   end
 end

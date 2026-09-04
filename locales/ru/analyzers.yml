@@ -1,0 +1,90 @@
+# locales/ru/analyzers.yml — тексты стадии анализа: предупреждения,
+# обоснования выведенных значений и заготовки overlay.
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с
+# locales/en/analyzers.yml, это проверяет spec/unit/specgen/texts_spec.rb.
+#
+# Значения внутри YAML-фрагментов overlay (`url`, `description: Production`)
+# остаются английскими: их читает не человек, а сама спецификация и лексикон
+# EnvironmentDetector, который знает только ASCII-слова.
+
+analyzers:
+  # Формулировки, общие для нескольких анализаторов: спецификация нарушает
+  # форму, заданную OpenAPI, в одном и том же месте по-разному.
+  common:
+    must_be_object: "`%{key}` должен быть объектом"
+    must_be_list: "`%{key}` должен быть списком"
+
+  info:
+    name_from_option: "--provider %{given}"
+    name_from_title: "из info.title %{title} -> %{slug}"
+    name_unknown_message: "имя провайдера не выведено: передайте --provider, чтобы задать имя класса сервиса, его файла и переменных окружения"
+    name_unknown_evidence: "ни --provider, ни info.title не дали имени"
+    base_url_env_evidence: "соглашение: <PROVIDER>%{suffix} из имени провайдера %{name}"
+    base_url_env_unknown: "нет имени провайдера, из которого построить имя переменной окружения"
+    servers_absent: "спецификация не объявляет `servers`; сгенерированному сервису неоткуда взять базовый URL по умолчанию"
+    servers_malformed: "список `servers` в спецификации пуст или искажён; сгенерированному сервису неоткуда взять базовый URL по умолчанию"
+    servers_overlay: |
+      - target: "$"
+        update:
+          servers:
+            - url: https://api.example.com
+              description: Production
+    server_url_missing: "в элементе `servers` нет пригодной строки `url`, элемент пропущен"
+    environment_evidence: "%{place} сервера %{text} содержит %{word} -> %{environment}"
+    environment_place:
+      description: "описание"
+      host: "хост"
+    environment_unknown_message: "ни описание, ни хост не говорят, песочница это или продакшен; запросы могут уйти не туда"
+    environment_unknown_evidence: "ни в описании, ни в хосте нет слова, называющего окружение"
+    environment_overlay: |
+      - target: "%{path}"
+        update:
+          description: Production
+
+  auth:
+    type_evidence: "запись rules/auth.yml %{entry} совпала по %{facts}"
+    credentials_evidence: "запись rules/auth.yml %{entry} читает provider.credentials %{keys}"
+    token_url_missing: "поток %{flow} не объявляет tokenUrl, поэтому сгенерированному сервису негде запросить токен"
+    key_in_query: "учётные данные едут в query-строке, где их сохраняют логи прокси и история браузера; так решил провайдер, а не генератор"
+    param_name_missing: "схема авторизации %{name} не называет параметр, поэтому учётные данные некуда положить"
+    scheme_unknown_message: "схема авторизации %{name} не совпала ни с одной записью rules/auth.yml, поэтому сгенерированный сервис не сможет авторизоваться"
+    scheme_unknown_evidence: "%{name} не совпала ни с одной записью справочника"
+    unknown_overlay: |
+      - target: %{path}
+        update:
+          # перепишите схему в терминах, известных rules/auth.yml,
+          # или добавьте запись в этот справочник
+          type: http
+          scheme: bearer
+    security_shape: "`security` должен быть списком объектов требований; значение проигнорировано"
+    scheme_shape: "схема авторизации %{name} должна быть объектом; она пропущена"
+    undeclared_message: "операции требуют схему авторизации %{names}, которую components.securitySchemes не объявляет"
+    undeclared_evidence: "%{name} требуется операциям, но нигде не объявлена"
+    multiple_schemes: "схем авторизации в спецификации: %{total}; выбрана %{chosen}, её требуют %{operations}; не используются: %{ignored}"
+    absent_message: "спецификация вообще не объявляет авторизацию, поэтому сгенерированные запросы идут без учётных данных; для платёжного API это необычно, сверьтесь с контрактом"
+    absent_evidence: "нет components.securitySchemes, ни одна операция не объявляет security"
+
+  operation:
+    id_missing: "операция не объявляет operationId; в этом отчёте и в сгенерированном коде она названа %{key}"
+    unmapped: "в спецификации слишком мало признаков того, для чего эта операция, поэтому роль не присвоена (%{scores}); задайте роль в overlay"
+    ambiguous: "две роли подходят этой операции одинаково хорошо, поэтому ни одна не присвоена (%{scores}); выберите одну в overlay"
+    off_contract: "распознана как %{role}, но в Provider::BaseService нет метода для такой роли; она генерируется отдельным публичным методом и остаётся вне контракта"
+    tags_shape: "`tags` должен быть списком строк"
+    status_unknown: "ключ ответа %{code} — не HTTP-код, не диапазон и не `default`"
+    scores: "%{scores} из %{cast} поданных голосов"
+    match_evidence: "композитное сопоставление: %{parts} = %{score} из %{cast} поданных голосов; %{runner_up}"
+    runner_up: "следующая %{role} %{score}"
+    no_runner_up: "больше ничего не набрало голосов"
+    no_signal_evidence: "ни один сигнал не совпал ни с одной ролью"
+    lost_evidence: "%{reason}: %{scores} из %{cast} поданных голосов (floor %{floor}, minimum %{minimum}, margin %{margin})"
+    # Почему роль не присвоена; печатается в начале обоснования.
+    reason:
+      below_threshold: "ниже порога"
+      ambiguous: "неоднозначно"
+
+  parameter:
+    role_pending: "роли параметров сопоставляют матчеры полей, это более поздняя стадия"
+    shape: "параметр должен быть объектом"
+    name_missing: "у параметра должны быть `name` и известный `in`"

@@ -44,7 +44,7 @@ RSpec.describe SpecGen::Analyzers::InfoAnalyzer do
       expect(name.value).to eq('novapay')
       expect(name.source).to eq(:heuristic)
       expect(name.confidence).to eq(0.8)
-      expect(name.evidence).to eq('info.title "NovaPay Payout API" -> novapay')
+      expect(name.evidence).to eq('из info.title "NovaPay Payout API" -> novapay')
     end
 
     it 'keeps every word the industry vocabulary does not explain, with less confidence' do
@@ -77,7 +77,7 @@ RSpec.describe SpecGen::Analyzers::InfoAnalyzer do
       env = with_title('Acme Bank Payout API').info.base_url_env
 
       expect(env.value).to eq('ACME_BANK_BASE_URL')
-      expect(env.evidence).to include('convention: <PROVIDER>_BASE_URL')
+      expect(env.evidence).to include('соглашение: <PROVIDER>_BASE_URL')
     end
 
     it 'is exactly as certain as the provider name it was built from' do
@@ -124,7 +124,7 @@ RSpec.describe SpecGen::Analyzers::InfoAnalyzer do
       expect(profile.servers.first.environment)
         .to have_attributes(source: :heuristic, confidence: 0.8)
       expect(profile.servers.last.environment.evidence)
-        .to eq('server description "Production" contains "production" -> production')
+        .to eq('описание сервера "Production" содержит "production" -> production')
       expect(profile.warnings).to be_empty
     end
 
@@ -134,7 +134,7 @@ RSpec.describe SpecGen::Analyzers::InfoAnalyzer do
 
       expect(profile.servers.first.environment)
         .to have_attributes(value: :sandbox, source: :heuristic, confidence: 0.7)
-      expect(profile.servers.first.environment.evidence).to include('server host')
+      expect(profile.servers.first.environment.evidence).to include('хост сервера')
     end
 
     it 'recognises a production host as well' do

@@ -2,18 +2,20 @@
 
 module SpecGen
   module IR
-    # Behaviour shared by every IR value object: deep serialisation with a
-    # stable key order, and the vocabulary checks that keep roles, sources
-    # and actions inside their closed lists.
+    # Поведение, общее для каждого объекта-значения IR: глубокая сериализация
+    # с устойчивым порядком ключей и проверки словаря, которые держат роли,
+    # источники и действия внутри их закрытых списков.
     #
-    # IR types are keyword-initialised Structs that include this module.
-    # Struct fixes the member order, so `to_h` is deterministic and fit for
-    # golden tests; `dump` recurses into nested IR objects, arrays and hashes
-    # so the result contains only plain Ruby data.
+    # Типы IR — это Struct с инициализацией по ключам, подмешивающие этот
+    # модуль. Struct закрепляет порядок полей, поэтому `to_h`
+    # детерминирован и годится для golden-тестов; `dump` спускается во
+    # вложенные объекты IR, массивы и хеши, так что в результате остаются
+    # только обычные данные Ruby.
     module Node
-      # Deep-converts an IR value into plain data.
-      # @param value [Object] IR object, Array, Hash or scalar
-      # @return [Object] Hash, Array or scalar with nested IR objects converted
+      # Глубоко превращает значение IR в обычные данные.
+      # @param value [Object] объект IR, Array, Hash или скаляр
+      # @return [Object] Hash, Array или скаляр с развёрнутыми вложенными
+      #   объектами IR
       def self.dump(value)
         case value
         when Node then value.to_h
@@ -23,68 +25,70 @@ module SpecGen
         end
       end
 
-      # Raises unless `value` belongs to a closed vocabulary.
-      # @param allowed [Array<Symbol>] the vocabulary
-      # @param value [Object] value to check
-      # @param what [String] noun for the message, e.g. "field role"
-      # @return [Object] the value itself
-      # @raise [ArgumentError] listing the accepted values
+      # Поднимает ошибку, если `value` не принадлежит закрытому словарю.
+      # @param allowed [Array<Symbol>] словарь
+      # @param value [Object] проверяемое значение
+      # @param what [String] название элемента для сообщения
+      # @return [Object] само значение
+      # @raise [ArgumentError] со списком допустимых значений
       def self.assert_member!(allowed, value, what)
         return value if allowed.include?(value)
 
         raise ArgumentError,
-              "unknown #{what} #{value.inspect} (expected one of: #{allowed.join(', ')})"
+              "#{what}: неизвестное значение #{value.inspect} " \
+              "(допустимо: #{allowed.join(', ')})"
       end
 
-      # Raises unless `derived` is a Derived, optionally with a value from a
-      # closed vocabulary.
+      # Поднимает ошибку, если `derived` не Derived или, при заданном
+      # словаре, если его значение вне словаря.
       # @param derived [Derived]
-      # @param what [String] noun for the message
-      # @param allowed [Array<Symbol>, nil] vocabulary for the value, nil for any
-      # @param allow_unknown [Boolean] accept `Derived.unknown`
-      # @return [Derived] the argument itself
+      # @param what [String] название элемента для сообщения
+      # @param allowed [Array<Symbol>, nil] словарь значения; nil — любое
+      # @param allow_unknown [Boolean] принимать ли `Derived.unknown`
+      # @return [Derived] сам аргумент
       # @raise [ArgumentError]
       def self.assert_derived!(derived, what, allowed: nil, allow_unknown: true)
         unless derived.is_a?(Derived)
           raise ArgumentError,
-                "#{what} must be a Derived, got #{derived.inspect}"
+                "#{what}: ожидается Derived, получено #{derived.inspect}"
         end
 
         if derived.unknown?
           return derived if allow_unknown
 
-          raise ArgumentError, "#{what} must be known; pick an explicit fallback value"
+          raise ArgumentError,
+                "#{what}: значение обязано быть выведено; выбери явное значение по умолчанию"
         end
         assert_member!(allowed, derived.value, what) if allowed
         derived
       end
 
-      # Raises unless `value` is a non-empty String.
+      # Поднимает ошибку, если `value` не непустая String.
       # @param value [Object]
-      # @param what [String] noun for the message
-      # @return [String] the value itself
+      # @param what [String] название элемента для сообщения
+      # @return [String] само значение
       # @raise [ArgumentError]
       def self.assert_text!(value, what)
         return value if value.is_a?(String) && !value.empty?
 
-        raise ArgumentError, "#{what} must be a non-empty String, got #{value.inspect}"
+        raise ArgumentError, "#{what}: ожидается непустая строка, получено #{value.inspect}"
       end
 
-      # Raises unless `value` is nil or an instance of `klass`.
+      # Поднимает ошибку, если `value` не nil и не экземпляр `klass`.
       # @param value [Object]
       # @param klass [Class]
-      # @param what [String] noun for the message
-      # @return [Object] the value itself
+      # @param what [String] название элемента для сообщения
+      # @return [Object] само значение
       # @raise [ArgumentError]
       def self.assert_optional!(value, klass, what)
         return value if value.nil? || value.is_a?(klass)
 
-        raise ArgumentError, "#{what} must be a #{klass.name.split('::').last} or nil, " \
-                             "got #{value.inspect}"
+        raise ArgumentError, "#{what}: ожидается #{klass.name.split('::').last} или nil, " \
+                             "получено #{value.inspect}"
       end
 
-      # @return [Hash{Symbol => Object}] members in definition order, nested
-      #   IR objects converted to plain data
+      # @return [Hash{Symbol => Object}] поля в порядке объявления, вложенные
+      #   объекты IR развёрнуты в обычные данные
       def to_h
         super { |key, value| [key, Node.dump(value)] }
       end

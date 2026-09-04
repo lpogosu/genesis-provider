@@ -46,8 +46,8 @@ RSpec.describe SpecGen::CLI do
     it 'adds evidence lines with --explain' do
       plain = run_cli('analyze', '--spec', novapay).stdout
       explained = run_cli('analyze', '--spec', novapay, '--explain').stdout
-      expect(plain).not_to include('= rules/auth.yml')
-      expect(explained).to include('= rules/auth.yml entry "api_key_header"')
+      expect(plain).not_to include('= запись rules/auth.yml')
+      expect(explained).to include('= запись rules/auth.yml "api_key_header"')
     end
 
     it 'requires --spec' do
@@ -67,7 +67,7 @@ RSpec.describe SpecGen::CLI do
       broken = File.join(SpecGen::ROOT, 'spec', 'fixtures', 'bad', 'broken_yaml.yaml')
       result = run_cli('analyze', '--spec', broken)
       expect(result.status).to eq(described_class::EXIT_ERROR)
-      expect(result.stderr).to include('broken_yaml.yaml').and include('line 8')
+      expect(result.stderr).to include('broken_yaml.yaml').and include('строка 8')
       expect(result.stderr).not_to include('.rb:')
       expect(result.stdout).to be_empty
     end

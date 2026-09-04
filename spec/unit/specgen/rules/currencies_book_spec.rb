@@ -35,7 +35,7 @@ RSpec.describe SpecGen::Rules::CurrenciesBook do
       patch['currencies']['Rub'] = { 'exponent' => 2, 'name' => 'Russian Ruble' }
 
       expect(rules_error('currencies.yml' => patch))
-        .to include('three capital letters').and include('"Rub"')
+        .to include('три заглавные латинские буквы').and include('"Rub"')
     end
 
     it 'refuses an exponent outside the range the standard uses' do
@@ -43,26 +43,26 @@ RSpec.describe SpecGen::Rules::CurrenciesBook do
       patch['currencies']['RUB'] = { 'exponent' => 7, 'name' => 'Russian Ruble' }
 
       expect(rules_error('currencies.yml' => patch))
-        .to include('$.currencies.RUB.exponent').and include('within 0..4')
+        .to include('$.currencies.RUB.exponent').and include('в диапазоне 0..4')
     end
 
     it 'refuses an exponent that is not a whole number' do
       patch = rule('currencies.yml')
       patch['currencies']['RUB'] = { 'exponent' => '2', 'name' => 'Russian Ruble' }
 
-      expect(rules_error('currencies.yml' => patch)).to include('must be a whole number')
+      expect(rules_error('currencies.yml' => patch)).to include('ожидается целое число')
     end
 
     it 'refuses an entry with no name' do
       patch = rule('currencies.yml')
       patch['currencies']['RUB'] = { 'exponent' => 2 }
 
-      expect(rules_error('currencies.yml' => patch)).to include('currency name must be')
+      expect(rules_error('currencies.yml' => patch)).to include('название валюты: ожидается непустая строка')
     end
 
     it 'refuses an empty table' do
       expect(rules_error('currencies.yml' => rule('currencies.yml').merge('currencies' => {})))
-        .to include('table is empty')
+        .to include('таблица валют пуста')
     end
   end
 end

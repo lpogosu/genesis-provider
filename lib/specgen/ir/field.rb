@@ -2,29 +2,30 @@
 
 module SpecGen
   module IR
-    # One property of a schema.
+    # Одно свойство схемы.
     #
-    #   name           property name verbatim (the only place the provider's
-    #                  name survives; everything else keys by role)
-    #   role           Derived<Symbol> one of Roles::FIELD, or unknown
-    #   type           JSON Schema type verbatim ("string", "integer"...)
-    #   format         JSON Schema format verbatim ("date-time", "uuid"...)
-    #   required       true when listed in the parent's `required`
-    #   required_when  RequiredWhen for a conditional requirement, else nil
-    #   constraints    Hash with keys from CONSTRAINT_KEYS
-    #   description    verbatim
-    #   example        verbatim
-    #   schema         name of the nested schema for objects, or of the item
-    #                  schema for arrays; nil for scalars
+    #   name           имя свойства дословно (единственное место, где имя от
+    #                  провайдера сохраняется; всё остальное ключуется ролью)
+    #   role           Derived<Symbol>, одна из Roles::FIELD, либо не выведена
+    #   type           тип JSON Schema дословно ("string", "integer"...)
+    #   format         format JSON Schema дословно ("date-time", "uuid"...)
+    #   required       true, если поле перечислено в `required` родителя
+    #   required_when  RequiredWhen для условной обязательности, иначе nil
+    #   constraints    Hash с ключами из CONSTRAINT_KEYS
+    #   description    дословно
+    #   example        дословно
+    #   schema         имя вложенной схемы для объектов или схемы элемента
+    #                  для массивов; nil для скаляров
     #   json_path      "$.components.schemas.X.properties.y"
     Field = Struct.new(:name, :role, :type, :format, :required, :required_when, :constraints,
                        :description, :example, :schema, :json_path, keyword_init: true)
 
-    # Vocabulary and checks of Field.
+    # Словарь значений и проверки Field.
     class Field
       include Node
 
-      # JSON Schema validation keywords the generator uses, snake_cased.
+      # Ключевые слова валидации JSON Schema, которыми пользуется генератор,
+      # в snake_case.
       CONSTRAINT_KEYS = %i[
         enum const pattern minimum maximum exclusive_minimum exclusive_maximum
         min_length max_length min_items max_items multiple_of default nullable
@@ -44,29 +45,29 @@ module SpecGen
       # @raise [ArgumentError]
       def initialize(name:, role:, type: nil, format: nil, required: false, required_when: nil,
                      constraints: {}, description: nil, example: nil, schema: nil, json_path: nil)
-        Node.assert_text!(name, 'field name')
-        Node.assert_derived!(role, 'field role', allowed: Roles::FIELD)
+        Node.assert_text!(name, 'имя поля')
+        Node.assert_derived!(role, 'роль поля', allowed: Roles::FIELD)
         Node.assert_optional!(required_when, RequiredWhen, 'required_when')
         check_constraints!(constraints)
         super
       end
 
-      # @return [Boolean] unconditionally required
+      # @return [Boolean] обязательное безусловно
       def required?
         required == true
       end
 
-      # @return [Boolean] required under a RequiredWhen condition
+      # @return [Boolean] обязательное при условии RequiredWhen
       def conditionally_required?
         !required_when.nil?
       end
 
-      # @return [Array, nil] enum values when constrained
+      # @return [Array, nil] значения enum, если поле ими ограничено
       def enum
         constraints[:enum]
       end
 
-      # @return [Boolean] whether the field plays the given role
+      # @return [Boolean] играет ли поле заданную роль
       def role?(role)
         self.role.value == Roles.field!(role)
       end
@@ -75,14 +76,15 @@ module SpecGen
 
       def check_constraints!(constraints)
         unless constraints.is_a?(Hash)
-          raise ArgumentError, "constraints must be a Hash, got #{constraints.inspect}"
+          raise ArgumentError, "constraints: ожидается Hash, получено #{constraints.inspect}"
         end
 
         unknown = constraints.keys - CONSTRAINT_KEYS
         return if unknown.empty?
 
         raise ArgumentError,
-              "unknown constraint keys #{unknown.inspect} (expected: #{CONSTRAINT_KEYS.join(', ')})"
+              "неизвестные ключи ограничений #{unknown.inspect} " \
+              "(допустимо: #{CONSTRAINT_KEYS.join(', ')})"
       end
     end
   end

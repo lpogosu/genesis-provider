@@ -6,18 +6,20 @@ require 'psych'
 
 module SpecGen
   module SpecLoader
-    # Reads one YAML or JSON file into a Hash with string keys. Every way a
-    # file can be unusable — missing, a directory, empty, malformed, not an
-    # object at the root — becomes a SpecLoadError naming the file and, for
-    # syntax errors, the line and column.
+    # Читает один файл YAML или JSON в Hash со строковыми ключами. Каждый
+    # способ оказаться непригодным — файла нет, по пути каталог, файл пуст,
+    # битый синтаксис, в корне не объект — становится SpecLoadError, которая
+    # называет файл, а для ошибок синтаксиса ещё строку и столбец.
     class Reader
       YAML_CLASSES = [Date, Time].freeze
       JSON_EXTENSIONS = %w[.json].freeze
       YAML_EXTENSIONS = %w[.yaml .yml].freeze
+      # Позиция внутри сообщения парсера JSON: он пишет её по-английски и
+      # только текстом, поэтому вынимаем регуляркой.
       POSITION = /line (\d+),? column (\d+)/
 
       # @param path [String]
-      # @return [Hash] parsed document with string keys
+      # @return [Hash] разобранный документ со строковыми ключами
       # @raise [SpecLoadError]
       def self.read(path)
         new(path).read
@@ -31,11 +33,13 @@ module SpecGen
       # @return [Hash]
       def read
         text = read_text
-        fail_load('file is empty', '$') if text.strip.empty?
+        fail_load(Texts.t('spec_loader.reader.empty'), '$') if text.strip.empty?
 
         data = parse(text)
-        fail_load('file contains no document', '$') if data.nil?
-        fail_load("root must be an object, got #{TypeName.of(data)}", '$') unless data.is_a?(Hash)
+        fail_load(Texts.t('spec_loader.reader.no_document'), '$') if data.nil?
+        unless data.is_a?(Hash)
+          fail_load(Texts.t('spec_loader.reader.root_type', type: TypeName.of(data)), '$')
+        end
 
         normalize(data)
       end
@@ -45,11 +49,11 @@ module SpecGen
       def read_text
         File.read(@path, mode: 'r:bom|utf-8')
       rescue Errno::ENOENT
-        fail_load('file not found')
+        fail_load(Texts.t('spec_loader.reader.not_found'))
       rescue Errno::EISDIR
-        fail_load('path is a directory, not a file')
+        fail_load(Texts.t('spec_loader.reader.directory'))
       rescue SystemCallError => e
-        fail_load("cannot read file: #{e.message}")
+        fail_load(Texts.t('spec_loader.reader.unreadable', reason: e.message))
       end
 
       def parse(text)
@@ -67,23 +71,31 @@ module SpecGen
       def parse_yaml(text)
         Psych.safe_load(text, permitted_classes: YAML_CLASSES, aliases: true, filename: @path)
       rescue Psych::SyntaxError => e
-        context = e.context ? " #{e.context}" : ''
-        fail_load("YAML syntax error: #{e.problem}#{context}", "line #{e.line}, column #{e.column}")
+        problem = [e.problem, e.context].compact.join(' ')
+        fail_load(Texts.t('spec_loader.reader.yaml_syntax', problem: problem),
+                  position(e.line, e.column))
       rescue Psych::Exception => e
-        fail_load("YAML error: #{e.message}")
+        fail_load(Texts.t('spec_loader.reader.yaml_error', reason: e.message))
       end
 
       def parse_json(text)
         JSON.parse(text)
       rescue JSON::ParserError => e
         detail = e.message.lines.first.to_s.strip
-        position = detail.match(POSITION)
-        location = position && "line #{position[1]}, column #{position[2]}"
-        fail_load("JSON syntax error: #{detail}", location)
+        found = detail.match(POSITION)
+        fail_load(Texts.t('spec_loader.reader.json_syntax', problem: detail),
+                  found && position(found[1], found[2]))
       end
 
-      # YAML gives integer keys for unquoted response codes (200:), OpenAPI
-      # wants strings; the rest of the pipeline relies on string keys only.
+      # Позиция ошибки синтаксиса — тоже текст для человека, поэтому её
+      # формат живёт в локали, а не в интерполяции.
+      def position(line, column)
+        Texts.t('spec_loader.position', line: line, column: column)
+      end
+
+      # YAML отдаёт целочисленные ключи для незакавыченных кодов ответа
+      # (200:), а OpenAPI ждёт строки; остальной конвейер рассчитывает
+      # только на строковые ключи.
       def normalize(value)
         case value
         when Hash then value.to_h { |key, child| [key.to_s, normalize(child)] }

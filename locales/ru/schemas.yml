@@ -1,0 +1,47 @@
+# locales/ru/schemas.yml — тексты стадии разбора схем: предупреждения о
+# схемах и полях, обоснования условной обязательности и заготовки overlay.
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с
+# locales/en/schemas.yml, это проверяет spec/unit/specgen/texts_spec.rb.
+#
+# Значения ключей overlay_* — фрагмент YAML, который человек вставляет в свой
+# overlay-файл. Это текст для машины: он одинаков во всех локалях, а отступы
+# в нём значимы.
+
+analyzers:
+  schema:
+    components_not_object: "`components.schemas` должен быть объектом"
+    body_schema_unreadable: "у тела %{operation} не объявлено читаемой схемы, поэтому ничто не описывает, что оно переносит"
+    nesting_too_deep: "схемы здесь вложены глубже %{limit} уровней, поэтому %{name} осталась без описания; проверьте спецификацию на схему, которая содержит саму себя"
+    field_schema_missing: "`%{field}` ссылается на схему %{schema}, которую нигде не описали"
+    role_pending: "роли полей определяют матчеры полей, следующая стадия"
+    required_not_list: "`required` должен быть списком имён свойств"
+    object_without_properties: "схема объявлена объектом, но не объявляет свойств, поэтому собрать из неё нечего"
+    property_without_type: "у поля `%{name}` не объявлен `type`, поэтому сгенерированный код не может ни проверить, ни привести его значение"
+    property_not_object: "поле `%{name}` должно быть объектом; оно пропущено"
+    array_without_items: "у массива `%{name}` не объявлены `items`, поэтому тип его элементов неизвестен"
+    allof_type_conflict: "ветки allOf расходятся в типе `%{name}` (%{kept} и %{incoming}); оставлен первый"
+    variants_not_decomposed: "`%{keyword}` не раскладывается на варианты (их %{count}): полей вариантов в IR нет, поэтому вариант для запроса по этой схеме выбирает человек"
+    condition:
+      presence: "наличие `%{trigger}`"
+      equals: "`%{trigger}` = %{value}"
+      dependent_required: "dependentRequired: наличие `%{trigger}` делает `%{field}` обязательным"
+      if_then: "%{keywords}: %{condition} делает `%{field}` обязательным"
+      description_hint: "намёк в описании (%{pattern}): %{sentence} читается как %{condition}"
+      hint_warning: "`%{field}` выглядит условно обязательным (%{condition}), но схема не задаёт условия; фрагмент ниже задаёт его формально"
+      negative_branch: "`%{field}` объявлен обязательным в ветке `%{keyword}` — это отрицательное условие, которое IR выразить не может; сформулируйте его в overlay как положительное"
+      overlay_equals: |
+        - target: "%{schema_path}"
+          update:
+            %{if_key}:
+              properties:
+                %{trigger}:
+                  const: %{value}
+            %{then_key}:
+              required: [%{field}]
+      overlay_presence: |
+        - target: "%{schema_path}"
+          update:
+            %{keyword}:
+              %{trigger}: [%{field}]

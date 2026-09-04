@@ -4,17 +4,18 @@ require 'psych'
 
 module SpecGen
   module Rules
-    # Finds keys declared twice inside the same YAML mapping. Psych keeps the
-    # last value and says nothing, so a synonym pasted under two roles or a
-    # currency listed twice with different exponents would load cleanly and
-    # behave wrongly. In a hand-curated dictionary that is always a mistake,
-    # so the loader refuses the file instead of guessing which one was meant.
+    # Ищет ключи, объявленные дважды внутри одного YAML-объекта. Psych молча
+    # оставляет последнее значение, поэтому синоним, скопированный под две
+    # роли, или валюта, перечисленная дважды с разными экспонентами,
+    # загрузились бы без единой жалобы и работали бы неверно. В справочнике,
+    # который ведут руками, это всегда ошибка, поэтому загрузчик отказывает
+    # файлу, а не угадывает, какое из двух значений имели в виду.
     module DuplicateKeys
-      # @param text [String] YAML source
-      # @param file [String] path, used in the parser's own messages
-      # @return [Array<Array(String, Integer)>] JSONPath and line of each
-      #   repeated key, in document order
-      # @raise [Psych::SyntaxError] when the file does not parse at all
+      # @param text [String] исходный YAML
+      # @param file [String] путь; попадает в сообщения самого парсера
+      # @return [Array<Array(String, Integer)>] JSONPath и строка каждого
+      #   повторённого ключа, в порядке документа
+      # @raise [Psych::SyntaxError] если файл вообще не разбирается
       def self.find(text, file)
         document = Psych.parse(text, filename: file)
         return [] unless document
@@ -25,8 +26,8 @@ module SpecGen
       end
 
       # @param node [Psych::Nodes::Node, nil]
-      # @param keys [Array<String, Integer>] path from the document root
-      # @param found [Array] accumulator
+      # @param keys [Array<String, Integer>] путь от корня документа
+      # @param found [Array] накопитель
       # @return [void]
       def self.walk(node, keys, found)
         case node

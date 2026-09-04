@@ -2,21 +2,21 @@
 
 module SpecGen
   module IR
-    # A named object schema with its fields. Component schemas keep their
-    # component name; inline schemas get a synthetic name from the analyzer
-    # (e.g. "getBalance.responses.200") so that operations, responses and
-    # webhooks can reference every schema by name.
+    # Именованная схема-объект со своими полями. Компонентные схемы
+    # сохраняют имя компонента; инлайновые получают синтетическое имя от
+    # анализатора (например, "getBalance.responses.200"), чтобы операции,
+    # ответы и вебхуки могли ссылаться на любую схему по имени.
     #
-    #   name         key under profile.schemas
-    #   type         JSON Schema type, normally "object"
-    #   description  verbatim
-    #   required     the `required` list verbatim
+    #   name         ключ внутри profile.schemas
+    #   type         тип JSON Schema, обычно "object"
+    #   description  дословно
+    #   required     список `required` дословно
     #   fields       [Field]
-    #   json_path    "$.components.schemas.X" or the inline location
+    #   json_path    "$.components.schemas.X" или место инлайновой схемы
     Schema = Struct.new(:name, :type, :description, :required, :fields, :json_path,
                         keyword_init: true)
 
-    # Checks and lookups of Schema.
+    # Проверки и выборки Schema.
     class Schema
       include Node
 
@@ -29,29 +29,29 @@ module SpecGen
       # @raise [ArgumentError]
       def initialize(name:, type: 'object', description: nil, required: [], fields: [],
                      json_path: nil)
-        Node.assert_text!(name, 'schema name')
+        Node.assert_text!(name, 'имя схемы')
         super
       end
 
-      # @param name [String] property name
+      # @param name [String] имя свойства
       # @return [Field, nil]
       def field(name)
         fields.find { |field| field.name == name }
       end
 
-      # @param role [Symbol] one of Roles::FIELD
-      # @return [Array<Field>] fields playing that role, in schema order
+      # @param role [Symbol] одна из Roles::FIELD
+      # @return [Array<Field>] поля с этой ролью, в порядке схемы
       def fields_by_role(role)
         Roles.field!(role)
         fields.select { |field| field.role.value == role }
       end
 
-      # @return [Array<Field>] unconditionally required fields
+      # @return [Array<Field>] безусловно обязательные поля
       def required_fields
         fields.select(&:required?)
       end
 
-      # @return [Array<Field>] fields whose role could not be derived
+      # @return [Array<Field>] поля, роль которых вывести не удалось
       def unresolved_fields
         fields.select { |field| field.role.unknown? }
       end

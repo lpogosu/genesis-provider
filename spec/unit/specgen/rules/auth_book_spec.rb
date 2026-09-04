@@ -79,31 +79,31 @@ RSpec.describe SpecGen::Rules::AuthBook do
     it 'refuses an auth type outside IR::Auth' do
       patch = schemes { |set| set['bearer']['ir_type'] = 'jwt' }
 
-      expect(rules_error('auth.yml' => patch)).to include('unknown auth type "jwt"')
+      expect(rules_error('auth.yml' => patch)).to include('тип авторизации: неизвестное значение "jwt"')
     end
 
     it 'refuses a location outside IR::Auth' do
       patch = schemes { |set| set['bearer']['location'] = 'body' }
 
-      expect(rules_error('auth.yml' => patch)).to include('unknown auth location "body"')
+      expect(rules_error('auth.yml' => patch)).to include('место учётных данных: неизвестное значение "body"')
     end
 
     it 'refuses a match block keyed on something the spec does not have' do
       patch = schemes { |set| set['bearer']['match'] = { 'type' => 'http', 'vendor' => 'nova' } }
 
-      expect(rules_error('auth.yml' => patch)).to include('match cannot key on vendor')
+      expect(rules_error('auth.yml' => patch)).to include('блок match не может опираться на vendor')
     end
 
     it 'refuses a credential no fragment ever reads' do
       patch = schemes { |set| set['bearer']['credential_keys'] = %w[access_token unused_secret] }
 
       expect(rules_error('auth.yml' => patch))
-        .to include('credential keys no fragment reads: unused_secret')
+        .to include('не читает ни один фрагмент: unused_secret')
     end
 
     it 'refuses an empty dictionary' do
       expect(rules_error('auth.yml' => rule('auth.yml').merge('schemes' => {})))
-        .to include('no security scheme is described')
+        .to include('ни одна схема авторизации не описана')
     end
   end
 end

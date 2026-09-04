@@ -2,45 +2,45 @@
 
 module SpecGen
   module Rules
-    # OpenAPI `securitySchemes` to the credentials the generated service
-    # reads and the headers it sends.
+    # `securitySchemes` OpenAPI → учётные данные, которые читает
+    # сгенерированный сервис, и заголовки, которые он отправляет.
     #
-    # A scheme is recognised by its `match` block (type, in, scheme, flow),
-    # and the code fragments it produces are data too: the templates render
-    # what the dictionary says, so adding a provider that authenticates
-    # differently is a new entry here rather than a branch in a template.
-    # Fragments name credentials, never values - secrets are read through
-    # provider.credentials at runtime.
+    # Схема распознаётся своим блоком `match` (type, in, scheme, flow), а
+    # фрагменты кода, которые она даёт, — тоже данные: шаблоны выводят то,
+    # что сказано в справочнике, поэтому провайдер с другой авторизацией —
+    # это новая запись здесь, а не ветка в шаблоне. Фрагменты называют
+    # учётные данные, но никогда не значения: секреты читаются в рантайме
+    # через provider.credentials.
     class AuthBook < Book
       FILE = 'auth.yml'
       MATCH_KEYS = %w[type in scheme flow].freeze
-      # A fragment key spelled with this token takes its name from the spec.
+      # Ключ фрагмента с этим токеном берёт имя из спецификации.
       PARAM_NAME = '%{param_name}'
 
-      # @param name [String] entry name in the dictionary
+      # @param name [String] имя записи в справочнике
       # @return [Hash, nil] :match, :ir_type, :location, :credential_keys,
       #   :headers, :query, :token_url_required
       def scheme(name)
         @schemes[name.to_s]
       end
 
-      # @return [Array<String>] entry names, in dictionary order
+      # @return [Array<String>] имена записей, в порядке справочника
       def names
         @schemes.keys
       end
 
-      # @param entry [Hash] an entry #scheme_for returned
-      # @return [String, nil] the name that entry is filed under
+      # @param entry [Hash] запись, которую вернул #scheme_for
+      # @return [String, nil] имя, под которым эта запись лежит
       def name_of(entry)
         @schemes.key(entry)
       end
 
-      # Name of the header or query parameter that carries the credential.
-      # A literal fragment key is the name itself (Authorization); a key
-      # spelled with PARAM_NAME means the provider chose the name and the
-      # spec supplies it (apiKey `name`).
-      # @param entry [Hash] an entry #scheme_for returned
-      # @param declaration [Hash] the securityScheme as the spec wrote it
+      # Имя заголовка или query-параметра, который несёт учётные данные.
+      # Буквальный ключ фрагмента и есть само имя (Authorization); ключ,
+      # написанный через PARAM_NAME, означает, что имя выбрал провайдер и его
+      # даёт спецификация (`name` у apiKey).
+      # @param entry [Hash] запись, которую вернул #scheme_for
+      # @param declaration [Hash] securityScheme, как его написала спецификация
       # @return [String, nil]
       def param_name_for(entry, declaration)
         return fragment_keys(entry).first unless spec_names_param?(entry)
@@ -49,15 +49,15 @@ module SpecGen
         name.is_a?(String) && !name.strip.empty? ? name : nil
       end
 
-      # @param entry [Hash] an entry #scheme_for returned
-      # @return [Boolean] the parameter name comes from the spec, not from here
+      # @param entry [Hash] запись, которую вернул #scheme_for
+      # @return [Boolean] имя параметра приходит из спецификации, а не отсюда
       def spec_names_param?(entry)
         fragment_keys(entry).any? { |key| key.include?(PARAM_NAME) }
       end
 
-      # Finds the entry that describes a declared security scheme.
-      # @param declaration [Hash] one value of components.securitySchemes
-      # @param flow [String, nil] OAuth2 flow, when the caller picked one
+      # Находит запись, описывающую объявленную схему авторизации.
+      # @param declaration [Hash] одно значение components.securitySchemes
+      # @param flow [String, nil] flow OAuth2, если вызывающий выбрал один
       # @return [Hash, nil]
       def scheme_for(declaration, flow: nil)
         facts = facts_of(declaration, flow)
@@ -82,13 +82,13 @@ module SpecGen
       def build
         @schemes = {}
         section('schemes').each { |name, body| add(name, body) }
-        complain('no security scheme is described', path('schemes')) if @schemes.empty?
+        fault('auth.empty', path('schemes')) if @schemes.empty?
         @schemes.freeze
       end
 
       def add(name, body)
         at = path('schemes', name)
-        entry = compile(mapping(body, "scheme #{name}", at), at)
+        entry = compile(mapping(body, noun(:scheme_body, name: name), at), at)
         check_credentials(entry, at)
         @schemes[name.to_s] = entry.freeze
       end
@@ -96,9 +96,10 @@ module SpecGen
       def compile(fields, at)
         {
           match: match_of(fields['match'], "#{at}.match"),
-          ir_type: symbol_in(fields['ir_type'], IR::Auth::TYPES, 'auth type', "#{at}.ir_type"),
+          ir_type: symbol_in(fields['ir_type'], IR::Auth::TYPES, noun(:auth_type),
+                             "#{at}.ir_type"),
           location: location_of(fields['location'], "#{at}.location"),
-          credential_keys: string_list(fields['credential_keys'], 'credential keys',
+          credential_keys: string_list(fields['credential_keys'], noun(:credential_keys),
                                        "#{at}.credential_keys"),
           headers: fragments(fields['headers'], "#{at}.headers"),
           query: fragments(fields['query'], "#{at}.query"),
@@ -107,29 +108,29 @@ module SpecGen
       end
 
       def match_of(value, at)
-        match = mapping(value, 'match block', at)
-        unknown = match.keys - MATCH_KEYS
-        report_unknown(unknown, at)
-        complain('match must name at least the scheme type', at) if match.empty?
+        match = mapping(value, noun(:match_block), at)
+        report_unknown(match.keys - MATCH_KEYS, at)
+        fault('auth.match_empty', at) if match.empty?
         match.slice(*MATCH_KEYS).transform_values { |item| item.to_s.downcase }
       end
 
       def report_unknown(unknown, at)
         return if unknown.empty?
 
-        complain("match cannot key on #{unknown.join(', ')} " \
-                 "(allowed: #{MATCH_KEYS.join(', ')})", at)
+        fault('auth.unknown_match_key', at, keys: unknown.join(', '),
+                                            allowed: MATCH_KEYS.join(', '))
       end
 
       def location_of(value, at)
         return nil if value.nil?
 
-        symbol_in(value, IR::Auth::LOCATIONS, 'auth location', at)
+        symbol_in(value, IR::Auth::LOCATIONS, noun(:auth_location), at)
       end
 
       def fragments(value, at)
-        mapping(value, 'code fragments', at, required: false).to_h do |key, expression|
-          [key.to_s, text(expression, "fragment #{key}", "#{at}#{SpecLoader::JsonPath.segment(key)}")]
+        mapping(value, noun(:fragments), at, required: false).to_h do |key, expression|
+          [key.to_s, text(expression, noun(:fragment, key: key),
+                          "#{at}#{SpecLoader::JsonPath.segment(key)}")]
         end
       end
 
@@ -140,7 +141,7 @@ module SpecGen
         unused = entry[:credential_keys].reject { |key| used.any? { |line| line.include?(key) } }
         return if unused.empty?
 
-        complain("credential keys no fragment reads: #{unused.join(', ')}", at)
+        fault('auth.unused_credentials', at, keys: unused.join(', '))
       end
     end
   end

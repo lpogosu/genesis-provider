@@ -2,26 +2,26 @@
 
 module SpecGen
   module Analyzers
-    # One rule for naming a schema, shared by every analyzer that mentions
-    # one. Operations, responses and webhooks refer to schemas by name, and
-    # the SchemaAnalyzer files them under that same name, so both sides have
-    # to derive it the same way - hence this module rather than two similar
-    # private methods.
+    # Одно правило именования схемы, общее для каждого анализатора, который
+    # схему упоминает. Операции, ответы и вебхуки ссылаются на схемы по
+    # имени, а SchemaAnalyzer раскладывает их под тем же именем, поэтому обе
+    # стороны обязаны выводить его одинаково — отсюда отдельный модуль, а не
+    # два похожих приватных метода.
     #
-    # A schema that came from a `$ref` keeps its component name: the
-    # resolver replaced the reference with its target but left the original
-    # pointer behind in `x-specgen-ref`, so the name survives dereferencing.
-    # An inline schema has no name of its own and gets a synthetic one built
-    # from where it sits: "getBalance.responses.200".
+    # Схема, пришедшая из `$ref`, сохраняет имя своей компоненты: резолвер
+    # заменил ссылку её целью, но оставил исходный указатель в
+    # `x-specgen-ref`, поэтому имя переживает разыменование. У инлайновой
+    # схемы своего имени нет, и она получает синтетическое, построенное из
+    # места, где она стоит: "getBalance.responses.200".
     module SchemaNaming
-      # Left by SpecLoader::RefResolver on every dereferenced object.
+      # Оставлен SpecLoader::RefResolver на каждом разыменованном объекте.
       MARKER = SpecLoader::RefResolver::MARKER
       SEPARATOR = '.'
 
-      # @param schema [Object] a resolved schema object
-      # @param context [Array<String>] where it sits, e.g.
+      # @param schema [Object] разрешённый объект схемы
+      # @param context [Array<String>] где она стоит, например
       #   ["createPayout", "requestBody"]
-      # @return [String, nil] nil when there is no schema at all
+      # @return [String, nil] nil, если схемы нет вовсе
       def self.name_for(schema, context)
         return nil unless schema.is_a?(Hash)
 
@@ -29,7 +29,7 @@ module SpecGen
       end
 
       # @param schema [Hash]
-      # @return [String, nil] component name when the schema came from a $ref
+      # @return [String, nil] имя компоненты, если схема пришла из `$ref`
       def self.component_of(schema)
         ref = schema[MARKER]
         return nil unless ref.is_a?(String)
@@ -45,23 +45,23 @@ module SpecGen
         parts.empty? ? nil : parts.join(SEPARATOR)
       end
 
-      # Where a component schema lives, whichever use site it was found
-      # through. A schema keeps one JSONPath: warnings and overlay targets
-      # have to point at the component itself, not at the copy the resolver
-      # left inside an operation.
-      # @param name [String] component name
+      # Где живёт компонентная схема, через какое бы место использования её
+      # ни нашли. У схемы один JSONPath: предупреждения и target'ы overlay
+      # обязаны указывать на саму компоненту, а не на копию, которую
+      # резолвер оставил внутри операции.
+      # @param name [String] имя компоненты
       # @return [String] "$.components.schemas.Recipient"
       def self.component_path(name)
         SpecLoader::JsonPath.build(['components', 'schemas', name])
       end
 
-      # How an operation is named inside a synthetic schema name: by its
-      # operationId, or - when the spec has none - by method and path, so
-      # the name stays stable and unique without one.
+      # Как операция называется внутри синтетического имени схемы: по своему
+      # operationId, а если в спецификации его нет — по методу и пути, чтобы
+      # имя оставалось устойчивым и уникальным и без него.
       # @param id [String, nil] operationId
       # @param http_method [String, Symbol]
       # @param path [String]
-      # @return [String] "createPayout" or "post_payouts_payout_id"
+      # @return [String] "createPayout" или "post_payouts_payout_id"
       def self.operation_key(id, http_method, path)
         return id.strip if id.is_a?(String) && !id.strip.empty?
 

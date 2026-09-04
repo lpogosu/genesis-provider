@@ -2,30 +2,32 @@
 
 module SpecGen
   module Analyzers
-    # Fills profile.operations: every operation the spec declares, with the
-    # role it plays, its parameters, its request body and its responses.
+    # Заполняет profile.operations: каждую операцию, объявленную
+    # спецификацией, вместе с её ролью, параметрами, телом запроса и
+    # ответами.
     #
-    # Every operation ends up in the IR, including the ones that map to no
-    # contract method. An endpoint dropped here is functionality that
-    # silently disappears from the integration, which reads as a bug in the
-    # generator; an endpoint kept with the role :unmapped is a line in
-    # report.md that a human can act on.
+    # В IR попадает каждая операция, включая те, что не отображаются ни на
+    # один метод контракта. Выброшенный здесь эндпоинт — это
+    # функциональность, молча исчезающая из интеграции, что читается как баг
+    # генератора; сохранённый эндпоинт с ролью :unmapped — строка в
+    # report.md, с которой человек может что-то сделать.
     #
-    # Roles are decided by OperationRole, which counts weighted votes from
-    # rules/operations.yml. This class only turns that decision, and the
-    # rest of the operation object, into IR - and warns about everything it
-    # had to leave open: no operationId, an ambiguous role, a role that is
-    # recognised but has no place in Provider::BaseService.
+    # Роли решает OperationRole, который считает взвешенные голоса из
+    # rules/operations.yml. Этот класс лишь превращает то решение и всё
+    # остальное содержимое объекта операции в IR — и предупреждает обо всём,
+    # что пришлось оставить открытым: нет operationId, роль неоднозначна,
+    # роль распознана, но ей нет места в Provider::BaseService.
     class OperationAnalyzer < Base
-      # Roles the contract has no method for. They are recognised, not
-      # ignored: the generator gives each one a separate public method and
-      # the report says "not mapped to the contract".
+      # Роли, для которых у контракта нет метода. Они распознаны, а не
+      # проигнорированы: генератор даёт каждой отдельный публичный метод, а
+      # отчёт говорит «вне контракта».
       OFF_CONTRACT = (IR::Roles::OPERATION - IR::Roles::CONTRACT - [:unmapped]).freeze
-      # A range some specs spell in lower case; accepted, not reported.
+      # Диапазон, который некоторые спецификации пишут в нижнем регистре;
+      # принимается, но не репортится.
       RANGE = /\A[1-5]xx\z/i
 
-      # Fills `profile.operations`, in spec order.
-      # @return [IR::ProviderProfile] the profile it was given
+      # Заполняет `profile.operations` в порядке спецификации.
+      # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
         each_operation { |path, http_method, node| add(path, http_method, node) }
         profile
@@ -51,7 +53,7 @@ module SpecGen
                           json_path: at, **request(node, key))
       end
 
-      # @return [OperationRole::Result]
+      # @return [OperationRole::Result] решение композитного матчера
       def role_of(path, http_method, node)
         OperationRole.new(book: rules.operations, id: text(node['operationId']),
                           http_method: http_method.to_sym, path: path,
@@ -60,8 +62,8 @@ module SpecGen
                           secured: secured?(node)).call
       end
 
-      # An operation opts out of authentication with an empty list, which is
-      # how a spec marks a call the provider makes to us.
+      # Операция отказывается от авторизации пустым списком — так
+      # спецификация помечает вызов, который делает нам сам провайдер.
       def secured?(node)
         security = node['security']
         !(security.is_a?(Array) && security.empty?)
@@ -72,7 +74,7 @@ module SpecGen
         return [] if tags.nil?
         return tags.grep(String) if tags.is_a?(Array)
 
-        warn_shape('`tags` must be a list of strings', "#{at}.tags")
+        warn_shape(Texts.t('analyzers.operation.tags_shape'), "#{at}.tags")
         []
       end
 
@@ -87,7 +89,7 @@ module SpecGen
         list
       end
 
-      # @return [Hash] the request body members of IR::Operation
+      # @return [Hash] члены IR::Operation, описывающие тело запроса
       def request(node, key)
         body = node['requestBody']
         return {} unless body.is_a?(Hash)
@@ -100,13 +102,14 @@ module SpecGen
           request_examples: ContentReader.examples(content, media) }
       end
 
-      # @return [Array<IR::Response>] in spec order
+      # @return [Array<IR::Response>] в порядке спецификации
       def responses(node, key, at)
         listed = node['responses']
         return [] if listed.nil?
 
         unless listed.is_a?(Hash)
-          warn_shape('`responses` must be an object', "#{at}.responses")
+          warn_shape(Texts.t('analyzers.common.must_be_object', key: 'responses'),
+                     "#{at}.responses")
           return []
         end
 
@@ -134,13 +137,14 @@ module SpecGen
       end
 
       def skipped_status(code, at)
-        warn_shape("response key #{code.inspect} is not a status code, a range or `default`", at)
+        warn_shape(Texts.t('analyzers.operation.status_unknown', code: code.inspect), at)
         nil
       end
 
-      # Two different silences, two different warnings: a close race between
-      # real candidates is an ambiguity a human resolves, while nothing
-      # scoring at all means the spec says nothing we can read.
+      # Два разных молчания — два разных предупреждения: плотная борьба
+      # настоящих кандидатов это неоднозначность, которую разрешает человек,
+      # а полное отсутствие набранных очков означает, что спецификация не
+      # говорит ничего, что мы могли бы прочитать.
       def report(operation, result, at)
         missing_id(operation, at) if operation.id.nil?
         case result.reason
@@ -152,30 +156,28 @@ module SpecGen
 
       def missing_id(operation, at)
         profile.warn(:operation_id_missing,
-                     'the operation declares no operationId; it is referred to as ' \
-                     "#{operation.key.inspect} in this report and in the generated code",
+                     Texts.t('analyzers.operation.id_missing', key: operation.key.inspect),
                      json_path: at, severity: :info)
       end
 
       def no_role(result, at)
         profile.warn(:operation_unmapped,
-                     'too little in the spec says what this operation is for, so no role was ' \
-                     "assigned (#{scores_of(result)}); it needs a role in an overlay",
+                     Texts.t('analyzers.operation.unmapped', scores: scores_of(result)),
                      json_path: at)
       end
 
       def ambiguous(result, at)
         profile.warn(:operation_role_ambiguous,
-                     'two roles fit this operation equally well, so neither was assigned ' \
-                     "(#{scores_of(result)}); pick one in an overlay",
+                     Texts.t('analyzers.operation.ambiguous', scores: scores_of(result)),
                      json_path: at)
       end
 
-      # @return [String] "create_payout 8.0, webhook 8.0 of 13.0 votes cast"
+      # @return [String] "create_payout 8.0, webhook 8.0 из 13.0 поданных голосов"
       def scores_of(result)
         listed = result.scores.take(3).reject { |_, score| score.zero? }
                        .map { |role, score| "#{role} #{format('%.1f', score)}" }
-        "#{listed.join(', ')} of #{format('%.1f', result.cast)} votes cast"
+        Texts.t('analyzers.operation.scores', scores: listed.join(', '),
+                                              cast: format('%.1f', result.cast))
       end
 
       def off_contract(operation, at)
@@ -183,8 +185,7 @@ module SpecGen
         return unless OFF_CONTRACT.include?(role)
 
         profile.warn(:operation_unmapped,
-                     "recognised as #{role}, which Provider::BaseService has no method for; " \
-                     'it is generated as a separate public method and not mapped to the contract',
+                     Texts.t('analyzers.operation.off_contract', role: role),
                      json_path: at, severity: :info)
       end
 
@@ -193,7 +194,8 @@ module SpecGen
         nil
       end
 
-      # @return [String, nil] a scalar as written, nil when absent or not text
+      # @return [String, nil] скаляр как он написан, nil если его нет или он
+      #   не текст
       def text(value)
         return nil unless value.is_a?(String)
 

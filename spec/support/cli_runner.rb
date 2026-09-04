@@ -2,8 +2,8 @@
 
 require 'stringio'
 
-# Runs the CLI in-process and captures its exit status, stdout and stderr,
-# so examples can assert on messages without spawning a Ruby process.
+# Запускает CLI внутри процесса и забирает его код выхода, stdout и stderr:
+# так пример проверяет сообщения, не поднимая отдельный процесс Ruby.
 module CliRunner
   Result = Struct.new(:status, :stdout, :stderr)
 

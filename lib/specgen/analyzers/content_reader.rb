@@ -2,21 +2,23 @@
 
 module SpecGen
   module Analyzers
-    # Reads a `content` map - the one shape shared by request bodies,
-    # responses and webhook payloads: which media type to generate for,
-    # which schema the body has, and which examples the spec offers.
+    # Читает отображение `content` — единственную форму, общую для тел
+    # запросов, ответов и payload вебхуков: под какой media type
+    # генерировать, какая у тела схема и какие примеры предлагает
+    # спецификация.
     #
-    # JSON wins when the spec offers it, because that is what the generated
-    # service speaks; a spec that offers only something else is not an error
-    # and the first declared type is taken instead. Examples are normalised
-    # into one shape, {name => value}, so fixtures.json does not have to
-    # know whether the spec wrote `examples` or a bare `example`.
+    # JSON побеждает, если спецификация его предлагает, потому что на нём
+    # говорит сгенерированный сервис; спецификация, предлагающая только
+    # что-то другое, — не ошибка, тогда берётся первый объявленный тип.
+    # Примеры нормализуются к одной форме, {имя => значение}, чтобы
+    # fixtures.json не приходилось знать, написала спецификация `examples`
+    # или одиночный `example`.
     module ContentReader
       JSON = IR::Operation::JSON
       JSON_HINT = 'json'
 
-      # @param content [Object] the `content` map
-      # @return [String, nil] media type to read, nil when there is none
+      # @param content [Object] отображение `content`
+      # @return [String, nil] media type, который надо читать, nil если его нет
       def self.media_type(content)
         return nil unless content.is_a?(Hash)
 
@@ -29,7 +31,7 @@ module SpecGen
 
       # @param content [Object]
       # @param media [String, nil]
-      # @return [Hash] the media type object, empty when absent or malformed
+      # @return [Hash] объект media type; пустой, если его нет или он искажён
       def self.body(content, media)
         value = content.is_a?(Hash) ? content[media] : nil
         value.is_a?(Hash) ? value : {}
@@ -37,16 +39,16 @@ module SpecGen
 
       # @param content [Object]
       # @param media [String, nil]
-      # @param context [Array<String>] for SchemaNaming
-      # @return [String, nil] name of the body schema
+      # @param context [Array<String>] для SchemaNaming
+      # @return [String, nil] имя схемы тела
       def self.schema_name(content, media, context)
         SchemaNaming.name_for(body(content, media)['schema'], context)
       end
 
       # @param content [Object]
       # @param media [String, nil]
-      # @return [Hash{String => Object}] a bare `example` is filed under
-      #   Response::DEFAULT_EXAMPLE
+      # @return [Hash{String => Object}] одиночный `example` попадает под
+      #   ключ Response::DEFAULT_EXAMPLE
       def self.examples(content, media)
         node = body(content, media)
         listed = node['examples']
@@ -56,8 +58,8 @@ module SpecGen
         {}
       end
 
-      # An Example Object carries the payload under `value`; anything else
-      # is taken as the payload itself.
+      # Example Object несёт payload под ключом `value`; всё остальное
+      # считается самим payload.
       # @param item [Object]
       # @return [Object]
       def self.value_of(item)

@@ -28,15 +28,15 @@ RSpec.describe SpecGen::IR::Warning do
 
   it 'rejects a code outside the vocabulary, so typos cannot reach the report' do
     expect { warning(code: :units_are_weird) }
-      .to raise_error(ArgumentError, /unknown warning code :units_are_weird/)
+      .to raise_error(ArgumentError, /код предупреждения: неизвестное значение :units_are_weird/)
   end
 
   it 'rejects an unknown severity' do
-    expect { warning(severity: :critical) }.to raise_error(ArgumentError, /unknown warning severity/)
+    expect { warning(severity: :critical) }.to raise_error(ArgumentError, /серьёзность предупреждения: неизвестное значение/)
   end
 
   it 'requires a message a human can read' do
-    expect { warning(message: '') }.to raise_error(ArgumentError, /warning message/)
+    expect { warning(message: '') }.to raise_error(ArgumentError, /текст предупреждения/)
   end
 
   it 'is frozen once recorded' do

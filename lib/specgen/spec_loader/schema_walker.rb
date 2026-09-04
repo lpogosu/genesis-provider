@@ -2,12 +2,12 @@
 
 module SpecGen
   module SpecLoader
-    # Enumerates every Schema Object in a document together with its key
-    # path, following the places OpenAPI 3.x allows schemas (components,
-    # parameters, request bodies, responses, headers) and the JSON Schema
-    # keywords that nest subschemas. Stops at `$ref` nodes: the resolver
-    # deals with those, and the walker is meant to run on the raw document
-    # so that errors point at a schema's definition, not at its uses.
+    # Перечисляет каждый Schema Object документа вместе с путём его ключей,
+    # обходя места, где OpenAPI 3.x разрешает схемы (`components`,
+    # параметры, тела запросов, ответы, заголовки), и ключевые слова JSON
+    # Schema, которые вкладывают подсхемы. Останавливается на узлах `$ref`:
+    # ими занимается резолвер, а обходчик рассчитан на исходный документ,
+    # чтобы ошибка указывала на определение схемы, а не на её использования.
     class SchemaWalker
       OPERATIONS = %w[get put post delete options head patch trace].freeze
       COMPONENT_KINDS = {
@@ -19,9 +19,9 @@ module SpecGen
                       unevaluatedProperties unevaluatedItems].freeze
       NESTED_LIST = %w[allOf anyOf oneOf prefixItems].freeze
 
-      # @param data [Hash] raw document
+      # @param data [Hash] исходный документ
       # @yieldparam schema [Hash]
-      # @yieldparam keys [Array<String, Integer>] key path from the root
+      # @yieldparam keys [Array<String, Integer>] путь ключей от корня
       def self.each_schema(data, &)
         new(data).each_schema(&)
       end
@@ -33,7 +33,7 @@ module SpecGen
 
       # @yieldparam schema [Hash]
       # @yieldparam keys [Array<String, Integer>]
-      # @return [Enumerator] when no block is given
+      # @return [Enumerator] когда блок не передан
       def each_schema(&block)
         return enum_for(:each_schema) unless block
 
