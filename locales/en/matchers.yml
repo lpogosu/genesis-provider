@@ -1,0 +1,70 @@
+# locales/en/matchers.yml — texts of the field matcher stage: evidence of
+# votes and decisions, warnings about roles and the overlay draft.
+#
+# One file per pipeline stage, so two stages never edit the same file.
+# Placeholders are %{name}; the key set must match locales/ru/matchers.yml,
+# which spec/unit/specgen/texts_spec.rb checks.
+#
+# The overlay_fragment value is the YAML fragment a human pastes into their
+# own overlay file. That text is for a machine: keys and JSONPaths are the
+# same in every locale, only the comment is translated.
+
+matchers:
+  # What exactly matched in each matcher; printed inside the evidence.
+  name:
+    synonym: "name `%{name}` is a synonym of role %{role} (rules/roles.yml)"
+    header: "name `%{name}` is a known header from %{file}"
+    token: "token `%{token}` from the hints of role %{role} (rules/roles.yml)"
+    overlap: "tokens shared with synonym `%{synonym}`: %{tokens} (%{share})"
+    levenshtein: "`%{name}` resembles synonym `%{synonym}` (similarity %{similarity})"
+  type:
+    format: "format %{format} as the role expects"
+    compatible: "type %{type} is allowed for the role"
+  constraint:
+    pattern_same: "pattern is identical to a pattern of the role"
+    pattern_sample: "pattern accepts the role sample value %{sample}"
+    example: "example %{example} fits a pattern of the role"
+    enum_status: "enum values read as statuses by rules/statuses.yml (%{share})"
+    enum_currency: "enum values are ISO 4217 currency codes (%{share})"
+    enum_values: "enum values match the hints of the role (%{share})"
+    length: "maxLength %{length} as the role expects"
+    bounds: "numeric bounds %{keywords} as an amount has"
+  structure:
+    parent: "parent `%{parent}` carries token `%{token}` from the hints of the role"
+    location: "a %{location} parameter, where the role is expected"
+
+  # The whole evidence of a decision — the line under a role in the report.
+  evidence:
+    part: "%{matcher} %{points} (%{detail})"
+    composite: "composite match: %{parts} = %{score} of %{total}; %{runner_up}"
+    registry: "by dictionary: %{hit}; confirmations: %{parts}; %{runner_up}"
+    no_confirmations: "none"
+    runner_up: "next %{role} %{score}"
+    no_runner_up: "no other candidates"
+    no_signal: "neither the name nor the constraints matched any role of rules/roles.yml"
+    container: "container field (%{type}): its nested fields take roles, not the field itself"
+    overlay: "x-specgen-role: %{role}"
+    demoted: "role %{role} went to `%{winner}` (%{score}); "
+
+  # How a field or a parameter is called in a warning.
+  subject:
+    required_field: "required field `%{name}`"
+    optional_field: "optional field `%{name}`"
+    required_parameter: "required parameter `%{name}` (%{location})"
+    optional_parameter: "optional parameter `%{name}` (%{location})"
+
+  warning:
+    low: "%{subject}: role %{role} derived with low confidence %{confidence} (threshold %{threshold}); candidates: %{candidates}; %{consequence} — check the role and pin it with the fragment below"
+    ambiguous: "%{subject}: candidates %{candidates} fit almost equally, role %{role} taken (%{confidence}); %{consequence} — choose the role and pin it with the fragment below"
+    consequence_required: "the request cannot go without it, so it enters the code as %{role} with a TODO"
+    consequence_optional: "it will carry a TODO in the code"
+    unknown_required: "%{subject} (%{shape}): no role derived — %{evidence}; the request cannot go without it, so it enters the code with a TODO — set the role with the fragment below or add a synonym to rules/roles.yml"
+    unknown_optional: "%{subject} (%{shape}): no role derived — %{evidence}; it will not enter the request; if it is needed, set the role with the fragment below"
+    conflict: "%{subject}: role %{role} (%{score}) already belongs to `%{winner}` (%{winner_score}) in the same schema; %{fallback}"
+    conflict_next: "the next role %{role} (%{confidence}) was taken — check both fields and pin the roles with the fragment below"
+    conflict_none: "no other candidates, no role derived — set it with the fragment below"
+    overlay_bad: "x-specgen-role: unknown role %{value} (allowed: %{allowed}); the extension was ignored"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-role: %{role}  # one of: %{allowed}

@@ -156,8 +156,9 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
 
       expect(parameter).to have_attributes(name: 'payout_id', location: :path, required: true,
                                            type: 'string', format: 'uuid', example: 'np_1')
-      expect(parameter.role).to be_unknown
-      expect(parameter.role.evidence).to include('матчеры полей')
+      expect(parameter.role.value).to eq(:provider_operation_id)
+      expect(parameter.role.source).to eq(:registry)
+      expect(parameter.role.evidence).to include('расположение параметра — путь')
     end
   end
 

@@ -2,22 +2,25 @@
 
 module SpecGen
   module Rules
-    # Имена полей так, как их пишут провайдеры, → роли IR::Roles::FIELD.
+    # Имена полей так, как их пишут провайдеры, → роли IR::Roles::FIELD, и
+    # настройка композитного матчера, который эти роли присваивает.
     #
     # `names` — синонимы: точное совпадение после нормализации, и ни одно
     # имя не может принадлежать двум ролям. Столкновение останавливает
     # загрузку с указанием обеих ролей, потому что молча оставить первое
     # совпадение — это ровно тот путь, которым синоним одной роли попадает в
     # поле другой роли в сгенерированном платёжном запросе. Остальные
-    # подсказки — `tokens`, `types`, `formats`, `patterns`, `parents` — не
+    # подсказки — `tokens`, `types`, `formats`, `patterns`, `parents`,
+    # `locations`, `samples`, `enum_values`, `lengths`, `bounds` — не
     # принимаются на веру, а взвешиваются матчерами, поэтому им можно
-    # пересекаться свободно.
+    # пересекаться свободно (их читает RoleHints). Веса, пороги и баллы
+    # сигналов лежат в секции `matchers` того же файла (RolesMatchers):
+    # настройка матчера — правка данных, а не кода.
     class RolesBook < Book
+      include RoleHints
+      include RolesMatchers
+
       FILE = 'roles.yml'
-      # Типы данных OpenAPI, с которыми может быть объявлено поле роли.
-      TYPES = %i[array boolean integer number object string].freeze
-      NO_HINTS = { names: [], tokens: [], types: [], formats: [], patterns: [],
-                   parents: [] }.freeze
 
       # @param name [String] имя поля, как написано в спецификации
       # @return [Symbol, nil] роль поля; nil, если синоним не совпал
@@ -31,7 +34,8 @@ module SpecGen
       end
 
       # @param role [Symbol]
-      # @return [Hash] :names, :tokens, :types, :formats, :patterns, :parents
+      # @return [Hash] :names, :tokens, :types, :formats, :patterns, :parents,
+      #   :locations, :samples, :enum_values, :lengths, :bounds
       def hints(role)
         @entries.fetch(role, NO_HINTS)
       end
@@ -55,6 +59,7 @@ module SpecGen
         @origins = {}
         section('roles').each { |key, body| add(key, body) }
         report_missing
+        load_matchers
         [@entries, @names, @origins].each(&:freeze)
       end
 
@@ -63,26 +68,13 @@ module SpecGen
         role = symbol_in(key, IR::Roles::FIELD, noun(:field_role), at)
         return if role.nil?
 
-        @entries[role] = compile(role, mapping(body, noun(:role_body, role: key), at), at)
-      end
-
-      def compile(role, hints, at)
-        {
-          names: claim_all(role, list(hints, 'names', at, required: true), "#{at}.names"),
-          tokens: normalized(list(hints, 'tokens', at)),
-          types: types_of(hints['types'], "#{at}.types"),
-          formats: list(hints, 'formats', at),
-          patterns: patterns_of(hints['patterns'], "#{at}.patterns"),
-          parents: normalized(list(hints, 'parents', at))
-        }.freeze
+        fields = mapping(body, noun(:role_body, role: key), at)
+        names = claim_all(role, list(fields, 'names', at, required: true), "#{at}.names")
+        @entries[role] = compile_hints(fields, at).merge(names: names).freeze
       end
 
       def list(hints, key, at, required: false)
         string_list(hints[key], noun(:list, key: key), "#{at}.#{key}", required: required)
-      end
-
-      def normalized(values)
-        values.map { |value| Normalizer.call(value) }.reject(&:empty?).uniq
       end
 
       def claim_all(role, values, at)
@@ -107,20 +99,6 @@ module SpecGen
 
       def conflict(name, owner, at)
         fault('roles.conflict', at, name: name.inspect, owner: owner, origin: @origins[name])
-      end
-
-      def types_of(value, at)
-        listed = string_list(value, noun(:list, key: 'types'), at, required: false)
-        listed.each_with_index.filter_map do |type, index|
-          symbol_in(type, TYPES, noun(:openapi_type), "#{at}[#{index}]")
-        end
-      end
-
-      def patterns_of(value, at)
-        sources = string_list(value, noun(:list, key: 'patterns'), at, required: false)
-        sources.each_with_index.filter_map do |source, index|
-          pattern(source, noun(:pattern), "#{at}[#{index}]")
-        end
       end
 
       def report_missing

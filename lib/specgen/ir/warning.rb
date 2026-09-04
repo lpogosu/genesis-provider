@@ -48,12 +48,22 @@ module SpecGen
       # `condition_unclear` — описание операции читается как ограничение по
       # статусу, но не называет ни одного статуса, объявленного в enum;
       # условие взаимодействия не выведено, догадки нет.
+      #
+      # Четыре кода про роли полей различают четыре исхода матчеров:
+      # `field_role_unknown` — ни один матчер не проголосовал, необязательное
+      # поле пропущено (справка); `required_field_role_unknown` — то же у
+      # обязательного поля, без которого запрос не уйдёт (предупреждение);
+      # `field_role_low_confidence` — роль присвоена лучшему кандидату, но
+      # балл ниже порога или второй кандидат слишком близко, в тексте баллы
+      # всех кандидатов; `field_role_conflict` — одна роль набрала лучший
+      # балл у двух полей одной схемы, роль оставлена у одного из них.
       CODES = %i[
         spec_element_unsupported schema_unresolved example_missing
         provider_name_unknown server_environment_unknown
         operation_unmapped operation_id_missing operation_role_ambiguous
         undeclared_status_code
-        field_role_unknown required_field_role_unknown conditional_required_hint
+        field_role_unknown required_field_role_unknown field_role_low_confidence
+        field_role_conflict conditional_required_hint
         format_unknown
         units_unknown units_inconsistent currency_unknown
         status_unmapped status_missing_from_enum

@@ -84,6 +84,8 @@ summary:
   unsecured: "unsecured"
   schemas: "Schemas:"
   schemas_none: "Schemas: none"
+  field_roles: "Field roles: %{known} of %{total} scalar%{sources}; unknown %{unknown}; containers %{containers}"
+  field_roles_source: "%{source} %{count}"
   field_required: "required"
   field_optional: "optional"
   param_required: "required"

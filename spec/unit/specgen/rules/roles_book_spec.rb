@@ -93,6 +93,35 @@ RSpec.describe SpecGen::Rules::RolesBook do
         .to eq([/^7\d{10}$/])
     end
 
+    it 'reads locations, samples, enum values, lengths and bounds' do
+      roles = rule('roles.yml')
+      roles['roles']['currency'].merge!('samples' => ['RUB'], 'patterns' => ['^[A-Z]{3}$'],
+                                        'lengths' => [3], 'enum_values' => %w[Card SBP])
+      roles['roles']['signature']['locations'] = ['header']
+      roles['roles']['amount']['bounds'] = true
+      book = roles_book('roles' => roles['roles'])
+
+      expect(book.hints(:currency)).to include(samples: ['RUB'], lengths: [3], enum_values: %w[card sbp])
+      expect(book.hints(:signature)[:locations]).to eq([:header])
+      expect(book.hints(:amount)[:bounds]).to be(true)
+      expect(book.hints(:status)[:bounds]).to be(false)
+    end
+
+    it 'refuses a sample that its own patterns do not accept' do
+      roles = rule('roles.yml')
+      roles['roles']['recipient_phone'].merge!('patterns' => ['^7\d{10}$'], 'samples' => ['abc'])
+
+      expect(rules_error('roles.yml' => roles))
+        .to include('образец "abc" не подходит ни под один шаблон').and include('$.roles.recipient_phone.samples[0]')
+    end
+
+    it 'refuses a parameter location it does not know' do
+      roles = rule('roles.yml')
+      roles['roles']['signature']['locations'] = ['body']
+
+      expect(rules_error('roles.yml' => roles)).to include('место параметра: неизвестное значение "body"')
+    end
+
     it 'refuses a pattern that does not compile' do
       roles = rule('roles.yml')
       roles['roles']['recipient_phone']['patterns'] = ['^7\d{10}(']
@@ -105,6 +134,55 @@ RSpec.describe SpecGen::Rules::RolesBook do
       roles['roles']['amount']['types'] = %w[integer decimal]
 
       expect(rules_error('roles.yml' => roles)).to include('тип OpenAPI: неизвестное значение "decimal"')
+    end
+  end
+
+  describe 'the matchers section' do
+    def matchers_error(&)
+      roles = rule('roles.yml')
+      yield roles['matchers']
+      rules_error('roles.yml' => roles)
+    end
+
+    it 'hands the matchers their weights, thresholds, scores and word lists' do
+      book = roles_book
+
+      expect(book.weight(:name)).to eq(5)
+      expect(book.total_weight).to eq(14)
+      expect(book.scoring(:threshold)).to eq(0.6)
+      expect(book.score(:name, :token)).to eq(1.0)
+      expect(book.score(:name, :min_length)).to eq(4)
+      expect(book.generic_tokens).to include('id')
+      expect(book.repeatable?(:amount)).to be(false)
+    end
+
+    it 'lists every contradiction of weights and thresholds in one error' do
+      message = matchers_error do |matchers|
+        matchers['weights']['type'] = 0
+        matchers['weights']['vibes'] = 3
+        matchers['scoring']['threshold'] = 2
+        matchers['name']['token'] = 1.5
+        matchers['repeatable'] = ['mood']
+      end
+
+      expect(message).to include('вес сигнала type должен быть больше нуля')
+        .and include('неизвестные ключи vibes')
+        .and include('балл или порог threshold: ожидается число в диапазоне 0.0..1.0')
+        .and include('балл или порог token: ожидается число в диапазоне 0.0..1.0')
+        .and include('роль поля: неизвестное значение "mood"')
+        .and include('$.matchers.weights.type').and include('$.matchers.repeatable[0]')
+    end
+
+    it 'refuses a weight that lets one matcher reach the threshold alone' do
+      expect(matchers_error { |matchers| matchers['weights']['name'] = 50 })
+        .to include('матчер name в одиночку набирает 0.85 при пороге 0.60')
+    end
+
+    it 'refuses a missing section and an unknown one' do
+      expect(rules_error('roles.yml' => rule('roles.yml').except('matchers')))
+        .to include('раздел matchers: ожидается объект')
+      expect(matchers_error { |matchers| matchers['vibes'] = {} })
+        .to include('неизвестные ключи vibes').and include('$.matchers')
     end
   end
 end

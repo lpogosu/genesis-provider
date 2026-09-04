@@ -64,7 +64,8 @@ module SpecGen
         parts.concat(operation.parameters.map { |parameter| parameter_text(parameter) })
         return [] if parts.empty?
 
-        ["#{INDENT * 3}#{Texts.t('summary.request').ljust(label_width)} #{parts.join('; ')}"]
+        ["#{INDENT * 3}#{Texts.t('summary.request').ljust(label_width)} #{parts.join('; ')}",
+         *parameter_evidence(operation)]
       end
 
       def body_text(operation)
@@ -73,9 +74,24 @@ module SpecGen
         "#{operation.request_schema} #{Texts.t('summary.optional_body')}"
       end
 
+      # Роль параметра — в его скобках: заголовок идемпотентности и
+      # идентификатор в пути меняют облик сгенерированного запроса так же,
+      # как роль поля тела.
       def parameter_text(parameter)
         need = Texts.t(parameter.required? ? 'summary.param_required' : 'summary.param_optional')
-        "#{Texts.t("location.#{parameter.location}")} #{parameter.name} (#{need})"
+        text = "#{Texts.t("location.#{parameter.location}")} #{parameter.name} (#{need})"
+        parameter.role.known? ? "#{text} role=#{parameter.role.value}" : text
+      end
+
+      # Обоснование роли каждого параметра, с его именем впереди: параметров
+      # в строке несколько, а строк обоснования — по одной на каждый.
+      def parameter_evidence(operation)
+        return [] unless @explain
+
+        operation.parameters.filter_map do |parameter|
+          evidence = parameter.role.evidence
+          "#{INDENT * 4}= #{parameter.name}: #{evidence}" if evidence
+        end
       end
 
       def responses_line(operation)

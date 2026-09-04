@@ -26,6 +26,44 @@ RSpec.describe 'the shipped dictionaries' do
       expect(rules.roles.role_for('external_id')).to eq(:external_id)
       expect(rules.roles.role_for('payout_id')).to eq(:provider_operation_id)
     end
+
+    it 'weights the name above the constraints, the constraints no lower than the structure, the type last' do
+      book = rules.roles
+
+      expect(book.weight(:name)).to be > book.weight(:constraint)
+      expect(book.weight(:constraint)).to be >= book.weight(:structure)
+      expect(book.weight(:structure)).to be > book.weight(:type)
+      expect(book.scoring(:threshold)).to eq(0.6)
+    end
+
+    it 'lets no matcher reach the threshold on its own' do
+      book = rules.roles
+
+      SpecGen::Rules::RolesMatchers::MATCHERS.each do |matcher|
+        expect(book.weight(matcher).fdiv(book.total_weight)).to be < book.scoring(:threshold)
+      end
+    end
+
+    it 'carries samples for every role with patterns, so a foreign pattern can be recognised' do
+      book = rules.roles
+
+      with_patterns = book.roles.reject { |role| book.hints(role)[:patterns].empty? }
+
+      expect(with_patterns).not_to be_empty
+      with_patterns.each do |role|
+        expect(book.hints(role)[:samples]).not_to be_empty, "role #{role} has patterns but no samples"
+      end
+    end
+
+    it 'expects the idempotency key and the signature in a header, the operation id in the path' do
+      expect(rules.roles.hints(:idempotency_key)[:locations]).to eq([:header])
+      expect(rules.roles.hints(:signature)[:locations]).to eq([:header])
+      expect(rules.roles.hints(:provider_operation_id)[:locations]).to eq([:path])
+    end
+
+    it 'treats id, name, type and code as generic tokens' do
+      expect(rules.roles.generic_tokens).to include('id', 'name', 'type', 'code')
+    end
   end
 
   describe 'statuses' do

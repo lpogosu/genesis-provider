@@ -4,34 +4,37 @@ module SpecGen
   module Analyzers
     # Точный словарный поиск роли по имени поля — уровень 2 доверия, общий
     # для анализаторов, которым нужно найти поле суммы, валюты, статуса или
-    # кода ошибки до того, как отработают матчеры полей.
+    # кода ошибки независимо от матчеров полей.
     #
-    # Это не матчер и не заменяет его: здесь только точное совпадение
-    # нормализованного имени с синонимом из rules/roles.yml, без токенов,
-    # без Левенштейна и без порогов. Найденное так поле анализатор использует
-    # для собственного вывода (например, экспоненты валюты), но роль самому
-    # полю не проставляет: роли полей в IR — работа матчеров, и два места,
-    # решающих одно и то же, разошлись бы.
+    # Это тонкая точка входа, а не второй поиск: словарный шаг живёт в
+    # Matchers::NameMatcher (#exact), тот же, с которого начинает композитный
+    # матчер. Здесь только точное совпадение нормализованного имени с
+    # синонимом из rules/roles.yml, без токенов, без Левенштейна и без
+    # порогов. Найденное так поле анализатор использует для собственного
+    # вывода (например, экспоненты валюты), но роль самому полю не
+    # проставляет: роли полей в IR проставляют SchemaAnalyzer и
+    # OperationAnalyzer через Matchers::Assigner, и два места, решающих одно
+    # и то же, разошлись бы.
     #
     # Одно исключение сделано для кода ошибки. Голое `code` намеренно не
     # входит в синонимы роли error_code — так называют и код валюты, и код
     # банка. Поэтому код ошибки узнаётся структурно: токен имени из подсказок
     # `tokens` роли плюс родитель (свойство или схема), чьи токены совпадают
-    # с подсказками `parents` — `error.code`, `PayoutError.code`.
+    # с подсказками `parents` — `error.code`, `PayoutError.code`. Проверки
+    # те же, что у NameMatcher и StructureMatcher.
     class RoleLookup
       ERROR_CODE = :error_code
 
       # @param book [Rules::RolesBook]
       def initialize(book)
         @book = book
+        @names = Matchers::NameMatcher.new(book: book)
       end
 
       # @param name [String, nil] имя поля или параметра как написано
       # @return [Symbol, nil] роль, синонимом которой является имя
       def role_of(name)
-        return nil if name.nil?
-
-        @book.role_for(name)
+        @names.exact(name)
       end
 
       # @param name [String]
@@ -56,11 +59,7 @@ module SpecGen
       def error_code?(name, parents)
         return true if role?(name, ERROR_CODE)
 
-        hints = @book.hints(ERROR_CODE)
-        tokens = Rules::Normalizer.tokens(name)
-        return false unless tokens.intersect?(hints[:tokens])
-
-        parents.any? { |parent| Rules::Normalizer.tokens(parent).intersect?(hints[:parents]) }
+        !error_parent(name, parents).nil?
       end
 
       # @param name [String]
@@ -69,11 +68,18 @@ module SpecGen
       def error_code_evidence(name, parents)
         return evidence(name, ERROR_CODE) if role?(name, ERROR_CODE)
 
-        hints = @book.hints(ERROR_CODE)
-        parent = parents.find do |candidate|
-          Rules::Normalizer.tokens(candidate).intersect?(hints[:parents])
-        end
-        Texts.t('analyzers.roles.error_code_structure', name: name, parent: parent)
+        Texts.t('analyzers.roles.error_code_structure', name: name,
+                                                        parent: error_parent(name, parents))
+      end
+
+      private
+
+      # @return [String, nil] родитель-ошибка, если токен имени тоже совпал
+      def error_parent(name, parents)
+        return nil if @names.token(name, ERROR_CODE).nil?
+
+        hit = Matchers::StructureMatcher.parent_hit(parents, @book.hints(ERROR_CODE)[:parents])
+        hit&.first
       end
     end
   end

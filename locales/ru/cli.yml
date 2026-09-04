@@ -84,6 +84,8 @@ summary:
   unsecured: "без авторизации"
   schemas: "Схемы:"
   schemas_none: "Схемы: не найдены"
+  field_roles: "Роли полей: %{known} из %{total} скалярных%{sources}; не выведено %{unknown}; контейнеров %{containers}"
+  field_roles_source: "%{source} %{count}"
   field_required: "обязательное"
   field_optional: "необязательное"
   param_required: "обязательный"

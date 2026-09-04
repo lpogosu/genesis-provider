@@ -86,12 +86,22 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and include('429 ErrorResponse +Retry-After')
     end
 
-    it 'prints each field with type, requiredness and constraints' do
-      expect(text).to match(/amount\s+integer\s+обязательное\s+minimum=100000/)
-        .and match(/currency\s+string\s+обязательное\s+enum=RUB/)
-        .and match(/external_id\s+string\s+обязательное\s+max_length=64/)
-        .and match(/created_at\s+string date-time\s+необязательное$/)
+    it 'prints each field with type, requiredness, role and constraints' do
+      expect(text).to match(/amount\s+integer\s+обязательное\s+role=amount\s+minimum=100000/)
+        .and match(/currency\s+string\s+обязательное\s+role=currency\s+enum=RUB/)
+        .and match(/external_id\s+string\s+обязательное\s+role=external_id\s+max_length=64/)
+        .and match(/created_at\s+string date-time\s+необязательное\s+role=created_at$/)
         .and match(/recipient\s+object\s+обязательное\s+-> Recipient/)
+    end
+
+    it 'sums up the field roles by source under the schemas heading' do
+      expect(text).to include('Роли полей: 22 из 26 скалярных (по справочнику 21, эвристика 1); не выведено 4; контейнеров 5')
+    end
+
+    it 'prints the role of a parameter next to it' do
+      expect(text).to include('заголовок Idempotency-Key (необязательный) role=idempotency_key')
+        .and include('путь payout_id (обязательный) role=provider_operation_id')
+        .and include('заголовок X-NovaPay-Signature (обязательный) role=signature')
     end
 
     it 'states a conditional requirement with the origin it was read from' do
@@ -100,7 +110,7 @@ RSpec.describe SpecGen::Reporter::Summary do
     end
 
     it 'counts warnings by severity, declined, and lists each with its JSONPath' do
-      expect(text).to include('Предупреждения: 14 (0 ошибок, 5 предупреждений, 9 справок)')
+      expect(text).to include('Предупреждения: 18 (0 ошибок, 6 предупреждений, 12 справок)')
         .and include("ВНИМАНИЕ $.components.schemas.Recipient\n")
         .and include("СПРАВКА  $.paths['/balance'].get\n")
     end
@@ -139,7 +149,8 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and include('Interaction conditions: 9')
         .and match(/cancel\s+0\.95\s+cancelPayout  \(not in contract\)/)
         .and include('required when type = sbp (description hint 0.50)')
-        .and include('Warnings: 14 (0 errors, 5 warnings, 9 info)')
+        .and include('Warnings: 18 (0 errors, 6 warnings, 12 info)')
+        .and include('Field roles: 22 of 26 scalar (registry 21, heuristic 1); unknown 4; containers 5')
     end
   end
 
@@ -151,6 +162,13 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and include('= запись rules/auth.yml "api_key_header" совпала по type=apikey, in=header')
         .and include('= композитное сопоставление: operation_id 5.0')
         .and include('= type: integer -> минорные единицы; описание подтверждает: "копейках"; minimum 100000 = 1000.00 RUB')
+    end
+
+    it 'explains the role of every field and parameter' do
+      expect(text).to include('= по справочнику: имя `amount` — синоним роли amount (rules/roles.yml)')
+        .and include('= композитное сопоставление: name 5.0 (токен `code` из подсказок роли error_code')
+        .and include('= Idempotency-Key: по справочнику: имя `Idempotency-Key` — синоним роли idempotency_key')
+        .and include('= X-NovaPay-Signature: по справочнику: имя `X-NovaPay-Signature` — известный заголовок из signatures.yml')
     end
 
     it 'prints the overlay fragment under a fixable warning' do

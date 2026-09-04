@@ -1,0 +1,70 @@
+# locales/ru/matchers.yml — тексты стадии матчеров полей: обоснования голосов
+# и решений, предупреждения о ролях и заготовка overlay.
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с
+# locales/en/matchers.yml, это проверяет spec/unit/specgen/texts_spec.rb.
+#
+# Значение overlay_fragment — фрагмент YAML, который человек вставляет в свой
+# overlay-файл. Это текст для машины: ключи и JSONPath одинаковы во всех
+# локалях, переведён только комментарий.
+
+matchers:
+  # Что именно совпало у каждого матчера; печатается внутри обоснования.
+  name:
+    synonym: "имя `%{name}` — синоним роли %{role} (rules/roles.yml)"
+    header: "имя `%{name}` — известный заголовок из %{file}"
+    token: "токен `%{token}` из подсказок роли %{role} (rules/roles.yml)"
+    overlap: "общие токены с синонимом `%{synonym}`: %{tokens} (%{share})"
+    levenshtein: "`%{name}` похоже на синоним `%{synonym}` (сходство %{similarity})"
+  type:
+    format: "format %{format} как у роли"
+    compatible: "type %{type} допустим для роли"
+  constraint:
+    pattern_same: "pattern дословно совпадает с шаблоном роли"
+    pattern_sample: "pattern принимает образец значения роли %{sample}"
+    example: "example %{example} подходит под шаблон роли"
+    enum_status: "значения enum читаются как статусы по rules/statuses.yml (%{share})"
+    enum_currency: "значения enum — коды валют ISO 4217 (%{share})"
+    enum_values: "значения enum совпали с подсказками роли (%{share})"
+    length: "maxLength %{length} как у роли"
+    bounds: "числовые границы %{keywords} как у суммы"
+  structure:
+    parent: "родитель `%{parent}` содержит токен `%{token}` из подсказок роли"
+    location: "расположение параметра — %{location}, где роль и ожидается"
+
+  # Обоснование решения целиком — строка под ролью в отчёте.
+  evidence:
+    part: "%{matcher} %{points} (%{detail})"
+    composite: "композитное сопоставление: %{parts} = %{score} из %{total}; %{runner_up}"
+    registry: "по справочнику: %{hit}; подтверждения: %{parts}; %{runner_up}"
+    no_confirmations: "нет"
+    runner_up: "следующая %{role} %{score}"
+    no_runner_up: "других кандидатов нет"
+    no_signal: "ни имя, ни ограничения не совпали ни с одной ролью rules/roles.yml"
+    container: "поле-контейнер (%{type}): роли получают его вложенные поля, а не оно само"
+    overlay: "x-specgen-role: %{role}"
+    demoted: "роль %{role} отдана `%{winner}` (%{score}); "
+
+  # Как поле или параметр называется в предупреждении.
+  subject:
+    required_field: "обязательное поле `%{name}`"
+    optional_field: "необязательное поле `%{name}`"
+    required_parameter: "обязательный параметр `%{name}` (%{location})"
+    optional_parameter: "необязательный параметр `%{name}` (%{location})"
+
+  warning:
+    low: "%{subject}: роль %{role} выведена с низкой уверенностью %{confidence} (порог %{threshold}); кандидаты: %{candidates}; %{consequence} — проверьте роль и закрепите её фрагментом ниже"
+    ambiguous: "%{subject}: кандидаты %{candidates} подходят почти одинаково, взята роль %{role} (%{confidence}); %{consequence} — выберите роль и закрепите её фрагментом ниже"
+    consequence_required: "без него запрос не уйдёт, поэтому в код оно попадёт как %{role} с TODO"
+    consequence_optional: "в коде оно будет помечено TODO"
+    unknown_required: "%{subject} (%{shape}): роль не выведена — %{evidence}; без него запрос не уйдёт, поэтому в код оно попадёт с TODO — задайте роль фрагментом ниже или добавьте синоним в rules/roles.yml"
+    unknown_optional: "%{subject} (%{shape}): роль не выведена — %{evidence}; в запрос оно не попадёт; если оно нужно, задайте роль фрагментом ниже"
+    conflict: "%{subject}: роль %{role} (%{score}) уже у `%{winner}` (%{winner_score}) в той же схеме; %{fallback}"
+    conflict_next: "взята следующая роль %{role} (%{confidence}) — проверьте оба поля и закрепите роли фрагментом ниже"
+    conflict_none: "других кандидатов нет, роль не выведена — задайте её фрагментом ниже"
+    overlay_bad: "x-specgen-role: неизвестная роль %{value} (допустимо: %{allowed}); расширение проигнорировано"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-role: %{role}  # одна из: %{allowed}

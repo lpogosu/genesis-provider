@@ -91,6 +91,25 @@ Derived.unknown(evidence: 'no currency field found')
 Вспомогательные типы: `Field`, `Parameter`, `Response`, `RequiredWhen`,
 `WebhookEvent`, `SignatureProfile`.
 
+### Роль поля и параметра
+
+`Field#role` и `Parameter#role` — `Derived<Symbol>` из `Roles::FIELD`,
+проставленный композитным матчером `Matchers::Assigner` в момент чтения
+схемы или операции (подробности — `docs/STATUS.md`, раздел соглашений).
+Источник читается так:
+
+| source | Что значит для роли поля |
+|---|---|
+| `:overlay` | `x-specgen-role` на свойстве или параметре |
+| `:registry` | имя — точный синоним `rules/roles.yml` или известный заголовок `rules/signatures.yml` / `rules/idempotency.yml`; уверенность справочника 0.90 |
+| `:heuristic` | сумма голосов матчеров; уверенность — доля набранных очков от суммы весов, ниже порога 0.6 сопровождается `field_role_low_confidence` |
+| `:unknown` | никто не опознал (`field_role_unknown` / `required_field_role_unknown`), поле проиграло конфликт без следующего кандидата (`field_role_conflict`) или поле — контейнер |
+
+Контейнер (объект или массив) — единственный `Derived.unknown` без
+предупреждения: роли получают его вложенные поля, и `evidence` так и
+говорит. `Schema#unresolved_fields` поэтому возвращает и контейнеры;
+генератор отличает их по `Field#schema`.
+
 У `Units`, `Idempotency` и `SignatureProfile` нет значений по умолчанию для
 членов-`Derived`: каждый приходит от анализатора вместе с обоснованием через
 `Texts`, а невыведенный член обязан объяснить, чего именно не сказала
@@ -146,6 +165,7 @@ OverlayApplier ещё пуст, но приоритет overlay заложен �
 | `x-specgen-status-map` | схема поля статуса или события | `{статус провайдера: внутренний}` | StatusAnalyzer, WebhookAnalyzer |
 | `x-specgen-error-actions` | схема поля кода ошибки | `{код: действие}` | ErrorAnalyzer |
 | `x-specgen-signature` | операция вебхука | `profile`, `header`, `algorithm`, `encoding`, `payload`, `secret_key`, `tolerance` | WebhookAnalyzer |
+| `x-specgen-role` | схема свойства или объект параметра | одна из `Roles::FIELD` | `Matchers::Assigner` через SchemaReader и ParameterReader |
 
 Значение вне словаря IR не принимается на веру: расширение игнорируется с
 предупреждением `spec_element_unsupported`. Префикс `x-specgen-` тот же, что
@@ -229,7 +249,9 @@ json_path:, severity:, suggested_overlay:)`.
 
 Всё общее — общие reader'ы в `lib/specgen/analyzers/`, пересчитываемые от
 документа: `SchemaIndex` (все схемы под именами `SchemaNaming`), `RoleLookup`
-(точный словарный поиск роли по имени — уровень 2, роль полю не проставляет),
+(точный словарный поиск роли по имени — уровень 2, делегат к
+`Matchers::NameMatcher#exact`; роль полю не проставляет, это делает
+`Matchers::Assigner` из SchemaReader и ParameterReader),
 `ExampleReader` (значения примеров с JSONPath и родителями), `StatusReader`
 (строка → внутренний статус, с снятием префикса события), `DedupReader`
 (ответ с кодом конфликта со схемой успеха), `Base#role_of` (роль операции тем

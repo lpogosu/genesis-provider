@@ -8,11 +8,13 @@ module SpecGen
     # условия: «обязательно при type = card», прочитанное из прозы описания,
     # и то же правило из dependentRequired — разный уровень доверия.
     #
-    # Роли полей печатаются только после того, как их проставит матчер:
-    # колонка из одних «не выведено» до появления матчеров не сказала бы
-    # ничего.
+    # Под заголовком — сводка ролей: сколько скалярных полей получили роль и
+    # из какого источника, сколько осталось без роли и сколько полей —
+    # контейнеры, которым роль не положена. Роль каждого поля стоит в его
+    # строке, обоснование — под ней с `explain`.
     class SchemaLines
       INDENT = Format::INDENT
+      CONTAINERS = %w[object array].freeze
 
       # @param profile [IR::ProviderProfile]
       # @param explain [Boolean] печатать обоснование присвоенных ролей
@@ -25,10 +27,32 @@ module SpecGen
       def lines
         return [Texts.t('summary.schemas_none')] if @schemas.empty?
 
-        [Texts.t('summary.schemas')] + @schemas.flat_map { |schema| schema_lines(schema) }
+        [Texts.t('summary.schemas'), roles_line] +
+          @schemas.flat_map { |schema| schema_lines(schema) }
       end
 
       private
+
+      def roles_line
+        containers, scalars = fields.partition { |field| container?(field) }
+        known = scalars.select { |field| field.role.known? }
+        INDENT + Texts.t('summary.field_roles', known: known.size, total: scalars.size,
+                                                sources: sources_text(known),
+                                                unknown: scalars.size - known.size,
+                                                containers: containers.size)
+      end
+
+      # @return [String] " (по справочнику 21, эвристика 1)" или пустая строка
+      def sources_text(known)
+        listed = known.map { |field| field.role.source }.tally.map do |source, count|
+          Texts.t('summary.field_roles_source', source: Texts.t("source.#{source}"), count: count)
+        end
+        listed.empty? ? '' : " (#{listed.join(', ')})"
+      end
+
+      def container?(field)
+        !field.schema.nil? || CONTAINERS.include?(field.type)
+      end
 
       def schema_lines(schema)
         heading = "#{INDENT}#{schema.name} (#{Texts.plural(schema.fields.size, 'field')})"

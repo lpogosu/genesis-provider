@@ -12,9 +12,11 @@ module SpecGen
     # анализатор остаётся единственным, кто пишет в профиль, и может
     # остановить цикл по имени.
     #
-    # Роли полей намеренно оставлены невыведенными: сопоставлять имена с
-    # ролями — работа матчеров полей, а два места, догадывающихся об одном и
-    # том же, разойдутся в ответах.
+    # Роли полей проставляет Matchers::Assigner — сразу всем полям схемы,
+    # потому что конфликт «одна роль у двух полей» виден только на уровне
+    # схемы. Без assigner (так читают другие анализаторы) роли остаются
+    # невыведенными: сопоставлять имена с ролями в двух местах значило бы
+    # получить два разных ответа.
     class SchemaReader
       # Что дала одна схема.
       #
@@ -31,13 +33,17 @@ module SpecGen
       # @param at [String] JSONPath схемы
       # @param book [Rules::ConditionsBook] шаблоны условий в прозе
       # @param oas31 [Boolean]
-      def initialize(name:, node:, at:, book:, oas31: false)
+      # @param assigner [Matchers::Assigner, nil] матчер ролей полей; nil —
+      #   роли остаются невыведенными
+      def initialize(name:, node:, at:, book:, oas31: false, assigner: nil)
         @name = name
         @at = at
         @book = book
         @oas31 = oas31
+        @assigner = assigner
         @nested = []
         @notes = []
+        @nodes = {}
         @node, composition = SchemaFlattener.call(node)
         composition.each { |code, message| add_note(code, message, @at) }
       end
@@ -48,6 +54,7 @@ module SpecGen
         schema = IR::Schema.new(name: @name, type: type_of(@node), required: required,
                                 description: text(@node['description']), json_path: @at)
         schema.fields = fields(required)
+        assign_roles(schema.fields)
         Result.new(schema: schema, nested: @nested, notes: @notes)
       end
 
@@ -98,7 +105,17 @@ module SpecGen
 
         merged, composition = SchemaFlattener.call(body)
         composition.each { |code, message| add_note(code, message, path) }
+        @nodes[name] = merged
         build(name, merged, required, conditions, path)
+      end
+
+      # Роли — всем полям схемы разом: так виден конфликт одной роли у двух
+      # полей, а замечания матчеров становятся заметками анализатора.
+      def assign_roles(fields)
+        return if @assigner.nil? || fields.empty?
+
+        subjects = fields.map { |field| RoleSubjects.field(field, @name, @nodes.fetch(field.name)) }
+        @notes.concat(RoleSubjects.assign(@assigner, fields, subjects))
       end
 
       def build(name, merged, required, conditions, path)
@@ -170,6 +187,7 @@ module SpecGen
         nil
       end
 
+      # Роль до матчеров; с assigner её заменит Matchers::Assigner.
       def pending_role
         IR::Derived.unknown(evidence: Texts.t('analyzers.schema.role_pending'))
       end

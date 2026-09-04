@@ -16,6 +16,11 @@ module SpecGen
     # Имена даёт SchemaNaming, тот же модуль, которым пользуется
     # OperationAnalyzer, поэтому `Operation#request_schema` и
     # `Response#schema` — ключи этого хеша, а не висящие в воздухе строки.
+    #
+    # Роли полей проставляются здесь же, в момент чтения схемы, через общий
+    # компонент Matchers::Assigner — так же, как роль операции даёт общий
+    # OperationRole. Отдельной стадии, которая читала бы уже собранные поля
+    # профиля, нет намеренно: анализаторы не читают то, что записал другой.
     class SchemaAnalyzer < Base
       # Достаточно глубоко для любого платёжного тела; цикл, который не
       # поймал резолвер, останавливается здесь предупреждением, а не
@@ -25,6 +30,7 @@ module SpecGen
       # Заполняет `profile.schemas`.
       # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
+        @assigner = Matchers::Assigner.new(rules: rules)
         component_schemas.each { |name, node, at| register(name, node, at) }
         body_schemas.each { |name, node, at| register(name, node, at) }
         check_links
@@ -116,7 +122,7 @@ module SpecGen
 
       def read(name, node, at)
         SchemaReader.new(name: name, node: node, at: at, book: rules.conditions,
-                         oas31: document.oas31?).call
+                         oas31: document.oas31?, assigner: @assigner).call
       end
 
       def too_deep(name, at)

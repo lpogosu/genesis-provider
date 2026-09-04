@@ -81,6 +81,13 @@ rules:
     http_codes: "http.codes"
     error_pattern: "error code pattern entry"
     retry_after_header: "retry-after header"
+    parameter_location: "parameter location"
+    length: "length"
+    matchers_section: "matchers section"
+    matchers_weights: "matchers.weights section"
+    matchers_scoring: "matchers.scoring section"
+    matcher_scores: "scores of matcher %{matcher}"
+    matcher_setting: "setting %{key}"
 
   book:
     version: "dictionary version must be %{expected}, got %{got}"
@@ -101,6 +108,12 @@ rules:
     empty_synonym: "synonym %{name} normalizes to an empty name"
     conflict: "synonym %{name} is already claimed by role %{owner} at %{origin}; a name may mean one thing only"
     missing: "no synonyms for %{roles}; every role of IR::Roles::FIELD needs an entry"
+    sample_mismatch: "sample %{sample} matches none of the patterns of its own role"
+
+  matchers:
+    unknown_keys: "unknown keys %{keys} (allowed: %{allowed})"
+    fraction: "score or threshold %{key} must be a number in %{range}, got %{got}"
+    single_matcher: "matcher %{matcher} alone reaches %{share} against a threshold of %{threshold}; a role from a single signal is an unmarked guess"
 
   statuses:
     empty: "status %{status} normalizes to an empty name"

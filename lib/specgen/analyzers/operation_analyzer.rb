@@ -29,6 +29,7 @@ module SpecGen
       # Заполняет `profile.operations` в порядке спецификации.
       # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
+        @assigner = Matchers::Assigner.new(rules: rules)
         each_operation { |path, http_method, node| add(path, http_method, node) }
         profile
       end
@@ -78,15 +79,24 @@ module SpecGen
         []
       end
 
+      # Параметры получают роли тем же матчером, что поля тела: заголовок
+      # идемпотентности, подпись и идентификатор в пути — это параметры.
       def parameters(path, node, at)
         item = data['paths'][path]
         reader = ParameterReader.new(shared: item.is_a?(Hash) ? item['parameters'] : nil,
-                                     own: node['parameters'],
+                                     own: node['parameters'], assigner: @assigner,
                                      shared_path: json_path('paths', path, 'parameters'),
                                      own_path: "#{at}.parameters")
         list = reader.call
         reader.problems.each { |message, where| warn_shape(message, where) }
+        reader.notes.each { |note| record(note) }
         list
+      end
+
+      def record(note)
+        profile.warn(note.code, note.message, json_path: note.json_path,
+                                              severity: note.severity || :warning,
+                                              suggested_overlay: note.suggested_overlay)
       end
 
       # @return [Hash] члены IR::Operation, описывающие тело запроса

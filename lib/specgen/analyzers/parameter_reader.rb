@@ -11,24 +11,33 @@ module SpecGen
     # аккуратно написанного `GET /payouts/{id}`, поэтому оно смоделировано
     # здесь, а не оставлено каждому вызывающему.
     #
-    # Роли здесь намеренно не сопоставляются. Параметр несёт роль так же,
-    # как поле, но сопоставление имён с ролями — работа матчеров полей, а
+    # Параметр несёт роль так же, как поле, и получает её тем же
+    # Matchers::Assigner — всем параметрам операции разом, чтобы два
+    # параметра с одной ролью были замечены. Без assigner (так читают
+    # анализаторы, которым роли не нужны) роль остаётся невыведенной:
     # выдумывание роли в двух местах привело бы к расхождению между ними.
     class ParameterReader
       # @return [Array<Array(String, String)>] сообщение и JSONPath каждого
       #   параметра, о котором вызывающий должен предупредить
       attr_reader :problems
+      # @return [Array<Note>] замечания матчеров о ролях параметров
+      attr_reader :notes
 
       # @param shared [Object] `parameters` у path item
       # @param own [Object] `parameters` у операции
       # @param shared_path [String] JSONPath списка у path item
       # @param own_path [String] JSONPath списка у операции
-      def initialize(shared:, own:, shared_path:, own_path:)
+      # @param assigner [Matchers::Assigner, nil] матчер ролей; nil — роли
+      #   остаются невыведенными
+      def initialize(shared:, own:, shared_path:, own_path:, assigner: nil)
         @shared = shared
         @own = own
         @shared_path = shared_path
         @own_path = own_path
+        @assigner = assigner
         @problems = []
+        @notes = []
+        @items = {}
       end
 
       # Унаследованные параметры сохраняют своё место; переопределение
@@ -38,10 +47,21 @@ module SpecGen
       def call
         merged = read(@shared, @shared_path).to_h { |parameter| [key_of(parameter), parameter] }
         read(@own, @own_path).each { |parameter| merged[key_of(parameter)] = parameter }
-        merged.values
+        assign_roles(merged.values)
       end
 
       private
+
+      # @return [Array<IR::Parameter>] те же параметры, с ролями
+      def assign_roles(parameters)
+        return parameters if @assigner.nil? || parameters.empty?
+
+        subjects = parameters.map do |parameter|
+          RoleSubjects.parameter(parameter, @items.fetch(key_of(parameter)))
+        end
+        @notes.concat(RoleSubjects.assign(@assigner, parameters, subjects))
+        parameters
+      end
 
       def key_of(parameter)
         [parameter.name, parameter.location]
@@ -70,6 +90,7 @@ module SpecGen
 
       def build(item, name, location, at)
         schema = item['schema'].is_a?(Hash) ? item['schema'] : {}
+        @items[[name, location]] = item
         IR::Parameter.new(name: name, location: location, role: pending_role,
                           required: location == :path || item['required'] == true,
                           type: schema['type'], format: schema['format'],
@@ -87,7 +108,7 @@ module SpecGen
         IR::Parameter::LOCATIONS.include?(location) ? location : nil
       end
 
-      # Почему на этой стадии любая роль выходит «не выведено».
+      # Роль до матчеров; с assigner её заменит Matchers::Assigner.
       def pending_role
         IR::Derived.unknown(evidence: Texts.t('analyzers.parameter.role_pending'))
       end

@@ -82,6 +82,13 @@ rules:
     http_codes: "раздел http.codes"
     error_pattern: "описание шаблона кода ошибки"
     retry_after_header: "заголовок паузы до повтора"
+    parameter_location: "место параметра"
+    length: "длина"
+    matchers_section: "раздел matchers"
+    matchers_weights: "раздел matchers.weights"
+    matchers_scoring: "раздел matchers.scoring"
+    matcher_scores: "баллы матчера %{matcher}"
+    matcher_setting: "настройка %{key}"
 
   book:
     version: "версия справочника: ожидается %{expected}, получено: %{got}"
@@ -102,6 +109,12 @@ rules:
     empty_synonym: "синоним %{name} после нормализации становится пустым"
     conflict: "синоним %{name} уже занят ролью %{owner} в %{origin}; одно имя — одно значение"
     missing: "нет синонимов для %{roles}; каждой роли из IR::Roles::FIELD нужна запись"
+    sample_mismatch: "образец %{sample} не подходит ни под один шаблон patterns своей роли"
+
+  matchers:
+    unknown_keys: "неизвестные ключи %{keys} (допустимо: %{allowed})"
+    fraction: "балл или порог %{key}: ожидается число в диапазоне %{range}, получено: %{got}"
+    single_matcher: "матчер %{matcher} в одиночку набирает %{share} при пороге %{threshold}; роль по единственному сигналу — догадка без пометки"
 
   statuses:
     empty: "статус %{status} после нормализации становится пустым"

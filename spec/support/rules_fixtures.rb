@@ -12,6 +12,7 @@ module RulesFixtures
   DEFAULTS = {
     'roles.yml' => lambda {
       { 'version' => 1,
+        'matchers' => MATCHERS,
         'roles' => SpecGen::IR::Roles::FIELD.to_h { |role| [role.to_s, { 'names' => [role.to_s] }] } }
     },
     'statuses.yml' => lambda {

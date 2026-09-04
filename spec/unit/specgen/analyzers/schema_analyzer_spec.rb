@@ -131,11 +131,12 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
       expect(profile.warnings.first.message).to include('`value`').and include('`type`')
     end
 
-    it 'leaves the role unknown, because the field matchers decide it' do
+    it 'gives every field its role through the field matchers' do
       role = field_for({ 'type' => 'string' }).role
 
-      expect(role).to be_unknown
-      expect(role.evidence).to include('матчеры полей')
+      expect(role.value).to eq(:amount)
+      expect(role.source).to eq(:registry)
+      expect(role.evidence).to include('имя `value` — синоним роли amount (rules/roles.yml)')
     end
   end
 
@@ -427,11 +428,23 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
     end
 
     it 'warns twice, once per condition hiding in a description, and offers both overlays' do
-      expect(profile.warnings.map(&:code)).to eq(%i[conditional_required_hint
-                                                    conditional_required_hint])
-      expect(profile.warnings.map(&:json_path).uniq).to eq(['$.components.schemas.Recipient'])
-      expect(profile.warnings.map(&:suggested_overlay).join)
+      hints = profile.warnings.select { |warning| warning.code == :conditional_required_hint }
+
+      expect(hints.size).to eq(2)
+      expect(hints.map(&:json_path).uniq).to eq(['$.components.schemas.Recipient'])
+      expect(hints.map(&:suggested_overlay).join)
         .to include('required: [bank_code]').and include('required: [card_number]')
+    end
+
+    it 'gives 22 of the 26 scalar fields a role and reports the four it could not' do
+      fields = profile.schemas.values.flat_map(&:fields).reject(&:schema)
+      known, unknown = fields.partition { |field| field.role.known? }
+
+      expect(known.size).to eq(22)
+      expect(known.map { |field| field.role.source }.tally).to eq(registry: 21, heuristic: 1)
+      expect(unknown.map(&:name)).to eq(%w[event received balance hold])
+      expect(profile.warnings.map(&:code).tally)
+        .to include(required_field_role_unknown: 1, field_role_unknown: 3)
     end
 
     it 'leaves no field pointing at a schema nobody described' do
