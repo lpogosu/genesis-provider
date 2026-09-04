@@ -60,6 +60,11 @@ summary:
   units_none: "Единицы суммы: поле суммы не найдено"
   statuses: "Статусы: %{mapped} сопоставлено, %{unmapped} не выведено"
   statuses_none: "Статусы: не найдены"
+  errors: "Ошибки: %{declared} в enum + %{undeclared} только в примерах%{dedup}"
+  errors_dedup: "; дедупликация %{status} у %{operations}"
+  errors_none: "Ошибки: правил нет"
+  errors_generic: "общие"
+  retry_after: "+Retry-After"
   operations: "Операции:"
   operations_none: "Операции: не найдены"
   request: "запрос:"
@@ -120,3 +125,9 @@ location:
   query: "query"
   cookie: "cookie"
   path: "путь"
+
+# Где встречен код ошибки (IR::ErrorRule#seen_in).
+seen_in:
+  enum: "enum"
+  example: "пример"
+  response: "ответ"

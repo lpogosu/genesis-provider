@@ -144,6 +144,32 @@ RSpec.describe 'the shipped dictionaries' do
     end
   end
 
+  describe 'errors' do
+    it 'treats credentials as an alert, the provider balance as an escalation and the rest of 4xx as a rejection' do
+      expect(rules.errors.action_for_status(401)).to eq([:alert, '401'])
+      expect(rules.errors.action_for_status(402)).to eq([:escalate, '402'])
+      expect(rules.errors.action_for_status(422)).to eq([:reject, '4xx'])
+      expect(rules.errors.action_for_status(429)).to eq([:retry_backoff, '429'])
+      expect(rules.errors.action_for_status(500)).to eq([:retry_backoff, '5xx'])
+    end
+
+    it 'never hands out dedup: that is derived from the response schemas' do
+      expect(rules.errors.action_for_status(409)).to eq([:reject, '409'])
+    end
+
+    it 'reads every code of the shipped spec, with rate_limit winning over limit_exceeded' do
+      actions = %w[validation_error insufficient_balance recipient_not_found bank_unavailable
+                   amount_limit_exceeded rate_limit_exceeded internal_error unauthorized not_found
+                   invalid_status].to_h { |code| [code, rules.errors.rule_for_code(code)&.action] }
+
+      expect(actions).to eq('validation_error' => :reject, 'insufficient_balance' => :escalate,
+                            'recipient_not_found' => :reject, 'bank_unavailable' => :retry_backoff,
+                            'amount_limit_exceeded' => :escalate, 'rate_limit_exceeded' => :retry_backoff,
+                            'internal_error' => :retry_backoff, 'unauthorized' => :alert,
+                            'not_found' => :reject, 'invalid_status' => :reject)
+    end
+  end
+
   describe 'the contract' do
     it 'serves every operation role the contract covers' do
       SpecGen::IR::Roles::CONTRACT.each do |role|

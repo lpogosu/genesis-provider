@@ -43,6 +43,14 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and match(/cancelled\s+-> rejected \(по справочнику 1\.00\)/)
     end
 
+    it 'counts the error codes by where they were seen and names the deduplication' do
+      expect(text).to include('Ошибки: 7 в enum + 3 только в примерах; дедупликация 409 у createPayout')
+        .and match(/insufficient_balance\s+escalate \(по справочнику 0\.80\)  \[enum \+ пример\]/)
+        .and match(/not_found\s+reject \(по справочнику 0\.80\)  \[пример\]/)
+        .and match(/createPayout\s+400 reject, 401 alert, 402 escalate, 409 dedup, 422 reject, 429 retry_backoff \+Retry-After, 500 retry_backoff/)
+        .and match(/общие\s+400 reject, 401 alert, 402 escalate, 404 reject, 409 reject, 422 reject, 429 retry_backoff \+Retry-After, 500 retry_backoff/)
+    end
+
     it 'lists every operation with role, confidence and operationId' do
       expect(text).to match(%r{POST /payouts\s+create_payout\s+0\.95\s+createPayout$})
         .and match(%r{GET  /payouts/\{payout_id\}\s+fetch_status\s+0\.95\s+getPayoutStatus$})
@@ -75,7 +83,7 @@ RSpec.describe SpecGen::Reporter::Summary do
     end
 
     it 'counts warnings by severity, declined, and lists each with its JSONPath' do
-      expect(text).to include('Предупреждения: 4 (0 ошибок, 2 предупреждения, 2 справки)')
+      expect(text).to include('Предупреждения: 14 (0 ошибок, 5 предупреждений, 9 справок)')
         .and include("ВНИМАНИЕ $.components.schemas.Recipient\n")
         .and include("СПРАВКА  $.paths['/balance'].get\n")
     end
@@ -108,9 +116,10 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and include('Auth: ApiKeyAuth -> api_key, header X-API-Key, credentials: api_key')
         .and include('Amount units: minor, x100 (ISO 4217: RUB exponent 2); currency RUB (structural 1.00)')
         .and include('Statuses: 5 mapped, 0 unknown')
+        .and include('Errors: 7 in enum + 3 found in examples only; dedup on 409 at createPayout')
         .and match(/cancel\s+0\.95\s+cancelPayout  \(not in contract\)/)
         .and include('required when type = sbp (description hint 0.50)')
-        .and include('Warnings: 4 (0 errors, 2 warnings, 2 info)')
+        .and include('Warnings: 14 (0 errors, 5 warnings, 9 info)')
     end
   end
 
@@ -145,6 +154,7 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and include('Авторизация: не анализировалась')
         .and include('Единицы суммы: поле суммы не найдено')
         .and include('Статусы: не найдены')
+        .and include('Ошибки: правил нет')
         .and include('Операции: не найдены')
         .and include('Схемы: не найдены')
         .and include('Предупреждения: 0 (0 ошибок, 0 предупреждений, 0 справок)')

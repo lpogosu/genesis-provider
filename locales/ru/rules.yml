@@ -76,6 +76,11 @@ rules:
     operation_section: "раздел operation"
     amount_unit: "единица суммы"
     alias_name: "алиас"
+    error_action: "действие по ошибке"
+    http_classes: "раздел http.classes"
+    http_codes: "раздел http.codes"
+    error_pattern: "описание шаблона кода ошибки"
+    retry_after_header: "заголовок паузы до повтора"
 
   book:
     version: "версия справочника: ожидается %{expected}, получено: %{got}"
@@ -134,6 +139,11 @@ rules:
     confidence: "уверенность: ожидается число в диапазоне %{range}, получено: %{got}"
     kind: "kind: ожидается одно из %{allowed}, получено: %{got}"
     captures: "шаблон должен захватывать %{groups} как именованную группу"
+
+  errors:
+    confidence: "уверенность %{key}: ожидается число в диапазоне %{range}, получено: %{got}"
+    bad_class: "класс HTTP-кодов: ожидается 1xx..5xx, получено: %{key}"
+    bad_status: "HTTP-код: ожидается целое число 100..599, получено: %{key}"
 
   contract:
     bad_class: "базовый класс %{name} не похож на путь константы Ruby"

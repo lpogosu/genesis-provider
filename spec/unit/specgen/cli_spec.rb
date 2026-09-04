@@ -21,7 +21,7 @@ RSpec.describe SpecGen::CLI do
       expect(result.stdout).to include('5 операций, 8 схем, 31 поле')
         .and include('create_payout')
         .and include('Авторизация: ApiKeyAuth -> api_key, заголовок X-API-Key')
-        .and include('Предупреждения: 4')
+        .and include('Предупреждения: 14')
     end
 
     it 'takes --provider as the name and marks it as stated, not derived' do

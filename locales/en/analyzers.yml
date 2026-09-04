@@ -116,6 +116,31 @@ analyzers:
           x-specgen-status-map:
             %{status}: in_progress  # in_progress | approved | rejected
 
+  # The deduplication success path (DedupReader): one phrase for the error
+  # map and for the idempotency profile.
+  dedup:
+    evidence: "%{status} returns %{schema} — the same schema as %{success_status}; per the IETF Idempotency-Key draft a replay returns the earlier result, so this is deduplication, not an error"
+
+  error:
+    http_evidence: "rules/errors.yml: HTTP %{code} matched entry %{entry} -> %{action}"
+    default_evidence: "rules/errors.yml: no rule for %{what}; default action %{action}"
+    generic_suffix: "; the status is declared by %{operation}, the rule is extended to the other operations from their siblings"
+    pattern_evidence: "rules/errors.yml: code %{code} matched pattern %{name} -> %{action}"
+    overlay_evidence: "x-specgen-error-actions: %{code} -> %{action}"
+    overlay_bad: "x-specgen-error-actions: %{code} is given the unknown value %{value} (allowed: %{allowed}); the extension was ignored"
+    what_code: "code %{code}"
+    what_status: "HTTP %{code}"
+    action_unknown_message: "no rule in rules/errors.yml for %{what}; the default action %{action} was taken with confidence %{confidence} — set the action in an overlay or add a pattern to the dictionary"
+    undeclared_message: "code %{code} appears in an example but is not declared in the enum of the error code field%{where}; the error map is built as the union of enum and examples, the spec should be fixed"
+    undeclared_where: " (%{path})"
+    unused_message: "code %{code} is declared in the enum but appears in no example; its handling rule comes from the dictionary"
+    gap_message: "operation %{key} does not declare %{codes}, which its sibling operations (%{operations}) declare; generic rules were built for them"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-error-actions:
+            %{code}: reject  # reject | retry | retry_backoff | alert | escalate
+
   units:
     unit_name:
       minor: "minor units"

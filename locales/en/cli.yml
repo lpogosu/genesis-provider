@@ -60,6 +60,11 @@ summary:
   units_none: "Amount units: no amount field found"
   statuses: "Statuses: %{mapped} mapped, %{unmapped} unknown"
   statuses_none: "Statuses: none found"
+  errors: "Errors: %{declared} in enum + %{undeclared} found in examples only%{dedup}"
+  errors_dedup: "; dedup on %{status} at %{operations}"
+  errors_none: "Errors: no rules"
+  errors_generic: "generic"
+  retry_after: "+Retry-After"
   operations: "Operations:"
   operations_none: "Operations: none"
   request: "request:"
@@ -120,3 +125,9 @@ location:
   query: "query"
   cookie: "cookie"
   path: "path"
+
+# Where an error code was seen (IR::ErrorRule#seen_in).
+seen_in:
+  enum: "enum"
+  example: "example"
+  response: "response"

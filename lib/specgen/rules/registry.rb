@@ -16,7 +16,7 @@ module SpecGen
         roles: RolesBook, statuses: StatusesBook, currencies: CurrenciesBook,
         signatures: SignaturesBook, idempotency: IdempotencyBook, auth: AuthBook,
         operations: OperationsBook, conditions: ConditionsBook,
-        contract: ContractBook
+        contract: ContractBook, errors: ErrorsBook
       }.freeze
 
       # @return [String] каталог, из которого прочитаны справочники
@@ -39,6 +39,8 @@ module SpecGen
       attr_reader :conditions
       # @return [ContractBook]
       attr_reader :contract
+      # @return [ErrorsBook]
+      attr_reader :errors
 
       # @param dir [String] каталог со справочниками
       # @return [Registry]

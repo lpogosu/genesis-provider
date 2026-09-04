@@ -75,6 +75,11 @@ rules:
     operation_section: "operation"
     amount_unit: "amount unit"
     alias_name: "alias"
+    error_action: "error action"
+    http_classes: "http.classes"
+    http_codes: "http.codes"
+    error_pattern: "error code pattern entry"
+    retry_after_header: "retry-after header"
 
   book:
     version: "dictionary version must be %{expected}, got %{got}"
@@ -133,6 +138,11 @@ rules:
     confidence: "confidence must be a number within %{range}, got %{got}"
     kind: "kind must be one of %{allowed}, got %{got}"
     captures: "pattern must capture %{groups} as a named group"
+
+  errors:
+    confidence: "%{key} confidence must be a number in %{range}, got %{got}"
+    bad_class: "HTTP class must be 1xx..5xx, got %{key}"
+    bad_status: "HTTP status must be a whole number 100..599, got %{key}"
 
   contract:
     bad_class: "base class %{name} is not a Ruby constant path"

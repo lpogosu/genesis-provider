@@ -82,6 +82,15 @@ module RulesFixtures
       { 'version' => 1,
         'required_when' => { 'confidence' => 0.5, 'patterns' => [HINT_PATTERN] } }
     },
+    'errors.yml' => lambda {
+      { 'version' => 1, 'default_action' => 'reject', 'default_confidence' => 0.3,
+        'pattern_confidence' => 0.8, 'retry_after_header' => 'Retry-After',
+        'http' => { 'classes' => { '4xx' => 'reject', '5xx' => 'retry_backoff' },
+                    'codes' => { 401 => 'alert', 402 => 'escalate', 429 => 'retry_backoff' } },
+        'codes' => [{ 'name' => 'rate_limit', 'pattern' => 'rate_limit|throttl', 'action' => 'retry_backoff' },
+                    { 'name' => 'funds', 'pattern' => 'insufficient|balance', 'action' => 'escalate' },
+                    { 'name' => 'rejected', 'pattern' => 'not_found|invalid', 'action' => 'reject' }] }
+    },
     'contract.yml' => lambda {
       { 'version' => 1, 'base_class' => 'Provider::BaseService',
         'assumption' => 'Восстановлен по описанию кейса; реального класса нам не выдали.',

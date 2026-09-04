@@ -38,11 +38,17 @@ module SpecGen
       attr_reader :profile, :document, :explain
 
       def sections
-        [header, identity, servers, auth,
-         DerivationLines.new(profile, explain: explain).lines, '',
+        [header, identity, servers, auth, facts, '',
          OperationLines.new(profile, explain: explain).lines, '',
          SchemaLines.new(profile, explain: explain).lines, '',
          warnings]
+      end
+
+      # Выведенные факты: единицы, статусы, карта ошибок и остальное, что
+      # анализаторы части 2 узнали о провайдере.
+      def facts
+        [DerivationLines.new(profile, explain: explain).lines,
+         ErrorLines.new(profile, explain: explain).lines]
       end
 
       def header

@@ -116,6 +116,31 @@ analyzers:
           x-specgen-status-map:
             %{status}: in_progress  # in_progress | approved | rejected
 
+  # Успешный путь дедупликации (DedupReader): одна фраза для карты ошибок и
+  # для профиля идемпотентности.
+  dedup:
+    evidence: "%{status} возвращает %{schema} — ту же схему, что %{success_status}; по черновику IETF Idempotency-Key повтор возвращает прежний результат, поэтому это дедупликация, а не ошибка"
+
+  error:
+    http_evidence: "rules/errors.yml: HTTP %{code} совпал с записью %{entry} -> %{action}"
+    default_evidence: "rules/errors.yml: для %{what} нет правила; действие по умолчанию %{action}"
+    generic_suffix: "; код объявлен у %{operation}, у остальных операций правило достроено по соседям"
+    pattern_evidence: "rules/errors.yml: код %{code} совпал с шаблоном %{name} -> %{action}"
+    overlay_evidence: "x-specgen-error-actions: %{code} -> %{action}"
+    overlay_bad: "x-specgen-error-actions: для %{code} задано неизвестное значение %{value} (допустимо: %{allowed}); расширение проигнорировано"
+    what_code: "кода %{code}"
+    what_status: "HTTP %{code}"
+    action_unknown_message: "для %{what} нет правила в rules/errors.yml; взято действие по умолчанию %{action} с уверенностью %{confidence} — задайте действие в overlay или добавьте шаблон в справочник"
+    undeclared_message: "код %{code} встречается в примере, но не объявлен в enum поля кода ошибки%{where}; карта ошибок строится как объединение enum и примеров, спецификацию стоит поправить"
+    undeclared_where: " (%{path})"
+    unused_message: "код %{code} объявлен в enum, но не встречается ни в одном примере; правило обработки построено по справочнику"
+    gap_message: "операция %{key} не объявляет %{codes}, объявленные у соседних операций (%{operations}); для них достроены общие правила"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-error-actions:
+            %{code}: reject  # reject | retry | retry_backoff | alert | escalate
+
   units:
     unit_name:
       minor: "минорные единицы"
