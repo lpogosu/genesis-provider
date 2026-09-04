@@ -94,7 +94,10 @@ scoring:
 
 roles:
   create_payout:
-    verbs: [create, execute, initiate, make, new, open, register, send, start, submit]
+    # withdraw / disburse / pay — глаголы из чужих спецификаций: эксперты на
+    # чекпоинте 1 привели url-withdraw как пример имени той же операции.
+    verbs: [create, disburse, execute, initiate, make, new, open, pay, register, send, start,
+            submit, withdraw]
     nouns: [disbursement, disbursements, payment, payments, payout, payouts, transfer,
             transfers, withdrawal, withdrawals]
     resources: [disbursement, disbursements, payment, payments, payout, payouts, transfer,
