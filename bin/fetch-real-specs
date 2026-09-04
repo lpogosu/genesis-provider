@@ -1,0 +1,71 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Скачивает настоящие OpenAPI-спецификации платёжных провайдеров, которые
+# не лежат в репозитории: слишком большие или с неясной лицензией.
+# Список и причины — spec/fixtures/specs/real/README.md.
+#
+#   bin/fetch-real-specs            # только отсутствующие файлы
+#   bin/fetch-real-specs --refresh  # перекачать всё, включая фикстуры
+#
+# Каталог tmp/ игнорируется git: скачанное остаётся локальным.
+
+require 'net/http'
+require 'uri'
+require 'fileutils'
+
+ROOT = File.expand_path('..', __dir__)
+TMP = File.join(ROOT, 'tmp', 'real-specs')
+FIXTURES = File.join(ROOT, 'spec', 'fixtures', 'specs', 'real')
+RAW = 'https://raw.githubusercontent.com'
+
+# Что качаем: имя файла => [URL, каталог назначения].
+SOURCES = {
+  'stripe_spec3.yaml' => ["#{RAW}/stripe/openapi/master/openapi/spec3.yaml", TMP],
+  'mollie_specs.yaml' => ["#{RAW}/mollie/openapi/main/specs.yaml", TMP],
+  'adyen_payout_v68.yaml' =>
+    ["#{RAW}/Adyen/adyen-openapi/main/yaml/PayoutService-v68.yaml", FIXTURES],
+  'adyen_transfers_v4.yaml' =>
+    ["#{RAW}/Adyen/adyen-openapi/main/yaml/TransferService-v4.yaml", FIXTURES],
+  'paypal_payouts_v1.json' =>
+    ["#{RAW}/paypal/paypal-rest-api-specifications/main/openapi/payments_payouts_batch_v1.json",
+     FIXTURES]
+}.freeze
+
+# Скачивает один файл, следуя перенаправлениям.
+# @param url [String]
+# @param limit [Integer] сколько перенаправлений ещё допустимо
+# @return [String] тело ответа
+def download(url, limit = 5)
+  raise "слишком много перенаправлений: #{url}" if limit.zero?
+
+  response = Net::HTTP.get_response(URI(url))
+  case response
+  when Net::HTTPSuccess then response.body
+  when Net::HTTPRedirection then download(response['location'], limit - 1)
+  else raise "#{url}: HTTP #{response.code}"
+  end
+end
+
+def fetch(name, url, dir, refresh:)
+  path = File.join(dir, name)
+  if File.exist?(path) && !refresh
+    puts "  есть      #{name}"
+    return
+  end
+  FileUtils.mkdir_p(dir)
+  body = download(url)
+  File.binwrite(path, body)
+  puts format('  скачано   %{name} (%{kb} КБ)', name: name, kb: body.bytesize / 1024)
+end
+
+refresh = ARGV.include?('--refresh')
+puts "Настоящие спецификации → #{TMP} и #{FIXTURES}"
+failures = SOURCES.reject do |name, (url, dir)|
+  fetch(name, url, dir, refresh: refresh)
+  true
+rescue StandardError => e
+  warn "  ошибка    #{name}: #{e.message}"
+  false
+end
+exit(failures.empty? ? 0 : 1)

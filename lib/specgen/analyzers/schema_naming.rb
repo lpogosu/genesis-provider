@@ -28,9 +28,12 @@ module SpecGen
         component_of(schema) || synthetic(context)
       end
 
-      # @param schema [Hash]
+      # @param schema [Object] разрешённый объект схемы; всё, что не объект
+      #   (nil у тела без схемы, скаляр в битой спецификации), имени не имеет
       # @return [String, nil] имя компоненты, если схема пришла из `$ref`
       def self.component_of(schema)
+        return nil unless schema.is_a?(Hash)
+
         ref = schema[MARKER]
         return nil unless ref.is_a?(String)
 

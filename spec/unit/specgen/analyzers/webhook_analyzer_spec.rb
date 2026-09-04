@@ -68,6 +68,18 @@ RSpec.describe SpecGen::Analyzers::WebhookAnalyzer do
       expect(webhook.events.size).to eq(3)
     end
 
+    # Found on Mollie's public spec: webhooks entries carry no requestBody
+    # schema at all. A missing schema is a webhook with nothing to read, not
+    # a crash.
+    it 'survives a webhooks entry without a body schema' do
+      operation = { 'operationId' => 'paymentWebhook', 'requestBody' => { 'content' => { 'application/json' => {} } },
+                    'responses' => { '200' => { 'description' => 'ok' } } }
+      profile = analyze({ 'openapi' => '3.1.0', 'paths' => {}, 'webhooks' => { 'payment' => { 'post' => operation } } },
+                        :oas31)
+
+      expect(profile.webhooks.first).to have_attributes(path: 'payment', schema: nil, events: [])
+    end
+
     it 'reports a spec with no webhook at all as information: status by polling only' do
       profile = analyze('openapi' => '3.0.3',
                         'paths' => { '/payouts' => { 'post' => { 'operationId' => 'createPayout',
