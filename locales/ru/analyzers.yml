@@ -96,6 +96,26 @@ analyzers:
     synonym: "имя `%{name}` совпало с синонимом роли %{role} в rules/roles.yml"
     error_code_structure: "поле `%{name}` под родителем `%{parent}`: токен имени и родитель совпали с подсказками роли error_code в rules/roles.yml"
 
+  # Строка статуса -> внутренний статус (StatusReader); одни и те же слова
+  # для enum, примеров и событий вебхука.
+  status:
+    canonical: "канон кейса: %{status} -> %{internal}"
+    synonym: "синоним rules/statuses.yml: %{status} -> %{internal}"
+    stripped: "событие %{event} читается как статус %{status}; "
+    ambiguous: "статус %{status} неоднозначен: %{reason}"
+    unknown: "статус %{status} не найден ни в каноне, ни среди синонимов rules/statuses.yml"
+    overlay: "x-specgen-status-map: %{status} -> %{internal}"
+    overlay_bad: "x-specgen-status-map: для %{status} задано неизвестное значение %{value} (допустимо: %{allowed})"
+    ambiguous_message: "%{evidence}; выберите внутренний статус (in_progress | approved | rejected) в overlay"
+    unknown_message: "%{evidence}; выберите внутренний статус в overlay или добавьте синоним в справочник"
+    missing_from_enum: "статус %{status} встречается в примере, но его нет ни в одном enum поля статуса; карта статусов дополнена им, спецификацию стоит поправить"
+    field_missing_message: "ни одна схема не объявляет поле статуса (синонимы роли status в rules/roles.yml), поэтому fetch_status и process_callback не смогут перевести ответ во внутренний статус"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-status-map:
+            %{status}: in_progress  # in_progress | approved | rejected
+
   units:
     unit_name:
       minor: "минорные единицы"

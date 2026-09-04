@@ -37,6 +37,12 @@ RSpec.describe SpecGen::Reporter::Summary do
       expect(text).to include('Единицы суммы: minor, x100 (ISO 4217: экспонента RUB 2); валюта RUB (задано явно 1.00)')
     end
 
+    it 'counts the statuses and lists each with its internal status' do
+      expect(text).to include('Статусы: 5 сопоставлено, 0 не выведено')
+        .and match(/pending\s+-> in_progress \(по справочнику 1\.00\)/)
+        .and match(/cancelled\s+-> rejected \(по справочнику 1\.00\)/)
+    end
+
     it 'lists every operation with role, confidence and operationId' do
       expect(text).to match(%r{POST /payouts\s+create_payout\s+0\.95\s+createPayout$})
         .and match(%r{GET  /payouts/\{payout_id\}\s+fetch_status\s+0\.95\s+getPayoutStatus$})
@@ -101,6 +107,7 @@ RSpec.describe SpecGen::Reporter::Summary do
       expect(text).to include('Provider: novapay (heuristic 0.80)')
         .and include('Auth: ApiKeyAuth -> api_key, header X-API-Key, credentials: api_key')
         .and include('Amount units: minor, x100 (ISO 4217: RUB exponent 2); currency RUB (structural 1.00)')
+        .and include('Statuses: 5 mapped, 0 unknown')
         .and match(/cancel\s+0\.95\s+cancelPayout  \(not in contract\)/)
         .and include('required when type = sbp (description hint 0.50)')
         .and include('Warnings: 4 (0 errors, 2 warnings, 2 info)')
@@ -137,6 +144,7 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and include('Серверы: не объявлены')
         .and include('Авторизация: не анализировалась')
         .and include('Единицы суммы: поле суммы не найдено')
+        .and include('Статусы: не найдены')
         .and include('Операции: не найдены')
         .and include('Схемы: не найдены')
         .and include('Предупреждения: 0 (0 ошибок, 0 предупреждений, 0 справок)')

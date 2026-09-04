@@ -96,6 +96,26 @@ analyzers:
     synonym: "name `%{name}` matches a synonym of role %{role} in rules/roles.yml"
     error_code_structure: "field `%{name}` under parent `%{parent}`: the name token and the parent match the error_code hints in rules/roles.yml"
 
+  # Provider status string -> internal status (StatusReader); the same words
+  # for enums, examples and webhook events.
+  status:
+    canonical: "case canon: %{status} -> %{internal}"
+    synonym: "rules/statuses.yml synonym: %{status} -> %{internal}"
+    stripped: "event %{event} reads as status %{status}; "
+    ambiguous: "status %{status} is ambiguous: %{reason}"
+    unknown: "status %{status} is neither in the canon nor among the synonyms of rules/statuses.yml"
+    overlay: "x-specgen-status-map: %{status} -> %{internal}"
+    overlay_bad: "x-specgen-status-map: %{status} is given the unknown value %{value} (allowed: %{allowed})"
+    ambiguous_message: "%{evidence}; pick the internal status (in_progress | approved | rejected) in an overlay"
+    unknown_message: "%{evidence}; pick the internal status in an overlay or add a synonym to the dictionary"
+    missing_from_enum: "status %{status} appears in an example but in no enum of a status field; the status map was extended with it, the spec should be fixed"
+    field_missing_message: "no schema declares a status field (synonyms of role status in rules/roles.yml), so fetch_status and process_callback cannot translate a response into an internal status"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-status-map:
+            %{status}: in_progress  # in_progress | approved | rejected
+
   units:
     unit_name:
       minor: "minor units"

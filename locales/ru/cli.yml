@@ -58,6 +58,8 @@ summary:
   units: "Единицы суммы: %{unit}, x%{multiplier} (%{evidence}); валюта %{currency}"
   units_unknown: "Единицы суммы: не выведены (%{evidence}); валюта %{currency}"
   units_none: "Единицы суммы: поле суммы не найдено"
+  statuses: "Статусы: %{mapped} сопоставлено, %{unmapped} не выведено"
+  statuses_none: "Статусы: не найдены"
   operations: "Операции:"
   operations_none: "Операции: не найдены"
   request: "запрос:"

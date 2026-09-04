@@ -21,12 +21,27 @@ module SpecGen
 
       # @return [Array<String>]
       def lines
-        units_lines
+        units_lines + status_lines
       end
 
       private
 
       attr_reader :profile, :explain
+
+      def status_lines
+        mappings = profile.status_map
+        return [Texts.t('summary.statuses_none')] if mappings.empty?
+
+        mapped, unmapped = mappings.partition(&:mapped?)
+        width = mappings.map { |mapping| mapping.provider_status.size }.max
+        [Texts.t('summary.statuses', mapped: mapped.size, unmapped: unmapped.size)] +
+          mappings.flat_map { |mapping| status_line(mapping, width) }
+      end
+
+      def status_line(mapping, width)
+        ["#{INDENT}#{mapping.provider_status.ljust(width)}  -> #{Format.derived(mapping.internal)}",
+         *evidence(mapping.internal, depth: 2)]
+      end
 
       def units_lines
         units = profile.units
