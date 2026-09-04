@@ -17,7 +17,7 @@ module SpecGen
     class Base
       # Фиксированные поля Path Item Object, которые являются операциями
       # (OpenAPI 3).
-      HTTP_METHODS = %w[get put post delete options head patch trace].freeze
+      HTTP_METHODS = Operations::HTTP_METHODS
 
       # Создаёт анализатор и запускает его; принимает то же, что #initialize.
       # @return [Object] то, что вернул #call анализатора
@@ -76,21 +76,20 @@ module SpecGen
       # @yieldparam http_method [String] в нижнем регистре, один из HTTP_METHODS
       # @yieldparam operation [Hash] Operation Object
       # @return [Enumerator] если вызван без блока
-      def each_operation
+      def each_operation(&)
         return enum_for(:each_operation) unless block_given?
 
-        paths = data['paths']
-        return unless paths.is_a?(Hash)
+        Operations.each(data, &)
+      end
 
-        paths.each do |path, item|
-          next unless item.is_a?(Hash)
-
-          item.each do |http_method, operation|
-            next unless HTTP_METHODS.include?(http_method) && operation.is_a?(Hash)
-
-            yield(path, http_method, operation)
-          end
-        end
+      # Ключ операции — тот же, которым её называют OperationAnalyzer,
+      # SchemaNaming и остальной IR.
+      # @param path [String]
+      # @param http_method [String]
+      # @param operation [Hash]
+      # @return [String] operationId или "post_payouts"
+      def operation_key(path, http_method, operation)
+        SchemaNaming.operation_key(operation['operationId'], http_method, path)
       end
 
       # Из тестов опции приходят с ключами-символами, из Thor — со строками;

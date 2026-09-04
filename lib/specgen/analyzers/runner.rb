@@ -11,7 +11,8 @@ module SpecGen
     # месте — то, что позволяет `integrate analyze` и конвейеру генерации
     # использовать ровно одну и ту же стадию анализа.
     class Runner
-      ORDER = [InfoAnalyzer, AuthAnalyzer, OperationAnalyzer, SchemaAnalyzer].freeze
+      ORDER = [InfoAnalyzer, AuthAnalyzer, OperationAnalyzer, SchemaAnalyzer,
+               UnitsAnalyzer].freeze
 
       # @param document [SpecLoader::Document] спецификация со всеми
       #   разрешёнными `$ref`

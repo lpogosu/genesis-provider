@@ -38,7 +38,8 @@ module SpecGen
       attr_reader :profile, :document, :explain
 
       def sections
-        [header, identity, servers, auth, '',
+        [header, identity, servers, auth,
+         DerivationLines.new(profile, explain: explain).lines, '',
          OperationLines.new(profile, explain: explain).lines, '',
          SchemaLines.new(profile, explain: explain).lines, '',
          warnings]

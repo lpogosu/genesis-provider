@@ -19,6 +19,9 @@ module SpecGen
       # уже обречена упасть; позволяет доработать остальные проверки.
       FALLBACK_EXPONENT = 2
 
+      # Единицы, о которых может говорить описание поля суммы.
+      UNITS = IR::Units::UNITS
+
       # @return [Integer] экспонента для неизвестного кода; годится только
       #   вместе с предупреждением, никогда молча
       attr_reader :default_exponent
@@ -47,6 +50,23 @@ module SpecGen
         @currencies.keys
       end
 
+      # О каких единицах говорит описание поля. Только подтверждающий сигнал:
+      # источником множителя остаются тип поля и ISO 4217. Слова из обоих
+      # списков сразу — подсказки нет.
+      # @param description [String, nil]
+      # @return [Array(Symbol, String), nil] единица и совпавшие слова
+      def unit_hint(description)
+        return nil unless description.is_a?(String) && description.valid_encoding?
+
+        hits = @unit_words.filter_map do |unit, patterns|
+          found = patterns.lazy.filter_map { |pattern| pattern.match(description) }.first
+          [unit, found[0]] if found
+        end
+        hits.size == 1 ? hits.first : nil
+      rescue Encoding::CompatibilityError
+        nil
+      end
+
       private
 
       def entry(code)
@@ -61,6 +81,26 @@ module SpecGen
         section('currencies').each { |code, body| add(code, body) }
         fault('currencies.empty', path('currencies')) if @currencies.empty?
         @currencies.freeze
+        @unit_words = load_unit_words.freeze
+      end
+
+      # @return [Hash{Symbol => Array<Regexp>}]
+      def load_unit_words
+        listed = section('unit_words', Hash, required: false)
+        listed.filter_map do |unit, patterns|
+          at = path('unit_words', unit)
+          key = symbol_in(unit, UNITS, noun(:amount_unit), at)
+          next if key.nil?
+
+          [key, patterns_of(patterns, unit, at)]
+        end.to_h
+      end
+
+      def patterns_of(listed, unit, at)
+        sources = string_list(listed, noun(:list, key: unit), at)
+        sources.each_with_index.filter_map do |source, index|
+          pattern(source, noun(:pattern), "#{at}[#{index}]")
+        end
       end
 
       def add(code, body)

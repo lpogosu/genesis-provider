@@ -17,6 +17,7 @@ RSpec.describe SpecGen::Analyzers::Runner do
     expect(profile.auth).not_to be_nil
     expect(profile.operations.size).to eq(5)
     expect(profile.schemas.size).to eq(8)
+    expect(profile.units.multiplier).to eq(100)
   end
 
   it 'lists every analyzer exactly once, so a new one cannot run twice or be forgotten' do

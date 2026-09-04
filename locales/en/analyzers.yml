@@ -88,3 +88,51 @@ analyzers:
     role_pending: "parameter roles are matched by the field matchers, a later stage"
     shape: "parameter must be an object"
     name_missing: "parameter needs a `name` and a known `in`"
+
+  # Exact dictionary lookup of a role by name (RoleLookup): the level-2
+  # source analyzers use to find the amount, currency, status or error code
+  # field before the matchers run.
+  roles:
+    synonym: "name `%{name}` matches a synonym of role %{role} in rules/roles.yml"
+    error_code_structure: "field `%{name}` under parent `%{parent}`: the name token and the parent match the error_code hints in rules/roles.yml"
+
+  units:
+    unit_name:
+      minor: "minor units"
+      major: "major units"
+    currency_overlay: "x-specgen-currency: %{value} on the amount field"
+    currency_listed: "%{keyword}: [%{value}] on field `%{name}`"
+    currency_multiple: "enum of field `%{name}` lists several currencies: %{values}"
+    currency_default: "default: %{value} on field `%{name}`; no enum, so this is one of the possible currencies"
+    currency_example: "example: %{value} on field `%{name}`; neither enum nor default, so this is one of the possible currencies"
+    currency_missing: "no field matches a synonym of role currency in rules/roles.yml"
+    currency_silent: "field `%{name}` matches role currency but declares no enum, default or example"
+    currency_missing_message: "amount currency could not be derived (%{evidence}); without a currency code the ISO 4217 exponent cannot be determined — set the currency in an overlay"
+    currency_multiple_message: "field `%{name}` allows several currencies (%{values}); the exponent depends on the currency of each operation — pin the currency in an overlay or extend the generator for multi-currency"
+    currency_code_message: "currency code %{code} is not in the ISO 4217 table (rules/currencies.yml); the default exponent %{exponent} was taken — check it and pin it in an overlay"
+    currency_overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-currency: RUB  # ISO 4217 code
+    exponent_overlay: "x-specgen-exponent: %{value} on the amount field"
+    exponent_iso: "ISO 4217: %{code} exponent %{exponent}"
+    exponent_default: "default exponent %{exponent} from rules/currencies.yml: code %{code} is not in the ISO 4217 table"
+    exponent_shared: "ISO 4217: every currency of the enum (%{codes}) has exponent %{exponent}"
+    exponent_differs: "the currencies of the enum (%{codes}) have different ISO 4217 exponents, no single multiplier is possible"
+    exponent_unknown: "without a currency code the ISO 4217 exponent cannot be determined"
+    unit_overlay: "x-specgen-amount-unit: %{value} on the amount field"
+    unit_overlay_bad: "x-specgen-amount-unit: unknown value %{value} (allowed: %{allowed}); the extension was ignored"
+    unit_integer: "type: integer -> minor units"
+    unit_fractional: "type: %{type}, fractional example %{example} -> major units"
+    unit_unknown: "type: %{type} with no fractional example: units not derived"
+    unit_confirmed: "; the description confirms it: %{words}"
+    unit_minimum: "; minimum %{minimum} = %{major} %{code}"
+    unknown_message: "amount units of field `%{name}` could not be derived (type: %{type}, no fractional example); without a multiplier the service cannot build a request — set the units in an overlay"
+    missing_amount_message: "no amount field found in any schema: no name matches a synonym of role amount in rules/roles.yml; without a multiplier the service cannot build a request — add a synonym to the dictionary"
+    inconsistent_description: "amount field `%{name}` was derived as %{unit}, but its description speaks of %{said}: %{sentence}; check and pin the units in an overlay"
+    inconsistent_fraction: "amount field `%{name}` was derived as minor units, but %{keyword} = %{value} is fractional; minor units are always whole — check and pin the units in an overlay"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-amount-unit: %{unit}  # minor | major
+          x-specgen-exponent: %{exponent}  # ISO 4217 minor unit exponent

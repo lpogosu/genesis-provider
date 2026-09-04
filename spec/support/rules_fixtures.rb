@@ -26,7 +26,9 @@ module RulesFixtures
       { 'version' => 1, 'default_exponent' => 2,
         'currencies' => { 'RUB' => { 'exponent' => 2, 'name' => 'Russian Ruble' },
                           'JPY' => { 'exponent' => 0, 'name' => 'Yen' },
-                          'KWD' => { 'exponent' => 3, 'name' => 'Kuwaiti Dinar' } } }
+                          'KWD' => { 'exponent' => 3, 'name' => 'Kuwaiti Dinar' } },
+        'unit_words' => { 'minor' => ['(?i)(?<![[:alpha:]])копе[йе]к[[:alpha:]]*', '(?i)\bcents?\b'],
+                          'major' => ['(?i)(?<![[:alpha:]])в рублях', '(?i)\brubles?\b'] } }
     },
     'signatures.yml' => lambda {
       { 'version' => 1,

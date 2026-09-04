@@ -14,21 +14,20 @@ module SpecGen
     #   json_path  поле суммы, для которого выведены единицы
     Units = Struct.new(:currency, :unit, :exponent, :json_path, keyword_init: true)
 
-    # Словарь значений, значения по умолчанию и арифметика Units.
+    # Словарь значений и арифметика Units. Значений по умолчанию нет:
+    # каждый член приходит от анализатора вместе с обоснованием, и
+    # невыведенное значение обязано объяснить, что искали и не нашли.
     class Units
       include Node
 
       UNITS = %i[minor major].freeze
-      UNDERIVED = 'не выведено'
 
       # @param currency [Derived]
       # @param unit [Derived]
       # @param exponent [Derived]
       # @param json_path [String, nil]
       # @raise [ArgumentError]
-      def initialize(currency: Derived.unknown(evidence: UNDERIVED),
-                     unit: Derived.unknown(evidence: UNDERIVED),
-                     exponent: Derived.unknown(evidence: UNDERIVED), json_path: nil)
+      def initialize(currency:, unit:, exponent:, json_path: nil)
         Node.assert_derived!(currency, 'валюта')
         Node.assert_derived!(unit, 'единица суммы', allowed: UNITS)
         Node.assert_derived!(exponent, 'экспонента валюты')

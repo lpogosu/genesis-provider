@@ -56,6 +56,14 @@ RSpec.describe 'the shipped dictionaries' do
       expect(rules.currencies.exponent('KWD')).to eq(3)
       expect(rules.currencies.exponent('CLF')).to eq(4)
     end
+
+    it 'reads the unit words of the shipped spec and of the industry, as confirmation only' do
+      expect(rules.currencies.unit_hint('Сумма в копейках')).to eq([:minor, 'копейках'])
+      expect(rules.currencies.unit_hint('Минимальная сумма — 1000 RUB (100000 коп.)')).to eq([:minor, 'коп.'])
+      expect(rules.currencies.unit_hint('Amount in minor units')).to eq([:minor, 'minor units'])
+      expect(rules.currencies.unit_hint('Amount in roubles')).to eq([:major, 'roubles'])
+      expect(rules.currencies.unit_hint('Percents of the amount')).to be_nil
+    end
   end
 
   describe 'signatures' do

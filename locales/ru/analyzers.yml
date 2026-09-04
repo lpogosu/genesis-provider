@@ -88,3 +88,51 @@ analyzers:
     role_pending: "роли параметров сопоставляют матчеры полей, это более поздняя стадия"
     shape: "параметр должен быть объектом"
     name_missing: "у параметра должны быть `name` и известный `in`"
+
+  # Точный словарный поиск роли по имени (RoleLookup): уровень 2 доверия,
+  # которым анализаторы находят поле суммы, валюты, статуса или кода ошибки
+  # до матчеров.
+  roles:
+    synonym: "имя `%{name}` совпало с синонимом роли %{role} в rules/roles.yml"
+    error_code_structure: "поле `%{name}` под родителем `%{parent}`: токен имени и родитель совпали с подсказками роли error_code в rules/roles.yml"
+
+  units:
+    unit_name:
+      minor: "минорные единицы"
+      major: "мажорные единицы"
+    currency_overlay: "x-specgen-currency: %{value} на поле суммы"
+    currency_listed: "%{keyword}: [%{value}] у поля `%{name}`"
+    currency_multiple: "enum поля `%{name}` перечисляет несколько валют: %{values}"
+    currency_default: "default: %{value} у поля `%{name}`; enum не задан, поэтому это одна из возможных валют"
+    currency_example: "example: %{value} у поля `%{name}`; ни enum, ни default не заданы, поэтому это одна из возможных валют"
+    currency_missing: "ни одно поле не совпало с синонимами роли currency в rules/roles.yml"
+    currency_silent: "поле `%{name}` совпало с ролью currency, но не задаёт ни enum, ни default, ни example"
+    currency_missing_message: "валюта суммы не выведена (%{evidence}); без кода валюты экспоненту ISO 4217 определить нельзя — задайте валюту в overlay"
+    currency_multiple_message: "поле `%{name}` допускает несколько валют (%{values}); экспонента зависит от валюты конкретной операции — закрепите валюту в overlay или доработайте генератор под мультивалютность"
+    currency_code_message: "кода валюты %{code} нет в таблице ISO 4217 (rules/currencies.yml); взята экспонента по умолчанию %{exponent} — проверьте и закрепите её в overlay"
+    currency_overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-currency: RUB  # код ISO 4217
+    exponent_overlay: "x-specgen-exponent: %{value} на поле суммы"
+    exponent_iso: "ISO 4217: экспонента %{code} %{exponent}"
+    exponent_default: "экспонента по умолчанию %{exponent} из rules/currencies.yml: кода %{code} нет в таблице ISO 4217"
+    exponent_shared: "ISO 4217: у всех валют enum (%{codes}) экспонента %{exponent}"
+    exponent_differs: "валюты enum (%{codes}) имеют разные экспоненты по ISO 4217, единый множитель невозможен"
+    exponent_unknown: "без кода валюты экспоненту ISO 4217 определить нельзя"
+    unit_overlay: "x-specgen-amount-unit: %{value} на поле суммы"
+    unit_overlay_bad: "x-specgen-amount-unit: неизвестное значение %{value} (допустимо: %{allowed}); расширение проигнорировано"
+    unit_integer: "type: integer -> минорные единицы"
+    unit_fractional: "type: %{type}, дробный example %{example} -> мажорные единицы"
+    unit_unknown: "type: %{type} без дробного example: единицы не выведены"
+    unit_confirmed: "; описание подтверждает: %{words}"
+    unit_minimum: "; minimum %{minimum} = %{major} %{code}"
+    unknown_message: "единицы суммы у поля `%{name}` не выведены (type: %{type}, дробного example нет); без множителя сервис не соберёт запрос — задайте единицы в overlay"
+    missing_amount_message: "поле суммы не найдено ни в одной схеме: ни одно имя не совпало с синонимами роли amount в rules/roles.yml; без множителя сервис не соберёт запрос — добавьте синоним в справочник"
+    inconsistent_description: "поле суммы `%{name}` выведено как %{unit}, а описание говорит о %{said}: %{sentence}; проверьте и закрепите единицы в overlay"
+    inconsistent_fraction: "поле суммы `%{name}` выведено как минорные единицы, но %{keyword} = %{value} дробное; минорные единицы всегда целые — проверьте и закрепите единицы в overlay"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-amount-unit: %{unit}  # minor | major
+          x-specgen-exponent: %{exponent}  # экспонента минорной единицы ISO 4217
