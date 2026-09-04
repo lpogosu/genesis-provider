@@ -27,8 +27,7 @@ module RulesFixtures
         'currencies' => { 'RUB' => { 'exponent' => 2, 'name' => 'Russian Ruble' },
                           'JPY' => { 'exponent' => 0, 'name' => 'Yen' },
                           'KWD' => { 'exponent' => 3, 'name' => 'Kuwaiti Dinar' } },
-        'unit_words' => { 'minor' => ['(?i)(?<![[:alpha:]])копе[йе]к[[:alpha:]]*', '(?i)\bcents?\b'],
-                          'major' => ['(?i)(?<![[:alpha:]])в рублях', '(?i)\brubles?\b'] } }
+        'unit_words' => { 'minor' => ['(?i)(?<![[:alpha:]])копе[йе]к[[:alpha:]]*', '(?i)\bcents?\b'], 'major' => ['(?i)(?<![[:alpha:]])в рублях', '(?i)\brubles?\b'] } }
     },
     'signatures.yml' => lambda {
       { 'version' => 1,
@@ -45,7 +44,8 @@ module RulesFixtures
             'encoding' => 'hex', 'payload' => 'raw_body', 'secret_key' => 'webhook_secret'
           }
         },
-        'header_names' => ['x-signature'] }
+        'header_names' => %w[x-signature x-callback-signature],
+        'algorithm_words' => { 'hmac_sha256' => ['(?i)hmac[-_ ]?sha[-_ ]?256'], 'hmac_sha512' => ['(?i)hmac[-_ ]?sha[-_ ]?512'] } }
     },
     'idempotency.yml' => lambda {
       { 'version' => 1, 'canonical_header' => 'Idempotency-Key',

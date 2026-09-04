@@ -141,6 +141,42 @@ analyzers:
           x-specgen-error-actions:
             %{code}: reject  # reject | retry | retry_backoff | alert | escalate
 
+  webhook:
+    missing: "the spec describes no inbound notifications (no operation with security: [] and no webhooks section); the service learns an operation's status by polling through fetch_status only"
+    from_status_field: "no event field found, the event is read from the value of status field `%{name}`; "
+    event_unmapped: "event %{event} was not translated into an internal status: %{evidence}; set the status in an overlay"
+    event_undeclared: "event %{event} appears in example %{name} but not in the enum of field `%{field}`; the event list was extended with it, the spec should be fixed"
+    no_events: "the webhook body (%{schema}) has neither an event field — a string enum whose values read as statuses — nor a status field with an enum; process_callback cannot determine the outcome of an operation"
+
+  signature:
+    header_evidence: "header parameter %{header} matches header_names of rules/signatures.yml"
+    profile_evidence: "rules/signatures.yml profile %{name} matched by header %{header}"
+    algorithm_confirmed: "; the description confirms it: %{words}"
+    custom_evidence: "header %{header} is known to rules/signatures.yml but matches no profile"
+    algorithm_hint: "the description names %{words} -> %{algorithm}"
+    algorithm_unknown: "the description names no signature algorithm"
+    encoding_unknown: "the spec does not say how the signature is encoded (hex | base64)"
+    payload_unknown: "the spec does not say what is signed: the raw body or {id}.{timestamp}.{body}"
+    tolerance_unknown: "the replay tolerance goes with the signed payload"
+    tolerance_not_applicable: "not applicable: the signed payload carries no timestamp"
+    secret_key_default: "secret key name by the convention of profile %{profile}: %{key}"
+    secret_key_unknown: "rules/signatures.yml has no default profile to take the secret key name from"
+    overlay_evidence: "x-specgen-signature: %{key} = %{value}"
+    overlay_bad: "x-specgen-signature: %{key} is given the unknown value %{value} (allowed: %{allowed}); the extension was ignored"
+    conflict_message: "the description of webhook %{key} names %{words} (%{hinted}), but rules/signatures.yml profile %{name} sets %{algorithm}; the profile was kept — check the spec or pin the algorithm in an overlay"
+    incomplete_message: "the signature profile of webhook %{key} is incomplete: %{missing} not derived; the fragment below sets them"
+    missing_message: "webhook %{key} declares no signature header (header_names of rules/signatures.yml); there is nothing to verify notifications with — set a signature profile in an overlay"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-signature:
+            profile: custom
+            header: %{header}
+            algorithm: %{algorithm}  # hmac_sha256 | hmac_sha512 | hmac_sha1
+            encoding: hex  # hex | base64
+            payload: raw_body  # raw_body | id_timestamp_body
+            secret_key: %{secret_key}
+
   units:
     unit_name:
       minor: "minor units"

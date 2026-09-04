@@ -3,6 +3,35 @@
 RSpec.describe SpecGen::Rules::SignaturesBook do
   include RulesFixtures
 
+  describe 'looking a profile up by its header, and the algorithm words' do
+    let(:book) { load_rules.signatures }
+
+    it 'finds the profile whose header the spec names, whatever the case' do
+      name, entry = book.profile_for_header('x-signature')
+
+      expect(name).to eq('raw_hex')
+      expect(entry[:encoding]).to eq(:hex)
+      expect(book.profile_for_header('X-Callback-Signature')).to be_nil
+    end
+
+    it 'reads the algorithm a description names, and nothing from an ambiguous one' do
+      expect(book.algorithm_hint('HMAC-SHA256 подпись тела запроса')).to eq([:hmac_sha256, 'HMAC-SHA256'])
+      expect(book.algorithm_hint('hmac_sha512')).to eq([:hmac_sha512, 'hmac_sha512'])
+      expect(book.algorithm_hint('HMAC-SHA256 or HMAC-SHA512')).to be_nil
+      expect(book.algorithm_hint('signed body')).to be_nil
+      expect(book.algorithm_hint(nil)).to be_nil
+    end
+
+    it 'refuses an algorithm outside the vocabulary and a pattern that does not compile' do
+      patch = rule('signatures.yml')
+      patch['algorithm_words'] = { 'md5' => ['md5'] }
+      expect(rules_error('signatures.yml' => patch)).to include('алгоритм подписи: неизвестное значение "md5"')
+
+      patch['algorithm_words'] = { 'hmac_sha1' => ['(?<x'] }
+      expect(rules_error('signatures.yml' => patch)).to include('$.algorithm_words.hmac_sha1[0]')
+    end
+  end
+
   def signatures(patch = {})
     load_rules('signatures.yml' => rule('signatures.yml').merge(patch)).signatures
   end

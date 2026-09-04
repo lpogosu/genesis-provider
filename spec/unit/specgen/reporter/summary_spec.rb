@@ -43,6 +43,11 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and match(/cancelled\s+-> rejected \(по справочнику 1\.00\)/)
     end
 
+    it 'shows the webhook with its events and the signature profile' do
+      expect(text).to include('Вебхук: /webhooks/payout — 4 события, подпись X-NovaPay-Signature (custom: hmac_sha256, hex, raw_body)')
+        .and match(/payout\.completed\s+-> approved \(по справочнику 1\.00\)/)
+    end
+
     it 'counts the error codes by where they were seen and names the deduplication' do
       expect(text).to include('Ошибки: 7 в enum + 3 только в примерах; дедупликация 409 у createPayout')
         .and match(/insufficient_balance\s+escalate \(по справочнику 0\.80\)  \[enum \+ пример\]/)
@@ -117,6 +122,7 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and include('Amount units: minor, x100 (ISO 4217: RUB exponent 2); currency RUB (structural 1.00)')
         .and include('Statuses: 5 mapped, 0 unknown')
         .and include('Errors: 7 in enum + 3 found in examples only; dedup on 409 at createPayout')
+        .and include('Webhook: /webhooks/payout — 4 events, signature X-NovaPay-Signature (custom: hmac_sha256, hex, raw_body)')
         .and match(/cancel\s+0\.95\s+cancelPayout  \(not in contract\)/)
         .and include('required when type = sbp (description hint 0.50)')
         .and include('Warnings: 14 (0 errors, 5 warnings, 9 info)')
@@ -155,6 +161,7 @@ RSpec.describe SpecGen::Reporter::Summary do
         .and include('Единицы суммы: поле суммы не найдено')
         .and include('Статусы: не найдены')
         .and include('Ошибки: правил нет')
+        .and include('Вебхук: не описан (статус только опросом)')
         .and include('Операции: не найдены')
         .and include('Схемы: не найдены')
         .and include('Предупреждения: 0 (0 ошибок, 0 предупреждений, 0 справок)')

@@ -52,6 +52,30 @@ module SpecGen
         @headers.include?(Normalizer.call(header))
       end
 
+      # @param header [String] имя заголовка, встреченное в спецификации
+      # @return [Array(String, Hash), nil] имя и профиль, чей `header` это
+      #   же имя; первый по порядку справочника
+      def profile_for_header(header)
+        wanted = Normalizer.call(header)
+        @profiles.find { |_, entry| Normalizer.call(entry[:header]) == wanted }
+      end
+
+      # Какой алгоритм называет описание. Подтверждающий сигнал для профиля
+      # из справочника и единственный источник для заголовка без профиля.
+      # @param description [String, nil]
+      # @return [Array(Symbol, String), nil] алгоритм и совпавшие слова
+      def algorithm_hint(description)
+        return nil unless description.is_a?(String) && description.valid_encoding?
+
+        hits = @algorithm_words.filter_map do |algorithm, patterns|
+          found = patterns.lazy.filter_map { |pattern| pattern.match(description) }.first
+          [algorithm, found[0]] if found
+        end
+        hits.size == 1 ? hits.first : nil
+      rescue Encoding::CompatibilityError
+        nil
+      end
+
       private
 
       def build
@@ -59,7 +83,28 @@ module SpecGen
         section('profiles').each { |name, body| add(name, body) }
         check_default
         @headers = collect_headers
-        [@profiles, @headers].each(&:freeze)
+        @algorithm_words = load_algorithm_words
+        [@profiles, @headers, @algorithm_words].each(&:freeze)
+      end
+
+      # @return [Hash{Symbol => Array<Regexp>}]
+      def load_algorithm_words
+        listed = section('algorithm_words', Hash, required: false)
+        listed.filter_map do |algorithm, patterns|
+          at = path('algorithm_words', algorithm)
+          key = symbol_in(algorithm, IR::SignatureProfile::ALGORITHMS, noun(:signature_algorithm),
+                          at)
+          next if key.nil?
+
+          [key, patterns_of(patterns, algorithm, at)]
+        end.to_h
+      end
+
+      def patterns_of(listed, algorithm, at)
+        sources = string_list(listed, noun(:list, key: algorithm), at)
+        sources.each_with_index.filter_map do |source, index|
+          pattern(source, noun(:pattern), "#{at}[#{index}]")
+        end
       end
 
       def check_default

@@ -26,7 +26,10 @@ module SpecGen
                                   :secret_key, :id_header, :timestamp_header, :json_path,
                                   keyword_init: true)
 
-    # Словарь значений, значения по умолчанию и полнота SignatureProfile.
+    # Словарь значений и полнота SignatureProfile. Значений по умолчанию нет:
+    # каждый член приходит от анализатора вместе с обоснованием, и
+    # невыведенный параметр обязан объяснить, чего именно не сказала
+    # спецификация.
     class SignatureProfile
       include Node
 
@@ -37,7 +40,10 @@ module SpecGen
       # Поля, которые обязаны быть выведены, прежде чем можно генерировать
       # верификатор.
       REQUIRED = %i[profile header algorithm encoding payload secret_key].freeze
-      UNDERIVED = 'не выведено'
+      # Члены-Derived, которые может переопределить overlay, и словарь каждого
+      # (nil — любое значение подходящего вида).
+      VOCABULARY = { profile: PROFILES, header: nil, algorithm: ALGORITHMS, encoding: ENCODINGS,
+                     payload: PAYLOADS, tolerance: nil, secret_key: nil }.freeze
 
       # @param profile [Derived]
       # @param header [Derived]
@@ -50,13 +56,7 @@ module SpecGen
       # @param timestamp_header [String, nil]
       # @param json_path [String, nil]
       # @raise [ArgumentError]
-      def initialize(profile: Derived.unknown(evidence: UNDERIVED),
-                     header: Derived.unknown(evidence: UNDERIVED),
-                     algorithm: Derived.unknown(evidence: UNDERIVED),
-                     encoding: Derived.unknown(evidence: UNDERIVED),
-                     payload: Derived.unknown(evidence: UNDERIVED),
-                     tolerance: Derived.unknown(evidence: UNDERIVED),
-                     secret_key: Derived.unknown(evidence: UNDERIVED),
+      def initialize(profile:, header:, algorithm:, encoding:, payload:, tolerance:, secret_key:,
                      id_header: nil, timestamp_header: nil, json_path: nil)
         Node.assert_derived!(profile, 'профиль подписи', allowed: PROFILES)
         Node.assert_derived!(header, 'заголовок подписи')

@@ -65,6 +65,10 @@ summary:
   errors_none: "Ошибки: правил нет"
   errors_generic: "общие"
   retry_after: "+Retry-After"
+  webhook: "Вебхук: %{path} — %{events}, подпись %{signature}"
+  webhook_signature: "%{header} (%{profile}: %{algorithm}, %{encoding}, %{payload})"
+  webhook_unsigned: "не объявлена"
+  webhook_none: "Вебхук: не описан (статус только опросом)"
   operations: "Операции:"
   operations_none: "Операции: не найдены"
   request: "запрос:"
@@ -91,6 +95,7 @@ plural:
   error: { one: "ошибка", few: "ошибки", many: "ошибок" }
   warning: { one: "предупреждение", few: "предупреждения", many: "предупреждений" }
   info: { one: "справка", few: "справки", many: "справок" }
+  event: { one: "событие", few: "события", many: "событий" }
 
 severity:
   error: "ОШИБКА"

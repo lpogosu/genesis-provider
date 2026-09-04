@@ -141,6 +141,42 @@ analyzers:
           x-specgen-error-actions:
             %{code}: reject  # reject | retry | retry_backoff | alert | escalate
 
+  webhook:
+    missing: "спецификация не описывает входящих уведомлений (нет операции с security: [] и нет секции webhooks); статус операции сервис узнает только опросом через fetch_status"
+    from_status_field: "поле события не найдено, событие читается по значению поля статуса `%{name}`; "
+    event_unmapped: "событие %{event} не переведено во внутренний статус: %{evidence}; задайте статус в overlay"
+    event_undeclared: "событие %{event} встречается в примере %{name}, но его нет в enum поля `%{field}`; список событий дополнен им, спецификацию стоит поправить"
+    no_events: "в теле вебхука (%{schema}) нет ни поля события — строкового enum, значения которого читаются как статусы, — ни поля статуса с enum; process_callback не сможет определить исход операции"
+
+  signature:
+    header_evidence: "параметр-заголовок %{header} совпал с header_names rules/signatures.yml"
+    profile_evidence: "профиль rules/signatures.yml %{name} совпал по заголовку %{header}"
+    algorithm_confirmed: "; описание подтверждает: %{words}"
+    custom_evidence: "заголовок %{header} известен rules/signatures.yml, но не совпал ни с одним профилем"
+    algorithm_hint: "описание называет %{words} -> %{algorithm}"
+    algorithm_unknown: "описание не называет алгоритм подписи"
+    encoding_unknown: "спецификация не говорит, как кодируется подпись (hex | base64)"
+    payload_unknown: "спецификация не говорит, что подписывается: сырое тело или {id}.{timestamp}.{body}"
+    tolerance_unknown: "допуск на повтор задаётся вместе с подписываемым телом"
+    tolerance_not_applicable: "не применимо: в подписываемом теле нет метки времени"
+    secret_key_default: "имя ключа секрета по соглашению профиля %{profile}: %{key}"
+    secret_key_unknown: "в rules/signatures.yml нет профиля по умолчанию, у которого взять имя ключа секрета"
+    overlay_evidence: "x-specgen-signature: %{key} = %{value}"
+    overlay_bad: "x-specgen-signature: для %{key} задано неизвестное значение %{value} (допустимо: %{allowed}); расширение проигнорировано"
+    conflict_message: "описание вебхука %{key} называет %{words} (%{hinted}), а профиль rules/signatures.yml %{name} задаёт %{algorithm}; профиль оставлен — проверьте спецификацию или закрепите алгоритм в overlay"
+    incomplete_message: "профиль подписи вебхука %{key} неполон: не выведены %{missing}; фрагмент ниже задаёт их"
+    missing_message: "вебхук %{key} не объявляет заголовок подписи (header_names rules/signatures.yml); подлинность уведомлений проверить нечем — задайте профиль подписи в overlay"
+    overlay_fragment: |
+      - target: "%{path}"
+        update:
+          x-specgen-signature:
+            profile: custom
+            header: %{header}
+            algorithm: %{algorithm}  # hmac_sha256 | hmac_sha512 | hmac_sha1
+            encoding: hex  # hex | base64
+            payload: raw_body  # raw_body | id_timestamp_body
+            secret_key: %{secret_key}
+
   units:
     unit_name:
       minor: "минорные единицы"

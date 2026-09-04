@@ -65,6 +65,10 @@ summary:
   errors_none: "Errors: no rules"
   errors_generic: "generic"
   retry_after: "+Retry-After"
+  webhook: "Webhook: %{path} — %{events}, signature %{signature}"
+  webhook_signature: "%{header} (%{profile}: %{algorithm}, %{encoding}, %{payload})"
+  webhook_unsigned: "not declared"
+  webhook_none: "Webhook: not described (status by polling only)"
   operations: "Operations:"
   operations_none: "Operations: none"
   request: "request:"
@@ -91,6 +95,7 @@ plural:
   error: { one: "error", other: "errors" }
   warning: { one: "warning", other: "warnings" }
   info: { one: "info", other: "info" }
+  event: { one: "event", other: "events" }
 
 severity:
   error: "ERROR"

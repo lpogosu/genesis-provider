@@ -77,6 +77,20 @@ RSpec.describe 'the shipped dictionaries' do
       raw = rules.signatures.names.map { |name| rules.signatures.profile(name) }
       expect(raw).to include(hash_including(payload: :raw_body, encoding: :hex))
     end
+
+    it 'reads the algorithm words of the shipped spec and of the industry' do
+      expect(rules.signatures.algorithm_hint('HMAC-SHA256 подпись тела запроса')).to eq([:hmac_sha256, 'HMAC-SHA256'])
+      expect(rules.signatures.algorithm_hint('sha512 hmac')).to eq([:hmac_sha512, 'sha512'])
+      expect(rules.signatures.algorithm_hint('HMAC SHA1')).to eq([:hmac_sha1, 'HMAC SHA1'])
+      expect(rules.signatures.algorithm_hint('signature of the body')).to be_nil
+    end
+
+    it 'finds the profile behind a header the spec declares' do
+      name, entry = rules.signatures.profile_for_header('webhook-signature')
+
+      expect(name).to eq('standard_webhooks')
+      expect(entry[:payload]).to eq(:id_timestamp_body)
+    end
   end
 
   describe 'idempotency' do

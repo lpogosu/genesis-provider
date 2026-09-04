@@ -37,6 +37,13 @@ module SpecGen
       # которые провайдер решил положить в query, где их сохранят логи
       # прокси). Оба идут в отчёт как :info, потому что читателю их всё равно
       # надо увидеть.
+      #
+      # Два кода про вебхуки различают неполноту и противоречие:
+      # `signature_profile_incomplete` — спецификация не назвала параметр
+      # подписи, `signature_profile_conflict` — назвала, но не то, что задаёт
+      # совпавший профиль справочника. `webhook_event_undeclared` — событие
+      # есть в примере, но не в enum поля события: та же дыра, что
+      # `status_missing_from_enum`, только у событий.
       CODES = %i[
         spec_element_unsupported schema_unresolved example_missing
         provider_name_unknown server_environment_unknown
@@ -47,7 +54,8 @@ module SpecGen
         units_unknown units_inconsistent currency_unknown
         status_unmapped status_missing_from_enum
         error_code_undeclared error_code_unused error_action_unknown
-        webhook_missing webhook_event_unmapped signature_profile_incomplete
+        webhook_missing webhook_event_unmapped webhook_event_undeclared
+        signature_profile_incomplete signature_profile_conflict
         idempotency_header_missing idempotency_dedup_unclear
         auth_unknown auth_multiple_schemes auth_absent auth_key_in_query
         overlay_conflict overlay_target_missing
