@@ -1,0 +1,95 @@
+# rules/signatures.yml — именованные профили проверки подписи вебхуков.
+#
+# Зачем. Верификатор подписи в сгенерированном сервисе параметризуемый:
+# алгоритм, кодировка, подписываемая строка, заголовок и допуск по времени —
+# это данные, а не ветки в коде. Провайдер ССЫЛАЕТСЯ на профиль, а не
+# переописывает параметры заново. Новый провайдер с известной схемой подписи =
+# одна строка ссылки, а не новый класс.
+#
+# Источники:
+#   standard_webhooks — открытая спецификация Standard Webhooks
+#     (standardwebhooks.com, есть гем standardwebhooks для Ruby; принята
+#     OpenAI, Anthropic, Google, Supabase). Оттуда: заголовки webhook-id /
+#     webhook-timestamp / webhook-signature, подписываемая строка
+#     {id}.{timestamp}.{body}, HMAC-SHA256, base64, формат значения
+#     `v1,<подпись>`, защита от replay по метке времени.
+#   novapay — подтверждено экспертами кейса: HMAC-SHA256 от сырого тела,
+#     hex, заголовок X-NovaPay-Signature.
+#
+# Значения полей закрыты константами SpecGen::IR::SignatureProfile:
+#   profile   PROFILES   = standard_webhooks | custom
+#   algorithm ALGORITHMS = hmac_sha256 | hmac_sha512 | hmac_sha1
+#   encoding  ENCODINGS  = hex | base64
+#   payload   PAYLOADS   = raw_body | id_timestamp_body
+# Незнакомое значение — ошибка загрузки, а не «почти подходит».
+#
+# Правило связки, которое проверяет загрузчик с обеих сторон:
+#   payload: id_timestamp_body → id_header, timestamp_header и tolerance
+#     ОБЯЗАТЕЛЬНЫ (без метки времени нечем закрыть replay);
+#   payload: raw_body → эти три поля ЗАПРЕЩЕНЫ (в подписи нет ни идентификатора
+#     доставки, ни метки времени, защищать нечего, и лишний tolerance создаёт
+#     ложное ощущение защиты).
+#
+# ЧЕГО ЗДЕСЬ ДЕЛАТЬ НЕЛЬЗЯ:
+#   1. Класть секреты. secret_key — это ИМЯ КЛЮЧА в provider.credentials,
+#      а не значение. Значение живёт только в конфигурации платформы.
+#   2. Описывать сравнение подписей. Оно всегда константное по времени
+#      (OpenSSL.fixed_length_secure_compare), это свойство шаблона, а не
+#      настраиваемый параметр: небезопасного варианта у нас нет.
+#   3. Выводить профиль по догадке. Если в спеке нет ни заголовка подписи, ни
+#      описания схемы — это warning и слот в overlay, а не «наверное,
+#      Standard Webhooks».
+#
+# Слово novapay здесь допустимо: rules/ — это данные. В lib/ имени провайдера
+# быть не должно.
+#
+# Ключи профилей и записи header_names отсортированы по алфавиту; поля внутри
+# профиля идут в логическом порядке «чем подписываем → как кодируем → где
+# лежит», так их проще сверять со спецификацией провайдера.
+
+version: 1
+
+profiles:
+  novapay:
+    profile: custom
+    header: X-NovaPay-Signature
+    algorithm: hmac_sha256
+    encoding: hex
+    payload: raw_body
+    secret_key: webhook_secret
+    source: "подтверждено экспертами кейса"
+
+  standard_webhooks:
+    profile: standard_webhooks
+    header: webhook-signature
+    id_header: webhook-id
+    timestamp_header: webhook-timestamp
+    algorithm: hmac_sha256
+    encoding: base64
+    payload: id_timestamp_body
+    # Секунды. Значение из спецификации Standard Webhooks: сообщение старше
+    # пяти минут считается replay и отбрасывается.
+    tolerance: 300
+    # Значение заголовка — список версий через пробел: "v1,<подпись> v1,<...>".
+    # Префикс снимается перед сравнением, сравниваются все версии.
+    value_prefix: "v1,"
+    secret_key: webhook_secret
+    source: "Standard Webhooks specification"
+
+# Заголовки, по которым анализатор УЗНАЁТ подпись в спеке (parameters вебхука
+# или описание в тексте). Нормализуются так же, как имена полей в
+# rules/roles.yml: нижний регистр, разделители → `_`. Пересекаться разрешено
+# только с ролью signature; совпадение с любой другой ролью — ошибка загрузки.
+header_names:
+  - signature
+  - webhook-signature
+  - x-callback-signature
+  - x-hub-signature
+  - x-hub-signature-256
+  - x-novapay-signature
+  - x-payment-signature
+  - x-provider-signature
+  - x-sign
+  - x-signature
+  - x-signature-256
+  - x-webhook-signature

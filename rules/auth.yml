@@ -1,0 +1,125 @@
+# rules/auth.yml — securitySchemes спецификации → код авторизации в сервисе.
+#
+# Зачем. `auth_headers` в сгенерированном сервисе собирается из данных: как
+# узнать схему в спеке, какие ключи она берёт из provider.credentials и какое
+# выражение подставить в шаблон. Новая схема авторизации = новая запись здесь,
+# а не ветка в генераторе.
+#
+# Источник. OpenAPI Specification, объект Security Scheme (`type`: apiKey |
+# http | oauth2 | openIdConnect | mutualTLS) и реестр схем HTTP-аутентификации
+# IANA для значения `scheme` (bearer — RFC 6750, basic — RFC 7617).
+#
+# Состав записи:
+#   match            признаки, по которым анализатор узнаёт схему в
+#                    components.securitySchemes.
+#   ir_type          из SpecGen::IR::Auth::TYPES:
+#                    api_key | bearer | basic | oauth2 | hmac | none.
+#   location         из IR::Auth::LOCATIONS: header | query | cookie.
+#   credential_keys  ключи, которые сервис читает из provider.credentials.
+#   headers          что кладём в auth_headers: имя заголовка → выражение Ruby.
+#   query            то же для схем, где ключ уходит в строку запроса, а не в
+#                    заголовок (apiKey in: query).
+#   requires_token_url  true, если без tokenUrl код сгенерировать нельзя.
+#
+# Плейсхолдер %{param_name} подставляется из спеки: для apiKey это поле `name`
+# схемы (например, X-API-Key). Ключ заголовка может быть плейсхолдером, потому
+# что имя заголовка задаёт провайдер, а не мы.
+#
+# ЧЕГО ЗДЕСЬ ДЕЛАТЬ НЕЛЬЗЯ:
+#   1. Писать значения секретов, примеры ключей или ENV-имена конкретной
+#      установки. Только provider.credentials[...]: секрет не должен
+#      появляться ни в репозитории, ни в сгенерированном коде.
+#   2. Добавлять ir_type или location вне констант IR::Auth. Незнакомое
+#      значение — ошибка загрузки.
+#   3. Достраивать схему по догадке. Если в спеке объявлено несколько схем,
+#      анализатор берёт ту, которую реально требуют операции, а про остальные
+#      пишет в report.md. Если не объявлено ни одной — тип :none, отдельной
+#      записи здесь для этого не нужно.
+#
+# Чего этот файл осознанно НЕ покрывает (уровень 3 доверия: warning + слот в
+# overlay, а не молчаливая догадка):
+#   - apiKey in: cookie — в платёжных API server-to-server не встречается;
+#   - openIdConnect и mutualTLS — требуют инфраструктуры вне генератора;
+#   - oauth2 с потоками authorizationCode / implicit / password — они
+#     подразумевают пользователя в браузере, а не серверную интеграцию.
+#
+# Выражения справа — исходный текст на Ruby, он попадает в шаблон как есть.
+# Сгенерированный код обязан проходить `ruby -c` и RuboCop, поэтому длинные
+# выражения шаблон переносит по строкам сам.
+#
+# Ключи схем отсортированы по алфавиту.
+
+version: 1
+
+schemes:
+  api_key_header:
+    match: { type: apiKey, in: header }
+    ir_type: api_key
+    location: header
+    credential_keys: [api_key]
+    headers:
+      "%{param_name}": "provider.credentials[:api_key]"
+
+  api_key_query:
+    # Ключ уходит в строку запроса — это попадает в логи прокси и в историю
+    # браузера. Схема поддержана, но генератор добавляет в report.md отметку
+    # о риске: выбор сделал провайдер, а не мы.
+    match: { type: apiKey, in: query }
+    ir_type: api_key
+    location: query
+    credential_keys: [api_key]
+    query:
+      "%{param_name}": "provider.credentials[:api_key]"
+
+  basic:
+    # Base64 из stdlib в Ruby 3.4 стал bundled gem, поэтому кодируем через
+    # Array#pack("m0") — без внешней зависимости и без переводов строк.
+    match: { type: http, scheme: basic }
+    ir_type: basic
+    location: header
+    credential_keys: [password, username]
+    headers:
+      Authorization: '"Basic #{[[provider.credentials[:username], provider.credentials[:password]].join(":")].pack("m0")}"'
+
+  bearer:
+    match: { type: http, scheme: bearer }
+    ir_type: bearer
+    location: header
+    credential_keys: [token]
+    headers:
+      Authorization: '"Bearer #{provider.credentials[:token]}"'
+
+  hmac_request:
+    # Подпись САМОГО ЗАПРОСА (не вебхука). В securitySchemes её выразить
+    # нечем: спеки описывают её либо как http со своим scheme, либо как apiKey
+    # с заголовком вроде X-Signature, либо только словами в description.
+    # Поэтому распознавание чаще идёт через overlay, и это честный уровень 3:
+    # не угадали — сказали. Параметры самой подписи (алгоритм, кодировка,
+    # подписываемая строка) берутся из профиля в rules/signatures.yml.
+    # request_signature — приватный метод, который генерирует шаблон; секрет
+    # он получает аргументом, чтобы в справочнике было видно, какой ключ
+    # credentials читается. Идентификатор клиента, если провайдер требует его
+    # отдельным заголовком, описывается схемой api_key_header: это две разные
+    # схемы, а не одна составная.
+    match: { type: http, scheme: hmac }
+    ir_type: hmac
+    location: header
+    credential_keys: [secret_key]
+    headers:
+      "%{param_name}": "request_signature(body, provider.credentials[:secret_key])"
+
+  oauth2_client_credentials:
+    # Единственный поток OAuth2 без участия человека. access_token —
+    # приватный метод шаблона: он запрашивает токен по tokenUrl из спеки
+    # (grant_type=client_credentials) и кеширует его до expires_in. Пара
+    # client_id/client_secret передаётся ему аргументами: сам заголовок несёт
+    # токен, но в справочнике должно быть видно, какие ключи credentials
+    # нужны схеме.
+    match: { type: oauth2, flow: clientCredentials }
+    ir_type: oauth2
+    location: header
+    credential_keys: [client_id, client_secret]
+    requires_token_url: true
+    grant_type: client_credentials
+    headers:
+      Authorization: '"Bearer #{access_token(provider.credentials[:client_id], provider.credentials[:client_secret])}"'

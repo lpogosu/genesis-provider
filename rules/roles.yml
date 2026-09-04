@@ -1,0 +1,361 @@
+# rules/roles.yml — словарь «имя поля в спецификации → роль в IR».
+#
+# Зачем. Имён полей у провайдеров бесконечно много, ролей в платёжной области
+# ровно шестнадцать (SpecGen::IR::Roles::FIELD). Ядро в lib/ работает только с
+# ролями и не знает ни одного имени поля; всё знание об именах живёт здесь.
+# Поддержка нового провайдера = новые строки в этом файле, а не ветка в коде.
+#
+# Источник. Академическая база — composite schema matching (COMA, Rahm &
+# Bernstein 2001; Do & Rahm 2002): несколько независимых матчеров со своими
+# весами. Словарь синонимов — обязательный отдельный матчер, потому что
+# строковые метрики не связывают семантически разные имена (классический
+# пример из литературы — Ship и Deliver). Никаких нейросетей и эмбеддингов:
+# только точное сравнение, токены, регулярные выражения и структура схемы.
+#
+# Состав записи:
+#   names    обязателен, непустой. Точное совпадение после нормализации,
+#            наибольший вес.
+#   tokens   необязателен. Частичное совпадение (фрагмент имени), вес ниже —
+#            сюда кладём только то, что само по себе двусмысленно.
+#   types    необязателен. Значения OpenAPI `type`.
+#   formats  необязателен. Значения OpenAPI `format`.
+#   patterns необязателен. Обязаны компилироваться как Regexp.
+#   parents  необязателен. Подсказка StructureMatcher по имени родителя —
+#            вложенного свойства или схемы. Сравнение идёт по ТОКЕНАМ имени
+#            родителя, а не по строке целиком: подсказка `error` обязана
+#            срабатывать и на свойстве `error`, и на схеме `PayoutError`,
+#            и на `error_details`. Поэтому в parents пишутся односложные
+#            смысловые слова, а не имена схем конкретных провайдеров.
+#
+# Нормализация имени: нижний регистр, любые разделители → `_`, схлопывание.
+# Поэтому `bankCode`, `bank-code`, `BANK_CODE` — одно и то же имя.
+#
+# ЧЕГО ЗДЕСЬ ДЕЛАТЬ НЕЛЬЗЯ:
+#   1. Одно имя в двух ролях. Загрузчик падает и называет обе роли.
+#      Особо внимательно: bank_code/bank_name, created_at/completed_at,
+#      error_code/status, external_id/provider_operation_id.
+#   2. Добавлять роли. Ключи ролей закрыты в IR::Roles::FIELD; незнакомый
+#      ключ — ошибка загрузки. Новая роль — это изменение модели, оно
+#      делается вместе с CLAUDE.md и docs/IR.md.
+#   3. Класть сюда `request_id` / `x_request_id` в роль external_id. Это
+#      заголовки идемпотентности, они описаны в rules/idempotency.yml; имена
+#      идемпотентности разрешено пересекать только с ролью idempotency_key.
+#   4. Класть в `names` имя, у которого в платёжных API нет одного
+#      устойчивого смысла. Такое имя должно остаться неопознанным: по
+#      доктрине трёх уровней доверия молчаливая ошибка хуже warning.
+#
+# Осознанно НЕ включённые имена (оставлены неопознанными намеренно):
+#   reference      — у одних провайдеров это наш идентификатор, у других их
+#                    (ср. Adyen: merchantReference против pspReference)
+#   reason         — у части провайдеров это код, у части текст; выбор между
+#                    error_code и error_message сделать нечем
+#   description    — встречается у любого поля, не признак error_message
+#   token          — у одних это токен авторизации, у других подпись запроса
+#   account/schet  — счёт получателя; в IR::Roles::FIELD нет роли «счёт», а
+#                    подменять ею card_number нельзя. Обязательное поле с
+#                    таким именем попадёт в payload как nil + TODO
+#   number         — «номер» чего угодно: карты, телефона, заказа
+#   merchant_id    — идентификатор магазина, а не операции
+#   updated_at     — время последнего изменения, не время завершения
+#   timestamp      — в вебхуках это метка подписи, а не время создания
+#
+# Различие external_id и provider_operation_id (критично, путать нельзя):
+#   external_id            — НАШ идентификатор операции, который мы передаём
+#                            провайдеру в запросе (он же operation.id на
+#                            стороне платформы). Мы его порождаем.
+#   provider_operation_id  — идентификатор, который ПРОВАЙДЕР присвоил
+#                            операции и вернул в ответе; им мы потом
+#                            опрашиваем статус и сопоставляем вебхуки.
+#   Проверка при добавлении синонима: кто порождает значение? Мы —
+#   external_id, провайдер — provider_operation_id.
+#
+# Записи внутри каждого списка отсортированы по алфавиту, ключи ролей — тоже:
+# порядок обхода влияет на порядок предупреждений в report.md, а вывод обязан
+# быть байт-в-байт детерминированным.
+
+version: 1
+
+roles:
+  amount:
+    names:
+      - amount
+      - amount_minor
+      - amount_value
+      - charge_amount
+      - deposit_amount
+      - gross_amount
+      - order_amount
+      - payment_amount
+      - payout_amount
+      - sum
+      - summa
+      - total
+      - total_amount
+      - transaction_amount
+      - transfer_amount
+      - value
+    tokens: [amt]
+    types: [integer, number]
+    parents: [amount, deposit, money, payment, payout, transaction, transfer]
+
+  bank_code:
+    # bic/bik — латиница и транслит одного и того же: российские провайдеры
+    # пишут и так и так. member_id — идентификатор участника в СБП.
+    names:
+      - aba
+      - bank_bic
+      - bank_bik
+      - bank_code
+      - bank_id
+      - bank_identifier
+      - bic
+      - bik
+      - ifsc
+      - member_id
+      - sort_code
+      - swift
+      - swift_bic
+      - swift_code
+    tokens: [routing]
+    types: [string]
+    # Первый шаблон — БИК РФ (9 цифр), второй — SWIFT/BIC по ISO 9362.
+    patterns:
+      - '^\d{9}$'
+      - '^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$'
+    parents: [bank, beneficiary, destination, payee, recipient]
+
+  bank_name:
+    names:
+      - bank
+      - bank_caption
+      - bank_full_name
+      - bank_name
+      - bank_short_name
+      - bank_title
+      - naimenovanie_banka
+      - recipient_bank
+    types: [string]
+    parents: [bank, beneficiary, destination, payee, recipient]
+
+  card_number:
+    # pan вынесен в tokens: как отдельное имя встречается редко, зато как
+    # фрагмент — часто (masked_pan, pan_masked, card_pan).
+    names:
+      - card
+      - card_no
+      - card_num
+      - card_number
+      - masked_card
+      - masked_pan
+      - nomer_karty
+      - primary_account_number
+    tokens: [pan]
+    types: [string]
+    patterns:
+      - '^\d{13,19}$'
+      - '^\d{6}\*{6}\d{4}$'
+    parents: [card, destination, payee, recipient]
+
+  completed_at:
+    # Время перехода в терминальный статус. `updated_at` сюда НЕ входит.
+    names:
+      - completed
+      - completed_at
+      - completed_date
+      - completed_time
+      - completion_date
+      - completion_time
+      - executed_at
+      - finished_at
+      - paid_at
+      - processed_at
+      - settled_at
+    types: [integer, string]
+    formats: [date-time]
+
+  created_at:
+    names:
+      - create_time
+      - created
+      - created_at
+      - created_date
+      - created_time
+      - creation_date
+      - creation_time
+      - date_created
+      - registered_at
+      - submitted_at
+    types: [integer, string]
+    formats: [date-time]
+
+  currency:
+    # ccy в tokens: сам по себе фрагмент, встречается как ccy, ccy_code,
+    # src_ccy. Шаблон — буквенный код ISO 4217.
+    names:
+      - currency
+      - currency_code
+      - currency_iso
+      - iso_currency
+      - valuta
+      - valyuta
+    tokens: [ccy]
+    types: [string]
+    patterns:
+      - '^[A-Z]{3}$'
+    parents: [amount, deposit, money, payment, payout, transaction, transfer]
+
+  error_code:
+    # Голое `code` намеренно НЕ в names, а в tokens: в спеках так называют и
+    # код ошибки, и код валюты, и код банка. Слабое совпадение по токену плюс
+    # родитель error/failure даёт уверенный вывод, а `currency.code` остаётся
+    # с низкой уверенностью и попадает в report.md, а не в молчаливую ошибку.
+    names:
+      - decline_code
+      - err_code
+      - error_code
+      - failure_code
+      - reason_code
+      - rejection_code
+      - response_code
+      - result_code
+    tokens: [code]
+    types: [integer, string]
+    parents: [decline, error, errors, failure, fault, problem, rejection]
+
+  error_message:
+    names:
+      - decline_reason
+      - error_description
+      - error_message
+      - error_text
+      - failure_message
+      - failure_reason
+      - message
+      - rejection_reason
+    tokens: [msg]
+    types: [string]
+    parents: [decline, error, errors, failure, fault, problem, rejection]
+
+  external_id:
+    # НАШ идентификатор операции у провайдера (см. шапку файла).
+    names:
+      - client_order_id
+      - client_transaction_id
+      - external_id
+      - external_operation_id
+      - external_reference
+      - merchant_order_id
+      - merchant_reference
+      - merchant_transaction_id
+      - order_id
+      - order_number
+      - partner_order_id
+      - shop_order_id
+    types: [integer, string]
+
+  idempotency_key:
+    # Роль относится и к полю тела, и к заголовку (IR::Parameter тоже несёт
+    # роль). Имена пересекаются с rules/idempotency.yml — это единственное
+    # разрешённое пересечение, оно осознанное.
+    names:
+      - idempotence_key
+      - idempotency_key
+      - idempotency_token
+      - paypal_request_id
+      - request_id
+      - x_idempotence_key
+      - x_idempotency_key
+      - x_request_id
+      - x_unique_transaction_id
+    types: [string]
+    formats: [uuid]
+    patterns:
+      - '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+
+  provider_operation_id:
+    # Идентификатор, присвоенный ПРОВАЙДЕРОМ (см. шапку файла). Голое `id`
+    # оставлено в names: в ответе провайдера это почти всегда его собственный
+    # идентификатор, а вложенные `id` разводит подсказка по родителю.
+    # `provider_id` исключён намеренно: это идентификатор самого провайдера,
+    # а не операции.
+    names:
+      - charge_id
+      - deposit_id
+      - id
+      - operation_id
+      - payment_id
+      - payout_id
+      - provider_operation_id
+      - provider_payment_id
+      - provider_transaction_id
+      - psp_reference
+      - transaction_id
+      - transfer_id
+    tokens: [trx, txn]
+    types: [integer, string]
+    parents: [deposit, operation, payment, payout, transaction, transfer]
+
+  recipient_phone:
+    names:
+      - cell
+      - cell_phone
+      - contact_phone
+      - mobile
+      - mobile_number
+      - mobile_phone
+      - msisdn
+      - payee_phone
+      - phone
+      - phone_number
+      - recipient_phone
+      - telefon
+    types: [string]
+    # Первый шаблон — E.164, второй — российский номер как в спеке NovaPay.
+    patterns:
+      - '^\+?\d{10,15}$'
+      - '^7\d{10}$'
+    parents: [beneficiary, contact, destination, payee, recipient]
+
+  recipient_type:
+    # Голое `type` оставлено намеренно: в платёжных схемах у получателя это
+    # почти всегда способ зачисления (sbp/card/account). Вне родителя-
+    # получателя вес совпадения гасится подсказкой parents.
+    names:
+      - destination_type
+      - payee_type
+      - payment_method
+      - payout_method
+      - recipient_type
+      - transfer_method
+      - transfer_type
+      - type
+    types: [string]
+    parents: [beneficiary, destination, payee, recipient]
+
+  signature:
+    # Имена заголовков подписи перечислены в rules/signatures.yml; пересечение
+    # с этой ролью разрешено, с любой другой — ошибка загрузки.
+    names:
+      - checksum
+      - digest
+      - hmac
+      - hmac_signature
+      - podpis
+      - sign
+      - signature
+    tokens: [sig]
+    types: [string]
+
+  status:
+    names:
+      - current_status
+      - deposit_status
+      - operation_status
+      - payment_status
+      - payout_status
+      - state
+      - status
+      - transaction_state
+      - transaction_status
+      - transfer_status
+    types: [string]
