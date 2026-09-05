@@ -235,6 +235,52 @@ RSpec.describe SpecGen::Analyzers::UnitsAnalyzer do
     end
   end
 
+  # The shipped dictionaries: `amt` is a token hint of the amount role, not a
+  # synonym, so only the composite matcher can name that field — and the
+  # fixture dictionaries carry no hints.
+  describe 'an amount field only the matchers can name' do
+    def with_shipped(properties)
+      body = { 'content' => { 'application/json' => { 'schema' => { 'type' => 'object',
+                                                                    'properties' => properties } } } }
+      document = SpecGen::SpecLoader::Document.new(
+        file: 'provider_api.yaml', version: '3.0.3', family: :oas30, raw: {},
+        data: { 'openapi' => '3.0.3',
+                'paths' => { '/t' => { 'post' => { 'operationId' => 'createTransaction',
+                                                   'requestBody' => body } } } }
+      )
+      described_class.call(document: document, profile: SpecGen::IR::ProviderProfile.new,
+                           rules: SpecGen::Rules.load)
+    end
+
+    it 'takes the role the matchers assigned instead of saying no amount field exists' do
+      profile = with_shipped('amt' => { 'type' => 'integer' },
+                             'currency' => { 'type' => 'string', 'enum' => ['RUB'] })
+
+      expect(profile.units.unit.value).to eq(:minor)
+      expect(profile.units.exponent.value).to eq(2)
+      expect(profile.units.json_path).to end_with('.properties.amt')
+      expect(profile.warnings.map(&:code)).not_to include(:units_unknown)
+    end
+
+    it 'never claims more confidence than the role it rests on, and names it' do
+      profile = with_shipped('amt' => { 'type' => 'integer' },
+                             'currency' => { 'type' => 'string', 'enum' => ['RUB'] })
+
+      expect(profile.units.unit).to have_attributes(value: :minor, source: :heuristic)
+      expect(profile.units.unit.confidence).to be < 1.0
+      expect(profile.units.unit.evidence).to include('`amt` опознано как amount матчерами')
+    end
+
+    it 'leaves the dictionary in charge when the document names an amount field itself' do
+      profile = with_shipped('amount' => { 'type' => 'integer' },
+                             'amt' => { 'type' => 'integer' },
+                             'currency' => { 'type' => 'string', 'enum' => ['RUB'] })
+
+      expect(profile.units.json_path).to end_with('.properties.amount')
+      expect(profile.units.unit).to have_attributes(source: :structural, confidence: 1.0)
+    end
+  end
+
   describe 'on the spec as shipped' do
     let(:profile) do
       document = SpecGen::SpecLoader.load(spec_fixture('novapay.yaml'))

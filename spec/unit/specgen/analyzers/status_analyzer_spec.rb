@@ -170,6 +170,65 @@ RSpec.describe SpecGen::Analyzers::StatusAnalyzer do
     end
   end
 
+  # A compound name and a status field the dictionary cannot name: both need
+  # the shipped dictionaries, which the fixture ones deliberately lack.
+  describe 'names the dictionary cannot read' do
+    let(:shipped) { SpecGen::Rules.load }
+
+    def with_shipped(properties)
+      schema = { 'type' => 'object', 'properties' => properties }
+      response = { 'description' => 'ok',
+                   'content' => { 'application/json' => { 'schema' => schema } } }
+      document = SpecGen::SpecLoader::Document.new(
+        file: 'provider_api.yaml', version: '3.0.3', family: :oas30,
+        raw: {}, data: { 'openapi' => '3.0.3',
+                         'paths' => { '/t/{id}' => { 'get' => { 'operationId' => 'getState',
+                                                                'responses' => { '200' => response } } } } }
+      )
+      described_class.call(document: document, profile: SpecGen::IR::ProviderProfile.new,
+                           rules: shipped)
+    end
+
+    it 'reads the status enum of a field only the matchers could name, at the role confidence' do
+      profile = with_shipped('st' => { 'type' => 'string', 'enum' => %w[WAITING DONE] })
+
+      expect(profile.status_map.map(&:provider_status)).to eq(%w[WAITING DONE])
+      expect(mapping_of(profile, 'DONE').internal)
+        .to have_attributes(value: :approved, source: :heuristic)
+      expect(mapping_of(profile, 'DONE').internal.confidence).to be < 0.6
+      expect(profile.warnings.map(&:code)).not_to include(:contract_gap)
+    end
+
+    it 'refuses to read PART_DONE as DONE, and names the modifier that stopped it' do
+      profile = with_shipped('st' => { 'type' => 'string', 'enum' => %w[DONE PART_DONE] })
+      mapping = mapping_of(profile, 'PART_DONE')
+      warning = profile.warnings.find { |item| item.code == :status_unmapped }
+
+      expect(mapping.internal).to be_unknown
+      expect(warning.message).to include('PART_DONE', 'part', 'modifiers rules/statuses.yml')
+      expect(warning.suggested_overlay).to include('x-specgen-status-map')
+    end
+
+    it 'still reads a compound name whose leading words are not modifiers, with less confidence' do
+      profile = with_shipped('status' => { 'type' => 'string',
+                                           'enum' => %w[DONE authAdjustmentRefused] })
+      mapping = mapping_of(profile, 'authAdjustmentRefused')
+
+      expect(mapping.internal).to have_attributes(value: :rejected, source: :heuristic)
+      expect(mapping.internal.confidence).to eq(shipped.statuses.tail_confidence)
+      expect(mapping.internal.evidence).to include('refused')
+    end
+
+    it 'still strips an event address separated by a dot, silently and at full confidence' do
+      profile = with_shipped('status' => { 'type' => 'string',
+                                           'enum' => ['payout.completed'] })
+      mapping = mapping_of(profile, 'payout.completed')
+
+      expect(mapping.internal).to have_attributes(value: :approved, confidence: 1.0)
+      expect(profile.warnings).to be_empty
+    end
+  end
+
   describe 'on the spec as shipped' do
     let(:profile) do
       document = SpecGen::SpecLoader.load(spec_fixture('novapay.yaml'))

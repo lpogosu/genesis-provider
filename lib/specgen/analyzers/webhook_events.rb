@@ -81,7 +81,7 @@ module SpecGen
           next if @lookup.role?(name, STATUS)
 
           reader = StatusReader.new(book: @book)
-          resolved = enum.count { |value| reader.call(value).kind != :unknown }
+          resolved = enum.count { |value| reader.call(value).read? }
           [name, enum, resolved.to_f / enum.size]
         end
       end
@@ -108,11 +108,14 @@ module SpecGen
         merged
       end
 
+      # Внутренний статус события не может быть увереннее роли поля, из
+      # которого он прочитан: у StatusAnalyzer то же правило, и две страницы
+      # отчёта обязаны называть одну цифру.
       def event(value, field, reader, at, prefix)
         result = reader.call(value)
-        internal = prefixed(result.derived, prefix)
+        internal = prefixed(@lookup.temper(result.derived, field), prefix)
         IR::WebhookEvent.new(name: value, internal_status: internal,
-                             provider_status: result.kind == :unknown ? nil : result.status,
+                             provider_status: result.read? ? result.status : nil,
                              example: example_for(field, value), json_path: at)
       end
 

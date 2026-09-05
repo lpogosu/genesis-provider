@@ -34,6 +34,7 @@ rules:
     openapi_type: "OpenAPI type"
     pattern: "pattern"
     internal_status: "internal status"
+    modifiers: "leading words that change the meaning of a status"
     synonyms_of: "synonyms of %{status}"
     ambiguity_reason: "reason %{status} is ambiguous"
     default_exponent: "default exponent"
@@ -127,6 +128,7 @@ rules:
     empty: "status %{status} normalizes to an empty name"
     mapped_twice: "status %{status} is already mapped to %{owner} at %{origin}; one status means one internal state"
     uncovered: "no provider status maps to %{statuses}"
+    confidence: "`%{key}`: expected a number in %{range}, got %{got}"
 
   currencies:
     bad_code: "currency code must be three capital letters, got %{code}"

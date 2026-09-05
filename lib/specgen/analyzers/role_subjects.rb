@@ -14,6 +14,45 @@ module SpecGen
     # StructureMatcher находит нужный токен.
     module RoleSubjects
       EXTENSION = Matchers::Remarks::EXTENSION
+      OBJECT = 'object'
+      ARRAY = 'array'
+
+      # Свойство схемы, прочитанное прямо из узла, — для reader'ов, у которых
+      # IR::Field ещё нет (RoleLookup). Ключи те же, что у #field, иначе
+      # ответ матчеров зависел бы от того, кто спросил.
+      # @param name [String] имя свойства
+      # @param node [Hash] свёрнутый узел свойства
+      # @param parent [String] имя схемы, в которой лежит свойство
+      # @param required [Boolean]
+      # @param json_path [String, nil]
+      # @return [Matchers::Subject]
+      def self.from_node(name:, node:, parent:, required: false, json_path: nil)
+        type, nullable = ConstraintReader.type_of(node)
+        Matchers::Subject.new(name: name, type: type || implied(node), format: node['format'],
+                              constraints: ConstraintReader.call(node, nullable: nullable),
+                              example: example_of(node), parents: [parent], required: required,
+                              overlay: node[EXTENSION], json_path: json_path)
+      end
+
+      # Тип, который SchemaReader подразумевает у узла без `type`.
+      # @param node [Hash]
+      # @return [String, nil]
+      def self.implied(node)
+        return OBJECT if node['properties'].is_a?(Hash)
+        return ARRAY if node.key?('items')
+
+        nil
+      end
+
+      # Образец значения: `example` в OAS 3.0, массив `examples` в 3.1.
+      # @param node [Hash]
+      # @return [Object, nil]
+      def self.example_of(node)
+        return node['example'] if node.key?('example')
+
+        listed = node['examples']
+        listed.is_a?(Array) ? listed.first : nil
+      end
 
       # @param field [IR::Field]
       # @param schema_name [String] имя схемы, в которой лежит поле

@@ -12,10 +12,16 @@ module SpecGen
     # трёх разделов: отображённый дважды, он останавливает загрузку.
     class StatusesBook < Book
       FILE = 'statuses.yml'
+      FRACTION = (0.0..1.0)
 
       # @return [Hash{String => Symbol}] все отображённые статусы,
       #   нормализованные
       attr_reader :index
+      # @return [Array<String>] ведущие слова, меняющие смысл статуса за ними
+      attr_reader :modifiers
+      # @return [Float] уверенность статуса, прочитанного по хвосту
+      #   составного имени
+      attr_reader :tail_confidence
 
       # @param status [String] значение статуса из спецификации или ответа
       # @return [Symbol, nil] внутренний статус; nil, если статус неизвестен
@@ -42,6 +48,12 @@ module SpecGen
         @canonical.include?(Normalizer.call(status))
       end
 
+      # @param tokens [Array<String>] отброшенные ведущие токены имени
+      # @return [String, nil] первый из них, меняющий смысл статуса
+      def modifier(tokens)
+        (tokens & @modifiers).first
+      end
+
       private
 
       def build
@@ -52,8 +64,24 @@ module SpecGen
         load_canonical
         load_synonyms
         load_ambiguous
+        load_reading
         report_uncovered
-        [@index, @origins, @canonical, @ambiguous].each(&:freeze)
+        [@index, @origins, @canonical, @ambiguous, @modifiers].each(&:freeze)
+      end
+
+      # Как читать составное имя: какие ведущие слова снимать нельзя и с
+      # какой уверенностью читается хвост, когда снять их пришлось.
+      def load_reading
+        @modifiers = string_list(data['modifiers'], noun(:modifiers), path('modifiers'),
+                                 required: false).map { |word| Normalizer.call(word) }
+        @tail_confidence = fraction('tail_confidence')
+      end
+
+      def fraction(key)
+        value = data[key]
+        return value.to_f if value.is_a?(Numeric) && FRACTION.cover?(value)
+
+        fault('statuses.confidence', path(key), key: key, range: FRACTION, got: describe(value))
       end
 
       def load_canonical

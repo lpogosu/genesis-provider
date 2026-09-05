@@ -238,6 +238,37 @@ RSpec.describe SpecGen::Analyzers::ErrorAnalyzer do
     end
   end
 
+  # `err` is neither a synonym of the error_code role nor a `code` token under
+  # an error parent, so only the composite matcher can name that field.
+  describe 'a code field only the matchers can name' do
+    let(:profile) do
+      schema = { 'type' => 'object',
+                 'properties' => { 'err' => { 'type' => 'string', 'enum' => %w[E100 E200] },
+                                   'txt' => { 'type' => 'string' } } }
+      responses = { '200' => json(component('Txn')),
+                    '400' => json(component('Err'), 'err' => 'E777', 'txt' => 'bad') }
+      analyze({ '/transactions' => operation('createTransaction', responses) },
+              'schemas' => { 'Err' => schema, 'Txn' => { 'type' => 'object' } })
+    end
+
+    it 'builds the code map as the union of the enum and the examples' do
+      expect(profile.error_map.filter_map(&:provider_code)).to eq(%w[E100 E200 E777])
+    end
+
+    it 'reports the example code the enum never declared' do
+      undeclared = profile.warnings.select { |warning| warning.code == :error_code_undeclared }
+
+      expect(undeclared.map { |warning| warning.message[/код (\w+)/, 1] }).to eq(['E777'])
+    end
+
+    it 'reports the enum codes no example shows, so a rule still exists for each' do
+      unused = profile.warnings.select { |warning| warning.code == :error_code_unused }
+
+      expect(unused.map { |warning| warning.message[/код (\w+)/, 1] }).to eq(%w[E100 E200])
+      expect(unused.map(&:severity)).to all(eq(:info))
+    end
+  end
+
   describe 'on the spec as shipped' do
     let(:profile) do
       document = SpecGen::SpecLoader.load(spec_fixture('novapay.yaml'))

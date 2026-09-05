@@ -40,7 +40,7 @@ module SpecGen
       end
 
       def code_rules
-        reader = ErrorCodeReader.new(data: data, lookup: RoleLookup.new(rules.roles)).call
+        reader = ErrorCodeReader.new(data: data, lookup: RoleLookup.new(rules, data)).call
         reader.codes.each do |code|
           profile.error_map << IR::ErrorRule.new(provider_code: code.value, seen_in: code.seen_in,
                                                  action: code_action(code, reader),

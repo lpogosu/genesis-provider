@@ -38,7 +38,7 @@ module SpecGen
       # Заполняет `profile.conditions`.
       # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
-        @lookup = RoleLookup.new(rules.roles)
+        @lookup = RoleLookup.new(rules, data)
         @index = SchemaIndex.new(data)
         @seen = {}
         each_operation { |path, verb, node| operation(path, verb, node) }

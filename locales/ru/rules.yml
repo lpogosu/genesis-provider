@@ -35,6 +35,7 @@ rules:
     openapi_type: "тип OpenAPI"
     pattern: "регулярное выражение"
     internal_status: "внутренний статус"
+    modifiers: "ведущие слова, меняющие смысл статуса"
     synonyms_of: "синонимы статуса %{status}"
     ambiguity_reason: "причина неоднозначности статуса %{status}"
     default_exponent: "экспонента по умолчанию"
@@ -128,6 +129,7 @@ rules:
     empty: "статус %{status} после нормализации становится пустым"
     mapped_twice: "статус %{status} уже отображён на %{owner} в %{origin}; один статус — одно внутреннее состояние"
     uncovered: "ни один статус провайдера не отображён на %{statuses}"
+    confidence: "`%{key}`: ожидается число в диапазоне %{range}, получено %{got}"
 
   currencies:
     bad_code: "код валюты: ожидаются три заглавные латинские буквы, получено: %{code}"

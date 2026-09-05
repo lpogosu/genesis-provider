@@ -13,6 +13,7 @@ analyzers:
   schema:
     components_not_object: "`components.schemas` must be an object"
     body_schema_unreadable: "the body of %{operation} declares no readable schema, so nothing describes what it carries"
+    response_body_undeclared: "response %{status} of %{operation} is declared by its description alone: there is no `content`, so nothing describes the body — either declare a schema or declare a bodiless response with 204"
     nesting_too_deep: "schemas nest deeper than %{limit} levels here, so %{name} was left undescribed; check the spec for a schema that contains itself"
     field_schema_missing: "`%{field}` refers to schema %{schema}, which is not described anywhere"
     role_pending: "field roles are matched by the field matchers, a later stage"

@@ -80,6 +80,17 @@ RSpec.describe 'the shipped dictionaries' do
       expect(rules.statuses.internal_for('declined')).to eq(:rejected)
       expect(rules.statuses.internal_for('queued')).to eq(:in_progress)
     end
+
+    it 'lists the words that change the meaning of the status they precede' do
+      expect(rules.statuses.modifier(%w[part])).to eq('part')
+      expect(rules.statuses.modifier(%w[partially])).to eq('partially')
+      expect(rules.statuses.modifier(%w[auth adjustment])).to be_nil
+      expect(rules.statuses.tail_confidence).to be < 0.6
+    end
+
+    it 'keeps every modifier out of the statuses themselves' do
+      expect(rules.statuses.modifiers.map { |word| rules.statuses.internal_for(word) }).to all(be_nil)
+    end
   end
 
   describe 'currencies' do

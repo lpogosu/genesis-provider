@@ -22,11 +22,13 @@ module SpecGen
     class StatusAnalyzer < Base
       ROLE = :status
       EXTENSION = StatusReader::EXTENSION
+      # Вид результата StatusReader -> ключ сообщения предупреждения.
+      MESSAGES = { ambiguous: 'ambiguous_message', partial: 'partial_message' }.freeze
 
       # Заполняет `profile.status_map`.
       # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
-        @lookup = RoleLookup.new(rules.roles)
+        @lookup = RoleLookup.new(rules, data)
         @fields = status_fields
         @fields.each { |field| from_enum(field) }
         from_examples
@@ -42,14 +44,14 @@ module SpecGen
       end
 
       def from_enum(field)
-        _, _, node, path = field
+        _, name, node, path = field
         enum = node['enum']
         return if enum.nil?
         return enum_shape(path) unless enum.is_a?(Array)
 
         reader = StatusReader.new(book: rules.statuses, overrides: node[EXTENSION])
         enum.each_with_index do |value, index|
-          add(value, reader, "#{path}.enum[#{index}]", path) if value.is_a?(String)
+          add(value, reader, "#{path}.enum[#{index}]", path, name) if value.is_a?(String)
         end
       end
 
@@ -67,17 +69,20 @@ module SpecGen
 
             profile.warn(:status_missing_from_enum, t('missing_from_enum', status: value),
                          json_path: at)
-            add(value, reader, at, first_field_path)
+            add(value, reader, at, first_field_path, key)
           end
         end
       end
 
-      def add(value, reader, at, field_path)
+      # Внутренний статус не может быть увереннее роли поля, из enum которого
+      # он прочитан: словарь статусов знает, что DONE — это approved, но
+      # `st` полем статуса назвали матчеры (RoleLookup#temper).
+      def add(value, reader, at, field_path, name)
         return if known?(value)
 
         result = reader.call(value)
         profile.status_map << IR::StatusMapping.new(provider_status: value, json_path: at,
-                                                    internal: result.derived)
+                                                    internal: @lookup.temper(result.derived, name))
         report(value, result, at, field_path) if result.derived.unknown?
       end
 
@@ -86,7 +91,7 @@ module SpecGen
       end
 
       def report(value, result, at, field_path)
-        key = result.kind == :ambiguous ? 'ambiguous_message' : 'unknown_message'
+        key = MESSAGES.fetch(result.kind, 'unknown_message')
         overlay = field_path && t('overlay_fragment', path: field_path, status: value)
         profile.warn(:status_unmapped, t(key, evidence: result.derived.evidence),
                      json_path: at, suggested_overlay: overlay)

@@ -26,6 +26,12 @@ module SpecGen
       # поймал резолвер, останавливается здесь предупреждением, а не
       # переполнением стека.
       MAX_DEPTH = 8
+      # Коды ответов, у которых тела нет по семантике HTTP (RFC 9110):
+      # 1xx проверяется отдельно префиксом. `default` — заглушка «на всё
+      # остальное», обещанием тела она тоже не является.
+      BODILESS = %w[204 205 304 default].freeze
+      INFORMATIONAL = '1'
+      WEBHOOK = :webhook
 
       # Заполняет `profile.schemas`.
       # @return [IR::ProviderProfile] тот профиль, который был передан
@@ -61,7 +67,10 @@ module SpecGen
         each_operation.flat_map do |path, http_method, node|
           at = json_path('paths', path, http_method)
           key = SchemaNaming.operation_key(node['operationId'], http_method, path)
-          request_schema(node, key, at) + response_schemas(node, key, at)
+          # Ответы входящего вебхука пишем мы: то, что спецификация не
+          # описала их тело, пробелом не является.
+          incoming = role_of(path, http_method, node) == WEBHOOK
+          request_schema(node, key, at) + response_schemas(node, key, at, incoming)
         end
       end
 
@@ -72,7 +81,7 @@ module SpecGen
         [content_schema(body['content'], [key, 'requestBody'], "#{at}.requestBody")].compact
       end
 
-      def response_schemas(node, key, at)
+      def response_schemas(node, key, at, incoming)
         listed = node['responses']
         return [] unless listed.is_a?(Hash)
 
@@ -81,8 +90,22 @@ module SpecGen
 
           code = status.to_s
           where = "#{at}.responses#{SpecLoader::JsonPath.segment(code)}"
+          undeclared_body(response, code, key, where) unless incoming
           content_schema(response['content'], [key, 'responses', code], where)
         end
+      end
+
+      # Ответ, объявленный одним `description`: `content` нет вовсе или в нём
+      # нет ни одного media type. Тела нет по смыслу кода — это норма; у
+      # любого другого кода описание обещает ответ, которого никто не описал,
+      # и собрать из него нечего — как и из `content` без `schema`.
+      def undeclared_body(response, code, key, at)
+        return if BODILESS.include?(code) || code.start_with?(INFORMATIONAL)
+        return unless ContentReader.media_type(response['content']).nil?
+
+        message = Texts.t('analyzers.schema.response_body_undeclared', operation: key,
+                                                                       status: code)
+        profile.warn(:schema_unresolved, message, json_path: at)
       end
 
       # @return [Array(String, Object, String), nil]

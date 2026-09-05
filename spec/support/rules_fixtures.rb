@@ -21,6 +21,7 @@ module RulesFixtures
                          'failed' => 'rejected' },
         'synonyms' => { 'approved' => ['paid'], 'rejected' => ['declined'],
                         'in_progress' => ['queued'] },
+        'modifiers' => ['part'], 'tail_confidence' => 0.5,
         'ambiguous' => { 'on_hold' => 'у одних провайдеров заморозка, у других ручная проверка' } }
     },
     'currencies.yml' => lambda {

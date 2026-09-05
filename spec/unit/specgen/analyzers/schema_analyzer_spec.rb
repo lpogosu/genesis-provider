@@ -381,6 +381,44 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
     end
   end
 
+  describe 'a response that promises a body but describes none' do
+    def with_responses(responses, path = '/payouts/{id}/void', verb = 'post')
+      analyze({ 'paths' => { path => { verb => { 'operationId' => 'voidPayout',
+                                                 'responses' => responses } } } })
+    end
+
+    it 'reports a success response declared by its description alone' do
+      profile = with_responses('200' => { 'description' => 'Voided' })
+      warning = profile.warnings.first
+
+      expect(warning).to have_attributes(code: :schema_unresolved,
+                                         json_path: "$.paths['/payouts/{id}/void'].post.responses['200']")
+      expect(warning.message).to include('ответ 200', 'voidPayout', '204')
+    end
+
+    it 'reports a content without a media type the same way as a content without a schema' do
+      profile = with_responses('200' => { 'description' => 'Report', 'content' => {} })
+
+      expect(codes(profile)).to eq([:schema_unresolved])
+    end
+
+    it 'says nothing about a code that carries no body by RFC 9110, nor about `default`' do
+      profile = with_responses('204' => { 'description' => 'Voided' },
+                               '304' => { 'description' => 'Not modified' },
+                               'default' => { 'description' => 'Anything else' })
+
+      expect(profile.warnings).to be_empty
+    end
+
+    it 'says nothing about the responses of an inbound webhook: those are ours to write' do
+      responses = { '202' => { 'description' => 'Event accepted' } }
+      webhook = { 'operationId' => 'payoutWebhook', 'security' => [], 'responses' => responses }
+      profile = analyze({ 'paths' => { '/webhooks/payout' => { 'post' => webhook } } })
+
+      expect(profile.warnings).to be_empty
+    end
+  end
+
   describe 'on the spec as shipped' do
     let(:profile) do
       document = SpecGen::SpecLoader.load(spec_fixture('novapay.yaml'))

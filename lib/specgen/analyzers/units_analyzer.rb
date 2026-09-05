@@ -34,7 +34,7 @@ module SpecGen
       # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
         @index = SchemaIndex.new(data)
-        @lookup = RoleLookup.new(rules.roles)
+        @lookup = RoleLookup.new(rules, data)
         found = locate
         return no_amount if found.nil?
 
@@ -56,12 +56,16 @@ module SpecGen
         nil
       end
 
+      # Единица и экспонента не могут быть увереннее ролей полей, по которым
+      # выведены: поле суммы, опознанное матчерами с уверенностью 0.43,
+      # ровно настолько же обосновывает множитель (RoleLookup#temper).
       def build
         currency = CurrencyReader.new(index: @index, lookup: @lookup, entry: @entry,
                                       node: @node).call
-        exponent = overlay_exponent || exponent_for(currency)
-        IR::Units.new(currency: currency.derived, unit: unit_for(exponent, currency),
-                      exponent: exponent, json_path: @path)
+        exponent = overlay_exponent || @lookup.temper(exponent_for(currency), currency.name)
+        unit = @lookup.temper(unit_for(exponent, currency), @name)
+        IR::Units.new(currency: currency.derived, unit: unit, exponent: exponent,
+                      json_path: @path)
       end
 
       def overlay_exponent

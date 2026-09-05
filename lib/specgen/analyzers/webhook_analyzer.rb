@@ -31,7 +31,7 @@ module SpecGen
       # Заполняет `profile.webhooks`.
       # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
-        @lookup = RoleLookup.new(rules.roles)
+        @lookup = RoleLookup.new(rules, data)
         found = inbound + declared
         return none if found.empty?
 
