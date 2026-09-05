@@ -28,6 +28,7 @@ SpecLoader → OverlayApplier → Analyzers + Matchers → IR → Generators →
 | Analyzers, часть 2 | готов: Units, Status, Error, Webhook, Idempotency, Conditions | `SpecGen::Analyzers::Runner.call` | `spec/unit/specgen/analyzers/*_spec.rb`, по одному файлу на анализатор; в каждом есть пример на неоднозначный вход, где ожидается предупреждение |
 | Matchers (роли полей) | готов: Name, Type, Constraint, Structure, Composite, Assigner | `SpecGen::Matchers::Assigner.new(rules:).call(subjects)`; вызывается из SchemaReader и ParameterReader | `spec/unit/specgen/matchers/*_spec.rb`, стадия целиком — `spec/unit/specgen/analyzers/field_roles_spec.rb`; на выданной спеке 22 из 26 скалярных полей и все 3 параметра получают роль |
 | Generators | готов: четыре артефакта из одной команды | `SpecGen::Generators.call(profile:, rules:, options:)` → `[Artifact]`; `./integrate --spec ... --provider ...` пишет `output/<provider>_service.rb`, `output/INTEGRATION.md` и `output/fixtures.json` | `ruby -c output/<provider>_service.rb`; `bundle exec rubocop --config config/rubocop_generated.yml output/<provider>_service.rb`; `grep '^## ' output/INTEGRATION.md` — ровно девять разделов; `ruby -rjson -e 'JSON.parse(File.read("output/fixtures.json"))'`; `grep '^## ' output/report.md` — ровно семь разделов; golden — `spec/golden/novapay_spec.rb` против `spec/fixtures/golden/novapay/` (все четыре файла); `spec/unit/specgen/generators/` |
+| Пакетный прогон | готов | `SpecGen::Batch.new(dir:, rules:).call` → `[Row]`; `./integrate --all --specs <каталог>` | `spec/unit/specgen/batch_spec.rb`; сводка печатается `Reporter::BatchLines`, покрытие берётся из метрик артефакта `report.md` |
 | Mock provider | не начат | — | промпт 8 |
 | Validators | не начат | — | промпт 9 |
 | Reporter | готов: `Summary` в консоли и `report.md` на диске | `SpecGen::Reporter::Summary`, `SpecGen::Generators::ReportGenerator` | `./integrate analyze --spec ... --explain`; `output/report.md` |
@@ -78,6 +79,8 @@ Overlay-фрагменты в обеих локалях побайтово од�
 ## Живая демонстрация на сегодня
 
 ```sh
+./integrate --all                      # все спецификации каталога, сводная таблица
+./integrate --all --specs tmp/real-specs --output tmp/batch   # скачанные чужие спеки
 ./integrate --spec spec/fixtures/specs/novapay.yaml --provider novapay
 ruby -c output/novapay_service.rb
 grep '^## ' output/report.md
@@ -567,14 +570,27 @@ rules-curator): `IR::Response` и `Operation` несут примеры, но н
 `docs/QUESTIONS.md`, следствия в `docs/ASSUMPTIONS.md`.
 
 Коротко: приоритет — чужие спецификации, потому что эксперты сказали это
-прямо. Измеренное покрытие на сегодня: NovaPay 76 % (55 из 72), PayPal
-Payouts 38 % (40 из 105), Adyen Transfers 34 % (202 из 588), Adyen Payout
-18 % (44 из 240). Разбор причин по Adyen Transfers: 5 из 12 операций без
-роли (`cashout`, `approve`, `returns` — словарные пробелы), 81 из 97 полей
-тел запросов не покрыто, потому что payload собирается только для операции
-создания, 41 из 79 статусов без пары. Первые две причины лечатся: первая —
-строками в `rules/`, вторая — сборкой payload по ролям для операций вне
-контракта.
+прямо. Измеренное покрытие после шагов 2 и 3 плана: NovaPay 76 % (55 из 72),
+ЮKassa 39 % (34 операции, 22 с ролью), PayPal Payouts 38 %, Adyen Transfers
+37 % (215 из 588), Mollie 29 % (128 операций, 111 с ролью), Adyen Payout
+23 %. Всё это одной командой: `./integrate --all --specs <каталог>`.
+
+Что уже сделано из плана: роли операций больше не оставляют пустого места
+(третий уровень доверия), добавлены роли `confirm` и `refund`, тело запроса
+операций вне контракта собирается по ролям, статусы пополнены банковской
+лексикой, есть пакетный прогон со сводкой. На Adyen Transfers роль получают
+11 операций из 12 вместо 7, статусы 54 % вместо 48 %.
+
+Где остался потолок и почему. Поля тел запросов — 21 %: оставшиеся поля либо
+необязательные без роли (по CLAUDE.md в payload не идут), либо обязательные
+без роли (идут с TODO). Поднять эту цифру можно только новыми ролями полей
+(`account_number`, `iban`, `recipient_name`), а у каждой новой роли обязано
+быть выражение платформы в `rules/contract.yml` — то есть ответ на вопрос 1,
+заданный экспертам 5 сентября: какие поля вообще есть у `operation`. Пока
+ответа нет, новые роли полей не добавляем: это была бы догадка о платформе,
+а не о спецификации. Поля тел ответов — 19 %, и это по построению: методам
+контракта нужны четыре роли из ответа (`status`, `provider_operation_id`,
+`error_code`, `external_id`), остальные читать некуда.
 
 Промпт 7 закрыт целиком: четыре артефакта пишутся одной командой, golden
 сравнивает все четыре файла. Дальше — промпт 10, настоящие публичные
