@@ -1,0 +1,461 @@
+{
+  "provider": "novapay",
+  "spec": {
+    "file": "novapay.yaml",
+    "version": "1.0.0",
+    "openapi": "3.0.3"
+  },
+  "base_url": "https://api.sandbox.novapay.example/v1",
+  "credentials": {
+    "api_key": "test_api_key",
+    "webhook_secret": "test_webhook_secret"
+  },
+  "requests": [
+    {
+      "name": "createPayout",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/payouts",
+      "headers": {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "25f29125-8ec3-5070-8a86-1e80724666f7",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "amount": 1500000,
+        "currency": "RUB",
+        "external_id": "op_abc123",
+        "recipient": {
+          "type": "sbp",
+          "phone": "79001234567",
+          "bank_code": "044525225",
+          "bank_name": "Сбербанк"
+        }
+      },
+      "example_name": "sbp_payout",
+      "source": "spec_example"
+    },
+    {
+      "name": "getPayoutStatus",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/payouts/np_7f3a9b2c",
+      "headers": {
+        "X-API-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "cancelPayout",
+      "role": "cancel",
+      "method": "post",
+      "path": "/payouts/np_7f3a9b2c/cancel",
+      "headers": {
+        "X-API-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "payoutWebhook",
+      "role": "webhook",
+      "method": "post",
+      "path": "/webhooks/payout",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-NovaPay-Signature": "3b002e3b0fc75b7696e189b8490b5e03aa5bbd1bb597415e86c65ff90d859fc9"
+      },
+      "body": {
+        "event": "payout.completed",
+        "payout_id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "completed",
+        "completed_at": "2026-07-30T10:05:00Z"
+      },
+      "raw_body": "{\"event\":\"payout.completed\",\"payout_id\":\"np_7f3a9b2c\",\"external_id\":\"op_abc123\",\"status\":\"completed\",\"completed_at\":\"2026-07-30T10:05:00Z\"}",
+      "example_name": "completed",
+      "source": "spec_example"
+    },
+    {
+      "name": "getBalance",
+      "role": "balance",
+      "method": "get",
+      "path": "/balance",
+      "headers": {
+        "X-API-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example"
+    }
+  ],
+  "responses": [
+    {
+      "name": "createPayout 201",
+      "operation": "createPayout",
+      "status": 201,
+      "body": {
+        "id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "pending",
+        "amount": 1500000,
+        "currency": "RUB",
+        "created_at": "2026-07-30T10:00:00Z"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createPayout 400",
+      "operation": "createPayout",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "validation_error"
+        }
+      },
+      "expected": {
+        "action": "reject"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "createPayout 401",
+      "operation": "createPayout",
+      "status": 401,
+      "body": {
+        "error": {
+          "code": "unauthorized",
+          "message": "Invalid API key"
+        }
+      },
+      "expected": {
+        "action": "alert"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createPayout 402",
+      "operation": "createPayout",
+      "status": 402,
+      "body": {
+        "error": {
+          "code": "insufficient_balance",
+          "message": "Insufficient provider balance"
+        }
+      },
+      "expected": {
+        "action": "escalate"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createPayout 409",
+      "operation": "createPayout",
+      "status": 409,
+      "body": {
+        "id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "pending",
+        "amount": 1500000,
+        "currency": "RUB"
+      },
+      "expected": {
+        "dedup": true,
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "createPayout 422",
+      "operation": "createPayout",
+      "status": 422,
+      "body": {
+        "error": {
+          "code": "validation_error",
+          "message": "Amount must be at least 100000 kopecks",
+          "details": [
+            {
+              "field": "amount",
+              "message": "minimum is 100000"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "action": "reject"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createPayout 429",
+      "operation": "createPayout",
+      "status": 429,
+      "body": {
+        "error": {
+          "code": "rate_limit_exceeded",
+          "message": "Rate limit exceeded, retry after 60 seconds"
+        }
+      },
+      "expected": {
+        "action": "retry_backoff"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createPayout 500",
+      "operation": "createPayout",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "validation_error"
+        }
+      },
+      "expected": {
+        "action": "retry_backoff"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getPayoutStatus 200",
+      "operation": "getPayoutStatus",
+      "status": 200,
+      "body": {
+        "id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "pending",
+        "amount": 1500000,
+        "currency": "RUB"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getPayoutStatus 401",
+      "operation": "getPayoutStatus",
+      "status": 401,
+      "body": {
+        "error": {
+          "code": "unauthorized",
+          "message": "Invalid API key"
+        }
+      },
+      "expected": {
+        "action": "alert"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getPayoutStatus 404",
+      "operation": "getPayoutStatus",
+      "status": 404,
+      "body": {
+        "error": {
+          "code": "not_found",
+          "message": "Payout not found"
+        }
+      },
+      "expected": {
+        "action": "reject"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "cancelPayout 200",
+      "operation": "cancelPayout",
+      "status": 200,
+      "body": {
+        "id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "pending",
+        "amount": 1500000,
+        "currency": "RUB"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "cancelPayout 409",
+      "operation": "cancelPayout",
+      "status": 409,
+      "body": {
+        "error": {
+          "code": "invalid_status",
+          "message": "Cannot cancel payout in status completed"
+        }
+      },
+      "expected": {
+        "action": "reject"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "payoutWebhook 200",
+      "operation": "payoutWebhook",
+      "status": 200,
+      "body": {
+        "received": true
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    },
+    {
+      "name": "getBalance 200",
+      "operation": "getBalance",
+      "status": 200,
+      "body": {
+        "balance": 500000000,
+        "currency": "RUB",
+        "hold": 15000000
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    }
+  ],
+  "notifications": [
+    {
+      "name": "webhook payout.cancelled",
+      "event": "payout.cancelled",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-NovaPay-Signature": "d8e671eb7279799d25875214e82e33e0541d70b76a6d6681018fd38934a0a688"
+      },
+      "raw_body": "{\"event\":\"payout.cancelled\",\"payout_id\":\"np_7f3a9b2c\",\"external_id\":\"op_abc123\",\"status\":\"cancelled\",\"completed_at\":\"2026-07-30T10:05:00Z\"}",
+      "body": {
+        "event": "payout.cancelled",
+        "payout_id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "cancelled",
+        "completed_at": "2026-07-30T10:05:00Z"
+      },
+      "expected": {
+        "internal_status": "rejected"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера уведомления для события payout.cancelled: подставлены значения enum события и статуса."
+    },
+    {
+      "name": "webhook payout.completed",
+      "event": "payout.completed",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-NovaPay-Signature": "3b002e3b0fc75b7696e189b8490b5e03aa5bbd1bb597415e86c65ff90d859fc9"
+      },
+      "raw_body": "{\"event\":\"payout.completed\",\"payout_id\":\"np_7f3a9b2c\",\"external_id\":\"op_abc123\",\"status\":\"completed\",\"completed_at\":\"2026-07-30T10:05:00Z\"}",
+      "body": {
+        "event": "payout.completed",
+        "payout_id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "completed",
+        "completed_at": "2026-07-30T10:05:00Z"
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "webhook payout.failed",
+      "event": "payout.failed",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-NovaPay-Signature": "b74e955ed9ccb459997891f01f069b01c64611457302a5547e1e114aa127a622"
+      },
+      "raw_body": "{\"event\":\"payout.failed\",\"payout_id\":\"np_7f3a9b2c\",\"external_id\":\"op_abc123\",\"status\":\"failed\",\"error\":{\"code\":\"recipient_not_found\",\"message\":\"Recipient account not found\"}}",
+      "body": {
+        "event": "payout.failed",
+        "payout_id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "failed",
+        "error": {
+          "code": "recipient_not_found",
+          "message": "Recipient account not found"
+        }
+      },
+      "expected": {
+        "internal_status": "rejected"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "webhook payout.processing",
+      "event": "payout.processing",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-NovaPay-Signature": "6ba28468aef0cba70046a3f367337e4a839cfca14df398a8780300306f78720f"
+      },
+      "raw_body": "{\"event\":\"payout.processing\",\"payout_id\":\"np_7f3a9b2c\",\"external_id\":\"op_abc123\",\"status\":\"processing\",\"completed_at\":\"2026-07-30T10:05:00Z\"}",
+      "body": {
+        "event": "payout.processing",
+        "payout_id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "processing",
+        "completed_at": "2026-07-30T10:05:00Z"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера уведомления для события payout.processing: подставлены значения enum события и статуса."
+    },
+    {
+      "name": "webhook signature_invalid",
+      "event": "payout.completed",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-NovaPay-Signature": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "raw_body": "{\"event\":\"payout.completed\",\"payout_id\":\"np_7f3a9b2c\",\"external_id\":\"op_abc123\",\"status\":\"completed\",\"completed_at\":\"2026-07-30T10:05:00Z\"}",
+      "body": {
+        "event": "payout.completed",
+        "payout_id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "completed",
+        "completed_at": "2026-07-30T10:05:00Z"
+      },
+      "expected": {
+        "result": "signature_invalid"
+      },
+      "source": "synthesized",
+      "_todo": "негативная фикстура: подпись намеренно неверна, process_callback обязан вернуть отказ signature_invalid."
+    },
+    {
+      "name": "webhook unknown_event",
+      "event": "payout.unknown",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-NovaPay-Signature": "2a1860f8044cedb85928b8b313d08f036f3ebf51b4059111a7aad44c2536537b"
+      },
+      "raw_body": "{\"event\":\"payout.unknown\",\"payout_id\":\"np_7f3a9b2c\",\"external_id\":\"op_abc123\",\"status\":\"completed\",\"completed_at\":\"2026-07-30T10:05:00Z\"}",
+      "body": {
+        "event": "payout.unknown",
+        "payout_id": "np_7f3a9b2c",
+        "external_id": "op_abc123",
+        "status": "completed",
+        "completed_at": "2026-07-30T10:05:00Z"
+      },
+      "expected": {
+        "result": "unknown_event"
+      },
+      "source": "synthesized",
+      "_todo": "негативная фикстура: событие не объявлено в enum, process_callback обязан вернуть отказ unknown_event."
+    }
+  ]
+}

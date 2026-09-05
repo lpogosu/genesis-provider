@@ -1,0 +1,114 @@
+# frozen_string_literal: true
+
+# Сгенерировано инструментом integrate из <%= spec_file %>, версия спецификации
+# <%= spec_version %>, OpenAPI <%= oas_version %>. Не редактируйте вручную: правки — в overlay
+# (OpenAPI Overlay 1.0.0) и повторная генерация.
+#
+# Проверка файла:
+#   ruby -c output/<%= provider_slug %>_service.rb
+#   bundle exec rubocop --config config/rubocop_generated.yml output/<%= provider_slug %>_service.rb
+#
+# Контракт <%= base_class %> восстановлен по описанию кейса (допущение, см.
+# docs/ASSUMPTIONS.md и INTEGRATION.md). HTTP-клиент платформы вызывается как
+# client.post(url, payload, headers) и client.get(url, headers); ответ читается
+# как response.status и response.body. Секреты — только provider.credentials[...]
+# и ENV.fetch, литералов нет.
+
+<%- requires.each do |lib| -%>
+require '<%= lib %>'
+<%- end -%>
+
+# Пространство имён провайдеров платформы.
+class Provider
+  # Интеграция с провайдером «<%= provider_title %>»: предпроверки, создание
+  # операции, обработка уведомлений и опрос статуса по контракту
+  # <%= base_class %>. Таблицы статусов, ошибок и политики ретраев —
+  # замороженные хеши, сверяемые с INTEGRATION.md; TODO отмечают места, где
+  # спецификация не дала ответа и инструмент взял лучшего кандидата.
+  class <%= class_name %> < <%= base_class %>
+<%- sandbox_comment.each do |line| -%>
+    <%= line %>
+<%- end -%>
+    BASE_URL = ENV.fetch('<%= base_url_env %>', '<%= sandbox_url %>')
+    # Таймауты в секундах; как передать их клиенту платформы, зависит от
+    # клиента (его интерфейс — допущение), поэтому здесь только значения.
+<%- timeouts.each do |constant, env, default| -%>
+    <%= constant %> = Integer(ENV.fetch('<%= env %>', '<%= default %>'))
+<%- end -%>
+    PROVIDER = '<%= provider_slug %>'
+<%- constants.each do |name, literal, comments| -%>
+<%- comments.each do |line| -%>
+    <%= line %>
+<%- end -%>
+    <%= name %> = <%= literal %>
+<%- end -%>
+
+    # Статус провайдера → внутренний статус платформы.
+<%- if status_map_lines.empty? -%>
+    # TODO: спецификация не объявляет статусов операции — таблица пуста.
+    STATUS_MAP = {}.freeze
+<%- else -%>
+    STATUS_MAP = {
+<%= indent(status_map_lines, 6) %>
+    }.freeze
+<%- end -%>
+
+    # Код ошибки провайдера или HTTP-код → действие платформы
+    # (reject | retry | retry_backoff | alert | escalate). Дедупликация в
+    # таблицу не входит: это успешный путь, см. DEDUP_STATUS.
+<%- if error_map_lines.empty? -%>
+    ERROR_MAP = {}.freeze
+<%- else -%>
+    ERROR_MAP = {
+<%= indent(error_map_lines, 6) %>
+    }.freeze
+<%- end -%>
+<%- unless operation_error_lines.empty? -%>
+
+    # Коды, которые у отдельной операции означают не то, что в ERROR_MAP.
+    ERROR_MAP_BY_OPERATION = {
+<%= indent(operation_error_lines, 6) %>
+    }.freeze
+<%- end -%>
+
+    # Политика ретраев — данные, не механизм: какие действия из ERROR_MAP
+    # платформа повторяет и какие коды несут заголовок паузы. Сами ретраи,
+    # очереди и алерты — инфраструктура платформы.
+    RETRY_POLICY = {
+<%= indent(retry_policy_lines, 6) %>
+    }.freeze
+<%- unless event_map_lines.empty? -%>
+
+    # Событие уведомления → внутренний статус; nil — событие не сопоставлено.
+    EVENT_MAP = {
+<%= indent(event_map_lines, 6) %>
+    }.freeze
+<%- end -%>
+
+<%- contract_methods.each do |method| -%>
+<%= indent(method.doc, 4) %>
+    def <%= method.signature %>
+<%= indent(method.body, 6) %>
+    end
+
+<%- end -%>
+<%- extra_methods.each do |method| -%>
+<%= indent(method.doc, 4) %>
+    def <%= method.signature %>
+<%= indent(method.body, 6) %>
+    end
+
+<%- end -%>
+    private
+
+<%- helper_methods.each_with_index do |method, index| -%>
+<%- unless index.zero? -%>
+
+<%- end -%>
+<%= indent(method.doc, 4) %>
+    def <%= method.signature %>
+<%= indent(method.body, 6) %>
+    end
+<%- end -%>
+  end
+end

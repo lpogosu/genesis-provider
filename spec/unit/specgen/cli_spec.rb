@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'tmpdir'
+
 RSpec.describe SpecGen::CLI do
   include CliRunner
 
@@ -74,9 +76,33 @@ RSpec.describe SpecGen::CLI do
   end
 
   describe 'generate' do
-    it 'is the default command, so `integrate --spec FILE` works' do
-      result = run_cli('--spec', novapay)
-      expect(result.stderr).to include('команда `generate` ещё не реализована')
+    around do |example|
+      Dir.mktmpdir('specgen-cli') do |dir|
+        @out = dir
+        example.run
+      end
+    end
+
+    it 'is the default command, so `integrate --spec FILE` writes the service and exits with 0' do
+      result = run_cli('--spec', novapay, '--provider', 'novapay', '--output', @out)
+      expect(result.status).to eq(0)
+      expect(result.stderr).to be_empty
+      expect(result.stdout).to include('Генерация сервиса... ok (').and include('novapay_service.rb')
+        .and include('Предупреждения: 18')
+      expect(File.file?(File.join(@out, 'novapay_service.rb'))).to be(true)
+    end
+
+    it 'with --strict writes the files first and only then exits with 1 because of warnings' do
+      result = run_cli('generate', '--spec', novapay, '--provider', 'novapay', '--output', @out, '--strict')
+      expect(result.status).to eq(described_class::EXIT_ERROR)
+      expect(result.stderr).to include('--strict')
+      expect(File.file?(File.join(@out, 'novapay_service.rb'))).to be(true)
+    end
+
+    it 'speaks English with --locale en' do
+      result = run_cli('generate', '--spec', novapay, '--output', @out, '--locale', 'en')
+      expect(result.status).to eq(0)
+      expect(result.stdout).to include('Generating service... ok (')
     end
 
     it 'requires --spec or --all' do
@@ -104,12 +130,12 @@ RSpec.describe SpecGen::CLI do
       expect(result.stderr).to include('--overlya')
     end
 
-    it 'accepts every documented flag' do
+    it 'accepts every documented flag and says that the overlay is not applied yet' do
       result = run_cli('generate', '--spec', novapay, '--provider', 'demo', '--lang', 'ruby',
-                       '--overlay', novapay, '--output', 'tmp/out',
+                       '--overlay', novapay, '--output', @out,
                        '--with-mock', '--fix', '--strict')
-      expect(result.stderr).to include('ещё не реализована')
       expect(result.stderr).not_to include('использование:')
+      expect(result.stdout).to include('overlay').and include('demo_service.rb')
     end
 
     it 'accepts --all without --spec' do

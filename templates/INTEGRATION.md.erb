@@ -1,0 +1,166 @@
+# Интеграция с провайдером «<%= provider_title %>»
+
+| | |
+|---|---|
+| Провайдер | `<%= provider_slug %>` |
+| Спецификация | `<%= spec_file %>`, версия <%= spec_version %>, OpenAPI <%= oas_version %> |
+| Класс сервиса | `<%= class_name %> < <%= base_class %>` |
+| Файл сервиса | `<%= service_file %>` |
+
+Документ сгенерирован инструментом integrate из той же модели провайдера,
+что и сервис: таблицы ниже совпадают с константами `STATUS_MAP`, `EVENT_MAP`,
+`ERROR_MAP` и `RETRY_POLICY` по построению. Не редактируйте вручную: правки —
+в overlay (OpenAPI Overlay 1.0.0) и повторная генерация. Что инструмент не
+вывел или вывел с сомнением, перечислено в `report.md` и в разделе 9.
+
+## 1. Авторизация и хранение секрета
+
+<%- access.auth_lines.each do |line| -%>
+<%= line %>
+
+<%- end -%>
+<%- unless access.credential_rows.empty? -%>
+<%= table([t('cred_key_col'), t('cred_where_col'), t('cred_purpose_col')], access.credential_rows).join("\n") %>
+
+<%- end -%>
+<%= t('secret_storage') %>
+
+## 2. ENV-переменные
+
+<%= table([t('env_name_col'), t('env_purpose_col'), t('env_default_col'), t('env_required_col')], access.env_rows).join("\n") %>
+
+<%= access.env_notes.join("\n\n") %>
+
+## 3. Таблица методов с идемпотентностью
+
+Методы контракта `<%= base_class %>` в порядке `rules/contract.yml`.
+Ключ идемпотентности — детерминированный UUID v5 от `operation.id`
+(RFC 4122 §4.3, `Digest::SHA1`, без `SecureRandom`): повтор запроса даёт тот
+же ключ и дедуплицируется провайдером.
+
+<%= table(methods_section.headers, methods_section.contract_rows).join("\n") %>
+<%- unless methods_section.extra_rows.empty? -%>
+
+<%= t('extra_note', base_class: base_class) %>
+
+<%= table(methods_section.headers, methods_section.extra_rows).join("\n") %>
+<%- end -%>
+
+## 4. Маппинг статусов
+
+<%- if statuses.status_note -%>
+<%= statuses.status_note %>
+<%- else -%>
+`STATUS_MAP` — статус провайдера во внутренний статус платформы
+(`<%= helper(:approve_operation) %>` для `approved`, `<%= helper(:reject_operation) %>` для `rejected`,
+`in_progress` ничего не меняет). Незнакомое значение даёт `nil` и отказ
+`status_unknown`.
+
+<%= table(statuses.headers('status_col'), statuses.status_rows).join("\n") %>
+<%- end -%>
+
+<%- if statuses.event_note -%>
+<%= statuses.event_note %>
+<%- else -%>
+`EVENT_MAP` — событие уведомления во внутренний статус; ветка `else` для
+незнакомого события даёт отказ `unknown_event`.
+
+<%= table(statuses.headers('event_col'), statuses.event_rows).join("\n") %>
+<%- end -%>
+
+## 5. Обработка ошибок с действиями
+
+<%- if errors.any? -%>
+`ERROR_MAP` читается в два шага: сначала код ошибки из тела ответа, потом
+HTTP-код; символ действия становится кодом отказа для платформы.
+
+<%- unless errors.code_rows.empty? -%>
+<%= table(errors.code_headers, errors.code_rows).join("\n") %>
+
+<%- end -%>
+<%- unless errors.http_rows.empty? -%>
+<%= table(errors.http_headers, errors.http_rows).join("\n") %>
+
+<%- end -%>
+<%- unless errors.operation_rows.empty? -%>
+<%= t('operation_rules_note') %>
+
+<%= table([t('operation_col'), t('http_col'), t('action_col')], errors.operation_rows).join("\n") %>
+
+<%- end -%>
+<%= table([t('action_col'), t('action_meaning_col')], errors.action_rows).join("\n") %>
+<%- else -%>
+<%= t('errors_none', failure: code(helper(:failure)), default: code(errors.default_action)) %>
+<%- end -%>
+
+<%- errors.retry_lines.each do |line| -%>
+<%= line %>
+
+<%- end -%>
+<%= t('dedup_heading') %> <%= errors.dedup_line %>
+
+## 6. Конфигурация ProviderGateway
+
+<%= t('gateway_note', check: code(precheck_method)) %>
+
+<%= fence(gateway.lines, 'yaml').join("\n") %>
+
+## 7. Схема подписи вебхука
+
+<%- if signature.state == :none -%>
+<%= signature.note %>
+<%- else -%>
+<%- if signature.state == :absent -%>
+<%= signature.note %>
+
+<%- end -%>
+<%= table([t('sig_param_col'), t('sig_value_col'), t('source_col')], signature.rows).join("\n") %>
+
+<%= list(signature.rules_lines).join("\n") %>
+
+<%= t('sig_example') %>
+
+<%= fence(signature.example_lines, 'ruby').join("\n") %>
+<%- if signature.state == :absent && signature.overlay -%>
+
+<%= t('sig_overlay') %>
+
+<%= fence(signature.overlay.split("\n"), 'yaml').join("\n") %>
+<%- end -%>
+<%- end -%>
+
+## 8. Как подключить в приложение
+
+1. Положите `<%= service_file %>` в каталог провайдеров платформы рядом с
+   остальными наследниками `<%= base_class %>`; класс — `<%= class_name %>`.
+2. Задайте ключи `provider.credentials` из раздела 1 и переменные окружения из
+   раздела 2. Значения секретов — только в хранилище credentials платформы.
+3. Зарегистрируйте сервис в `ProviderGateway` фрагментом из раздела 6;
+   значения `request_method` — из того же фрагмента.
+4. Направьте маршрут входящих уведомлений провайдера на `<%= method_for(:webhook) %>`,
+   передавая сырое тело и заголовки как `{ body: <тело>, headers: <заголовки> }`:
+   сервис читает их как `<%= callback_body %>` и `<%= callback_headers %>` (форма
+   аргумента — из `rules/contract.yml`, раздел `platform`). Подпись проверяется
+   по байтам тела до разбора JSON, поэтому тело должно приходить неизменённым.
+5. Включите `<%= method_for(:fetch_status) %>` в поллинг незавершённых операций:
+   это единственный путь узнать статус, если уведомление не пришло.
+6. Прогоните `fixtures.json` через WebMock: в нём запросы, ответы и
+   уведомления из примеров спецификации с ожидаемым внутренним статусом.
+7. Пройдите по пунктам `report.md`: каждая строка там — действие, а TODO в
+   сервисе указывают на то же место.
+
+## 9. Принятые допущения
+
+<%= assumptions.contract_line %>
+
+<%= list(assumptions.project_lines).join("\n") %>
+
+<%= assumptions.platform_line %>
+
+<%= t('run_heading') %>
+
+<%- if run_assumptions.empty? -%>
+<%= t('run_none') %>
+<%- else -%>
+<%= list(run_assumptions.map { |line| "#{line} (#{t('see_report')})" }).join("\n") %>
+<%- end -%>

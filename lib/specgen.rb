@@ -8,6 +8,7 @@ require_relative 'specgen/ir'
 require_relative 'specgen/rules'
 require_relative 'specgen/matchers'
 require_relative 'specgen/analyzers'
+require_relative 'specgen/generators'
 require_relative 'specgen/reporter'
 
 # Генератор интеграций с платёжными провайдерами из OpenAPI-спецификаций.

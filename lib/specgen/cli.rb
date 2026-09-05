@@ -66,8 +66,13 @@ module SpecGen
       # противоречиво: синоним, заявленный двумя ролями, не должен дойти до
       # платёжного запроса, а ошибка при старте — самое дешёвое место сказать
       # об этом.
-      Rules.load
-      not_implemented('generate')
+      rules = Rules.load
+      return not_implemented('generate --all') if options[:spec].nil?
+
+      profile = generate_artifacts(rules)
+      # --strict — код выхода 1 при предупреждениях ПОСЛЕ записи файлов, не
+      # отказ писать: генерация не блокируется никогда.
+      strict_exit(profile) if options[:strict] && profile.warnings?
     end
 
     desc 'analyze --spec FILE [--provider NAME] [--explain]', Texts.t('cli.desc.analyze')
@@ -109,6 +114,35 @@ module SpecGen
     rescue LocaleError
       raise Thor::Error, Texts.t('cli.unsupported_locale', locale: options[:locale],
                                                            supported: Texts.supported.join(', '))
+    end
+
+    # @return [IR::ProviderProfile] профиль, по которому записаны артефакты
+    def generate_artifacts(rules)
+      say Texts.t('generators.overlay_ignored', file: options[:overlay]) if options[:overlay]
+      document = SpecLoader.load(options[:spec])
+      profile = Analyzers::Runner.call(document: document, rules: rules, options: options)
+      artifacts = Generators.call(profile: profile, rules: rules, options: options)
+      artifacts.each { |artifact| say artifact_line(artifact) }
+      say warnings_line(profile)
+      profile
+    end
+
+    def artifact_line(artifact)
+      Texts.t('generators.artifact', what: Texts.t("generators.what.#{artifact.kind}"),
+                                     lines: Texts.plural(artifact.lines, 'line'),
+                                     path: artifact.path)
+    end
+
+    def warnings_line(profile)
+      grouped = profile.warnings_by_severity
+      counts = IR::Warning::SEVERITIES.map { |s| Texts.plural(grouped[s].size, s.to_s) }
+      Texts.t('generators.warnings', total: profile.warnings.size, counts: counts.join(', '),
+                                     spec: options[:spec])
+    end
+
+    def strict_exit(_profile)
+      warn Texts.t('generators.strict_failed')
+      exit(EXIT_ERROR)
     end
 
     def validate_generate_options!

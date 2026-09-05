@@ -1,0 +1,35 @@
+# RuboCop для сгенерированного кода в output/. Основной .rubocop.yml
+# исключает output/, потому что сгенерированный класс проверяется отдельно —
+# этой конфигурацией. Команда (её же берёт стадия Validators):
+#
+#   bundle exec rubocop --config config/rubocop_generated.yml output/<provider>_service.rb
+#
+# Наследует всё от основного конфига и ослабляет только то, что для
+# сгенерированного класса оправдано. Style/Documentation, Layout/EndOfLine,
+# Lint/* и Security/* остаются в силе.
+inherit_from: ../.rubocop.yml
+
+AllCops:
+  Exclude:
+    - 'vendor/**/*'
+
+# Сервис провайдера — один класс с четырьмя методами контракта, операциями
+# вне контракта и таблицами; 150 строк он превышает по построению.
+Metrics/ClassLength:
+  Enabled: false
+
+# check_conditions — последовательность guard-строк по условиям спецификации,
+# build_payload — таблица «поле → выражение», process_callback и
+# verify_signature! — линейные протоколы. Разбивать их на хелперы значило бы
+# спрятать таблицу, которую сверяют со спецификацией.
+Metrics/MethodLength:
+  Max: 30
+  AllowedMethods:
+    - build_payload
+    - check_conditions
+Metrics/AbcSize:
+  Max: 40
+Metrics/CyclomaticComplexity:
+  Max: 12
+Metrics/PerceivedComplexity:
+  Max: 12

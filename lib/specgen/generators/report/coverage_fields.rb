@@ -1,0 +1,124 @@
+# frozen_string_literal: true
+
+module SpecGen
+  module Generators
+    module Report
+      # Два измерения покрытия, которые считаются по полям схем: что сервис
+      # отправляет и что читает.
+      #
+      # Исходящие тела считаются по операциям (тело собирается для каждой
+      # операции отдельно), входящие — по схемам (одна схема разбирается
+      # одинаково, в каком бы ответе ни встретилась). Покрытым считается
+      # только поле, у которого в коде есть выражение: обязательное поле,
+      # попавшее в payload с TODO и значением по умолчанию, не покрыто —
+      # запрос с ним не уйдёт.
+      class CoverageFields < Base
+        # Роли, которые сгенерированный сервис читает из входящих тел:
+        # статус, идентификатор провайдера, код ошибки и внешний
+        # идентификатор для поиска операции по уведомлению.
+        READ_ROLES = %i[status provider_operation_id error_code external_id].freeze
+
+        # @param ctx [Service::Context]
+        # @param parts [Hash{Symbol => Object}]
+        def initialize(ctx, parts)
+          super
+          @fields = SchemaFields.new(ctx)
+        end
+
+        # @return [Dimension] поля тел запросов, которые сервис отправляет
+        def request
+          gaps = request_entries.reject { |operation, entry| request_covered?(operation, entry) }
+                                .map { |operation, entry| request_gap(operation, entry) }
+          build('request_fields', request_entries.size, gaps)
+        end
+
+        # @return [Dimension] поля тел ответов и уведомлений, которые сервис читает
+        def response
+          gaps = response_entries.reject { |_name, entry| response_covered?(entry) }
+                                 .map { |name, entry| response_gap(name, entry) }
+          build('response_fields', response_entries.size, gaps)
+        end
+
+        private
+
+        def build(key, total, gaps)
+          Dimension.new(key: key, total: total, covered: total - gaps.size, gaps: gaps)
+        end
+
+        # @return [Array<Array(IR::Operation, SchemaFields::Entry)>]
+        def request_entries
+          @request_entries ||= outgoing.flat_map do |operation|
+            @fields.of(operation.request_schema).map { |entry| [operation, entry] }
+          end
+        end
+
+        def outgoing
+          profile.operations.reject { |operation| operation.role.value == :webhook }
+        end
+
+        def request_covered?(operation, entry)
+          create?(operation) && expression?(entry.field)
+        end
+
+        def create?(operation)
+          operation.equal?(ctx.create_operation)
+        end
+
+        def expression?(field)
+          field.role.known? && !ctx.accessor(field.role.value).nil?
+        end
+
+        def request_gap(operation, entry)
+          ["#{operation.key}: #{entry.path}", request_reason(operation, entry.field)]
+        end
+
+        def request_reason(operation, field)
+          return t('gap_field_other_operation', key: operation.key) unless create?(operation)
+          return t('gap_field_no_accessor', role: field.role.value) if field.role.known?
+          return t('gap_field_required_todo') if field.required? || field.conditionally_required?
+
+          t('gap_field_optional_skipped')
+        end
+
+        # Входящие тела: ответы всех операций плюс тело уведомления, которое
+        # в спецификации объявлено запросом ко входящей точке.
+        # @return [Array<Array(String, SchemaFields::Entry)>]
+        def response_entries
+          @response_entries ||= incoming_schemas.flat_map do |name|
+            @fields.of(name).map { |entry| [name, entry] }
+          end
+        end
+
+        def incoming_schemas
+          names = profile.operations.flat_map do |operation|
+            responses = operation.responses.map(&:schema)
+            operation.role.value == :webhook ? responses + [operation.request_schema] : responses
+          end
+          names.compact.uniq
+        end
+
+        def response_covered?(entry)
+          return true if event_field?(entry.field)
+
+          entry.field.role.known? && READ_ROLES.include?(entry.field.role.value)
+        end
+
+        def event_field?(field)
+          found = parts[:callback].event_field
+          !found.nil? && found.equal?(field)
+        end
+
+        def response_gap(name, entry)
+          ["#{name}.#{entry.path}", response_reason(entry.field)]
+        end
+
+        def response_reason(field)
+          return t('gap_response_role_unknown') unless field.role.known?
+
+          t('gap_response_role_unused', role: code(field.role.value),
+                                        base: code(ctx.contract.base_class))
+        end
+      end
+    end
+  end
+end

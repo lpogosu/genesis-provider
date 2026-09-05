@@ -74,6 +74,14 @@ module SpecGen
         raise LocaleError, "ключ #{key.inspect} в локали #{locale}: #{e.message}"
       end
 
+      # @param key [String] ключ вида "generators.report.action_units_unknown"
+      # @return [Boolean] есть ли такой ключ в текущей локали; нужен там, где
+      #   текст пишется под открытый словарь (коды предупреждений) и
+      #   отсутствие строки не должно останавливать генерацию
+      def key?(key)
+        table(locale).key?(key)
+      end
+
       # @param number [Integer]
       # @param key [String] ключ существительного под `plural.`
       # @return [String] "5 операций", "1 schema"
