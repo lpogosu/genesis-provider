@@ -18,3 +18,11 @@
 
 # Claude Code local permissions
 .claude/settings.local.json
+
+# веб-интерфейс: зависимости и сборка. Исходники фронта в репозиторий входят,
+# результат сборки — нет: это сгенерированный код, он в подсчёт доли Ruby не
+# входит по тексту положения (см. CLAUDE.md, «Ruby больше 50 процентов»).
+node_modules/
+.next/
+space-payments-dashboard/out/
+public/

@@ -1,0 +1,129 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# bin/ruby-share — доля Ruby в исходном коде, созданном командой.
+#
+# Зачем. Положение хакатона требует, чтобы доля Ruby была больше 50 % от
+# объёма исходного кода команды, и нарушение стоит дисквалификации. Пока
+# фронта не было, это проверялось на глаз. С появлением React проверять надо
+# машиной и перед каждой сдачей.
+#
+# Как считаем. По правилам GitHub Linguist, потому что именно его языковую
+# полоску увидит жюри, открыв репозиторий:
+#
+#   * в статистику идут только типы `programming` и `markup`;
+#   * YAML и JSON — это `data`, Markdown и текст — `prose`, они не считаются
+#     ни в числитель, ни в знаменатель;
+#   * вендорное и сгенерированное исключается — у нас это результат работы
+#     самого генератора, скачанные чужие спецификации и сборка фронта.
+#
+# Считаем байты, а не строки: строка JSX и строка Ruby — разной длины, и
+# положение говорит про «объём исходного кода».
+#
+# Использование:
+#   bin/ruby-share            таблица и вердикт
+#   bin/ruby-share --json     то же машиночитаемо, для CI
+
+require 'json'
+
+# Что не входит в знаменатель и почему.
+EXCLUDED = [
+  %r{\Atmp/},                        # временное
+  %r{\Aoutput/},                     # результат работы генератора
+  %r{\Avendor/},                     # сторонние зависимости
+  %r{(?:\A|/)node_modules/},         # зависимости фронта, в любом каталоге
+  %r{(?:\A|/)\.next/},               # кеш сборки Next.js
+  %r{(?:\A|/)out/},                  # статический экспорт Next.js
+  %r{(?:\A|/)dist/},                 # сборка фронта на любом другом сборщике
+  %r{\Aspec/fixtures/golden/},       # эталоны — вывод генератора, не наш код
+  %r{\Aspec/fixtures/specs/real/},   # чужие спецификации провайдеров
+  %r{\Adocs/checkpoint-\d+/}         # слайды: статические материалы встреч
+].freeze
+
+# Расширение → [язык, тип Linguist]. Всё, чего здесь нет, в статистику не
+# входит: это либо данные, либо проза, либо файлы сборки.
+LANGUAGES = {
+  '.rb' => %w[Ruby programming],
+  '.rake' => %w[Ruby programming],
+  '.erb' => %w[ERB markup],
+  '.js' => %w[JavaScript programming],
+  '.jsx' => %w[JavaScript programming],
+  '.mjs' => %w[JavaScript programming],
+  '.cjs' => %w[JavaScript programming],
+  '.ts' => %w[TypeScript programming],
+  '.tsx' => %w[TypeScript programming],
+  '.vue' => %w[Vue markup],
+  '.svelte' => %w[Svelte markup],
+  '.html' => %w[HTML markup],
+  '.css' => %w[CSS markup],
+  '.scss' => %w[SCSS markup],
+  '.sh' => %w[Shell programming]
+}.freeze
+
+# Файлы без расширения, которые Linguist всё равно считает Ruby.
+RUBY_FILENAMES = %w[integrate Rakefile Gemfile config.ru].freeze
+
+# Порог положения и порог тревоги: до 60 % ещё спокойно, ниже — повод
+# остановиться и пересчитать состав фронта, а не надеяться.
+REQUIRED = 50.0
+COMFORTABLE = 60.0
+
+def language_of(path)
+  return LANGUAGES.fetch('.rb') if RUBY_FILENAMES.include?(File.basename(path))
+
+  LANGUAGES[File.extname(path)]
+end
+
+def tracked_files
+  `git ls-files`.split("\n").reject { |path| EXCLUDED.any? { |rule| path.match?(rule) } }
+end
+
+def measure
+  totals = Hash.new { |hash, key| hash[key] = { bytes: 0, files: 0 } }
+  tracked_files.each do |path|
+    language, = language_of(path)
+    next if language.nil? || !File.file?(path)
+
+    totals[language][:bytes] += File.size(path)
+    totals[language][:files] += 1
+  end
+  totals
+end
+
+totals = measure
+total_bytes = totals.values.sum { |stats| stats[:bytes] }
+abort('нечего считать: git ls-files ничего не вернул') if total_bytes.zero?
+
+ruby_bytes = totals['Ruby'][:bytes] + totals['ERB'][:bytes]
+share = 100.0 * ruby_bytes / total_bytes
+headroom = ruby_bytes - (total_bytes - ruby_bytes)
+
+if ARGV.include?('--json')
+  puts JSON.pretty_generate(
+    languages: totals.transform_values { |stats| stats.transform_keys(&:to_s) },
+    ruby_bytes: ruby_bytes, total_bytes: total_bytes,
+    share_percent: share.round(1), headroom_bytes: headroom, ok: share > REQUIRED
+  )
+  exit(share > REQUIRED ? 0 : 1)
+end
+
+puts 'Доля Ruby в исходном коде команды (правила GitHub Linguist)'
+puts
+totals.sort_by { |_, stats| -stats[:bytes] }.each do |language, stats|
+  printf("  %-12s %9d байт  %5.1f %%  (%d файлов)\n",
+         language, stats[:bytes], 100.0 * stats[:bytes] / total_bytes, stats[:files])
+end
+puts
+printf("  Ruby и ERB: %d из %d байт — %.1f %%\n", ruby_bytes, total_bytes, share)
+printf("  Запас: можно добавить ещё %d байт (%d КБ) не-Ruby до паритета\n",
+       headroom, headroom / 1024)
+puts
+
+if share <= REQUIRED
+  puts '  ПОРОГ НАРУШЕН: доля Ruby не больше 50 %. Это дисквалификация.'
+  exit 1
+elsif share < COMFORTABLE
+  puts "  Доля выше порога, но ниже #{COMFORTABLE.to_i} %: пересчитайте состав фронта."
+else
+  puts '  Порог соблюдён с запасом.'
+end

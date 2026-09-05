@@ -1,0 +1,37 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --radius-sm: calc(var(--radius) * .5); --radius-md: calc(var(--radius) * .7); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) * 1.2); --font-sans: 'Geist', 'Arial', sans-serif; --font-mono: 'Geist Mono', 'SFMono-Regular', monospace;
+}
+:root { color-scheme: light; --background: oklch(0.965 0.008 250); --foreground: oklch(0.18 0.025 250); --card: oklch(0.995 0.002 250); --card-foreground: oklch(0.18 0.025 250); --popover: oklch(0.995 0.002 250); --popover-foreground: oklch(0.18 0.025 250); --primary: oklch(0.58 0.17 245); --primary-foreground: oklch(0.99 0 0); --secondary: oklch(0.91 0.012 250); --secondary-foreground: oklch(0.25 0.04 250); --muted: oklch(0.92 0.01 250); --muted-foreground: oklch(0.5 0.035 250); --accent: oklch(0.93 0.025 245); --accent-foreground: oklch(0.22 0.04 250); --border: oklch(0.84 0.018 250); --input: oklch(0.84 0.018 250); --ring: oklch(0.58 0.17 245); --radius: 0.2rem; }
+.dark { color-scheme: dark; --background: oklch(0.105 0.018 250); --foreground: oklch(0.92 0.012 250); --card: oklch(0.145 0.022 250); --card-foreground: oklch(0.92 0.012 250); --popover: oklch(0.145 0.022 250); --popover-foreground: oklch(0.92 0.012 250); --primary: oklch(0.72 0.16 225); --primary-foreground: oklch(0.11 0.018 250); --secondary: oklch(0.2 0.026 250); --secondary-foreground: oklch(0.84 0.015 250); --muted: oklch(0.18 0.024 250); --muted-foreground: oklch(0.59 0.025 250); --accent: oklch(0.19 0.04 235); --accent-foreground: oklch(0.92 0.012 250); --border: oklch(0.28 0.035 250); --input: oklch(0.28 0.035 250); --ring: oklch(0.72 0.16 225); }
+@layer base { * { @apply border-border outline-ring/50; } html { background: var(--background); } body { @apply bg-background text-foreground font-sans; } button { cursor: pointer; } ::selection { background: oklch(0.72 0.16 225 / 32%); } }
+
+.workspace-grid { display: grid; grid-template-columns: 180px minmax(0, 720px) 250px; gap: 32px; align-items: start; }
+.workspace-sidebar, .workspace-rail { min-width: 0; }
+.document-surface { min-width: 0; border: 1px solid var(--border); background: var(--card); box-shadow: 0 12px 40px oklch(0.1 0.02 250 / 8%); }
+.document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); padding: 20px 24px; }
+.document-meta { display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--border); padding: 10px 24px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-foreground); }
+.markdown-document { padding: 44px 56px 64px; color: var(--foreground); }
+.markdown-document h1 { margin: 0 0 28px; font-size: 36px; line-height: 1.1; letter-spacing: -.04em; font-weight: 650; }
+.markdown-document h2 { scroll-margin-top: 28px; margin: 42px 0 14px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 19px; line-height: 1.3; letter-spacing: -.02em; font-weight: 650; }
+.markdown-document p, .markdown-document li { font-size: 15px; line-height: 1.75; color: var(--muted-foreground); }
+.markdown-document strong { color: var(--foreground); font-weight: 600; }
+.markdown-document ul { margin: 12px 0; padding-left: 22px; list-style: disc; }
+.markdown-document li { padding-left: 4px; }
+.markdown-document blockquote { margin: 24px 0; border-left: 3px solid var(--primary); background: var(--accent); padding: 14px 18px; }
+.markdown-document blockquote p { margin: 0; color: var(--accent-foreground); }
+.markdown-document code { border: 1px solid var(--border); background: var(--muted); padding: 2px 5px; font-family: var(--font-mono); font-size: .82em; color: var(--primary); }
+.markdown-document pre { margin: 22px 0; overflow-x: auto; border: 1px solid var(--border); background: var(--background); padding: 18px; }
+.markdown-document pre code { border: 0; background: transparent; padding: 0; color: var(--foreground); font-size: 12px; line-height: 1.7; }
+.markdown-document table { width: 100%; margin: 20px 0; border-collapse: collapse; font-size: 13px; }
+.markdown-document th { background: var(--muted); text-align: left; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-foreground); }
+.markdown-document th, .markdown-document td { border: 1px solid var(--border); padding: 11px 12px; }
+.markdown-document td { color: var(--muted-foreground); }
+.source-document { max-height: 720px; overflow: auto; padding: 28px; font-family: var(--font-mono); font-size: 12px; line-height: 1.75; color: var(--muted-foreground); }
+@media (max-width: 1100px) { .workspace-grid { grid-template-columns: 170px minmax(0, 1fr); } .workspace-rail { grid-column: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } .workspace-rail .sticky { display: contents; } }
+@media (max-width: 760px) { .workspace-grid { display: flex; flex-direction: column; gap: 18px; } .workspace-sidebar, .workspace-rail { width: 100%; } .workspace-sidebar .sticky { position: static; } .workspace-sidebar .space-y-1 { display: flex; overflow-x: auto; gap: 6px; } .workspace-sidebar .space-y-1 button { width: auto; white-space: nowrap; } .workspace-rail { display: block; } .workspace-rail .sticky { display: block; } .markdown-document { padding: 28px 20px 40px; } .markdown-document h1 { font-size: 30px; } .document-toolbar { align-items: flex-start; flex-direction: column; } .document-meta { flex-wrap: wrap; } }

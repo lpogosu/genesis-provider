@@ -1,0 +1,19 @@
+# Один сервис: HTTP-API генератора на 9292.
+#
+#   docker compose up --build          поднять API
+#   docker compose run --rm api ./integrate --all   тот же образ, но CLI
+#
+# Каталог со спецификациями смонтирован только на чтение: положить в него
+# свой файл — значит увидеть его в /api/specs без пересборки образа, но
+# записать в него из контейнера нельзя.
+services:
+  api:
+    build: .
+    image: specgen
+    ports:
+      - "9292:9292"
+    volumes:
+      - ./spec/fixtures/specs:/app/spec/fixtures/specs:ro
+    environment:
+      # Язык сообщений API; en — второй поддерживаемый.
+      SPECGEN_LOCALE: ru

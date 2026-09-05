@@ -1,0 +1,11 @@
+# locales/en/web.yml — тексты веб-интерфейса, английская локаль.
+# Набор ключей обязан совпадать с locales/ru/web.yml: за этим следит
+# spec/unit/specgen/texts_spec.rb.
+
+web:
+  errors:
+    invalid_json: "request body is not valid JSON: check the syntax and the Content-Type header"
+    route_not_found: "no such route; available are /api/health, /api/specs, /api/analyze, /api/generate and /api/batch"
+    body_too_large: "request body is larger than the allowed size; a specification that large will not be parsed"
+    spec_required: "nothing to parse: pass either spec_id of a bundled specification, or filename together with content"
+    internal_error: "internal server error; the details are in the process log"

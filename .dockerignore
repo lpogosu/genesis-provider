@@ -1,0 +1,10 @@
+# Что не должно попасть в образ: результаты прогонов, история и чужие
+# зависимости. Спецификации из spec/fixtures/specs остаются — на них
+# держится демонстрация в один клик и `./integrate --all` внутри образа.
+.git/
+.rspec_status
+node_modules/
+output/
+tmp/
+spec/fixtures/golden/
+*.docx

@@ -1,0 +1,27 @@
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+
+# Environment variables
+.env*.local
+
+# Common ignores
+node_modules
+.next
+out
+next-env.d.ts
+.DS_Store
+
+# создаёт `next dev`, конституция проекта лежит в корне репозитория
+AGENTS.md
+CLAUDE.md
+
+# корневой .gitignore прячет любой public/, а здесь это статика фронта
+!/public/
+
+# результат `tsc --noEmit --incremental`
+*.tsbuildinfo
