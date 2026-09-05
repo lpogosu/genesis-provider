@@ -5,8 +5,10 @@
 закрывает этап. Всё, что здесь написано, обязано воспроизводиться командой —
 иначе это не состояние, а надежда.
 
-Обновлено: 5 сентября 2026, после шага 5 порядка «после чекпоинта 2» —
-промпт 10, свои альтернативные спецификации. В каталоге семь спек: выданная,
+Обновлено: 5 сентября 2026, после правки контракта по письменным ответам
+экспертов (вопросы 18–25 в `docs/QUESTIONS.md`): сгенерированный сервис
+читает `operation.id`, `operation.amount` и `operation.payout_requisite`, а
+не плоские поля, которых у платформы нет. В каталоге семь спек: выданная,
 три свои (`cardpay`, `depositbank`, `broken`) и три чужие настоящие; все семь
 проходят `./integrate` без стектрейса одной командой.
 
@@ -16,13 +18,16 @@
 
 ```
 SpecLoader → OverlayApplier → Analyzers + Matchers → IR → Generators → Validators → Reporter
-  готов        нет            10 из 10     готов     готов   4 из 4       нет     Summary + report.md
+  готов        готов          10 из 10     готов     готов   4 из 4       нет     Summary + report.md
+
+Поверх конвейера: CLI (./integrate) и веб — Rack-API плюс собранный фронт,
+обе точки входа зовут один и тот же Runner.
 ```
 
 | Стадия | Состояние | Точка входа | Проверка |
 |---|---|---|---|
-| SpecLoader | готов | `SpecGen::SpecLoader.load(path)` | `spec/unit/specgen/spec_loader/` — 18 видов плохого входа дают `SpecGen::Error` с файлом и JSONPath |
-| OverlayApplier | не начат, но расширения `x-specgen-*` анализаторы уже читают как источник `:overlay` | — | слот между `Reader` и `StructureValidator` описан в комментарии `spec_loader/loader.rb`; таблица расширений — `docs/IR.md` |
+| SpecLoader | готов | `SpecGen::SpecLoader.load(path, overlay: nil)` | `spec/unit/specgen/spec_loader/` — 18 видов плохого входа дают `SpecGen::Error` с файлом и JSONPath |
+| OverlayApplier | готов: OpenAPI Overlay 1.0.0, `update` и `remove`, подмножество JSONPath то же, что печатает отчёт | `SpecGen::Overlay.apply(raw, file:)` через `SpecLoader.load(path, overlay:)`; флаги `--overlay` у `generate` и `analyze` | `./integrate --spec spec/fixtures/specs/novapay.yaml --overlay spec/fixtures/overlays/novapay.yaml` — два `conditional_required_hint` исчезают, условие читается как `dependentRequired` 1.00; `spec/unit/specgen/overlay/` — 58 примеров, в том числе полный цикл «отчёт → фрагмент → overlay → повторный прогон» |
 | Rules (справочники) | готов, 11 книг | `SpecGen::Rules.load` | `rules/*.yml`; противоречие между книгами валит загрузку одним `RulesError` со всеми проблемами; одиннадцатая — `rules/assumptions.yml`, допущения проекта для INTEGRATION.md |
 | IR | готов | `SpecGen::IR::ProviderProfile` | `docs/IR.md`; `to_h` детерминирован; новый тип `Condition`, у `Idempotency` новый член `conflict_status` |
 | Analyzers, часть 1 | готов: Info, Auth, Operation, Schema | `SpecGen::Analyzers::Runner.call` | `./integrate analyze --spec ...` |
@@ -34,6 +39,7 @@ SpecLoader → OverlayApplier → Analyzers + Matchers → IR → Generators →
 | Validators | не начат | — | промпт 9 |
 | Reporter | готов: `Summary` в консоли и `report.md` на диске | `SpecGen::Reporter::Summary`, `SpecGen::Generators::ReportGenerator` | `./integrate analyze --spec ... --explain`; `output/report.md` |
 | Texts (язык) | готов: ru по умолчанию, en | `SpecGen::Texts.t`, `locales/<код>/*.yml` | `--locale en`; `spec/unit/specgen/texts_spec.rb` следит за полнотой ключей |
+| Web (API и фронт) | готов: пять маршрутов, один конверт ошибки, статика из `public/` | `SpecGen::Web.app` через `config.ru`; сервер — `ruby bin/serve --port 9292` | `spec/unit/specgen/web/` — 23 примера; живьём: `curl localhost:9292/api/health`, `/api/specs`, `POST /api/generate {"spec_id":"novapay"}`; содержимое артефактов из API байт-в-байт совпадает с тем, что пишет `./integrate --all` |
 
 ---
 
@@ -86,6 +92,7 @@ Overlay-фрагменты в обеих локалях побайтово од�
 ./integrate --spec spec/fixtures/specs/depositbank.yaml --provider depositbank  # OAS 3.1, JPY, OAuth2, без вебхуков
 ./integrate --spec spec/fixtures/specs/broken.yaml --provider broken        # одиннадцать дыр, генерация не блокируется
 ./integrate --spec spec/fixtures/specs/novapay.yaml --provider novapay
+./integrate --spec spec/fixtures/specs/novapay.yaml --overlay spec/fixtures/overlays/novapay.yaml  # условная обязательность становится dependentRequired 1.00
 ruby -c output/novapay_service.rb
 grep '^## ' output/report.md
 bundle exec rubocop --config config/rubocop_generated.yml output/novapay_service.rb
@@ -158,8 +165,8 @@ Transfers 73 КБ, PayPal Payouts 16 КБ.
 поля, роли по источникам, статусы, события, коды ошибок, условия,
 предупреждения) и список записанных артефактов с числом строк — их отдаёт
 `Runner`, отчёт идёт в `ORDER` последним. Покрытие спецификации одной
-цифрой: у novapay 76 % (55 из 72 элементов), у PayPal Payouts 38 %, Adyen
-Payout 18 %, Adyen Transfers 34 %, Mollie 27 %, ЮKassa 37 %. Дальше
+цифрой: у novapay 75 % (54 из 72 элементов), у PayPal Payouts 33 %, Adyen
+Payout 21 %, Adyen Transfers 35 %, Mollie 27 %, ЮKassa 37 %. Дальше
 неоднозначности по кодам с готовыми Overlay-фрагментами и инструкцией, как
 склеить из них один файл; операции вне контракта таблицей (`cancelPayout` →
 `cancel(operation)`, `getBalance` → `balance()`); противоречия самой
@@ -238,11 +245,11 @@ E1.2, E1.3; техжюри T1.1–T1.5) и провайдер-нейтральн
 |---|---|---|---|---|---|---|
 | `broken.yaml` | broken | 6 | 5/6 | 43 % | 64 | 4 |
 | `cardpay.yaml` | cardpay | 6 | 6/6 | 66 % | 41 | 4 |
-| `depositbank.yaml` | depositbank | 6 | 5/6 | 63 % | 43 | 4 |
-| `novapay.yaml` | novapay | 5 | 5/5 | 76 % | 18 | 4 |
-| `real/adyen_payout_v68.yaml` | adyen_payout_v68 | 6 | 5/6 | 23 % | 211 | 4 |
-| `real/adyen_transfers_v4.yaml` | adyen_transfers_v4 | 12 | 11/12 | 37 % | 333 | 4 |
-| `real/paypal_payouts_v1.json` | paypal_payouts_v1 | 4 | 4/4 | 38 % | 86 | 4 |
+| `depositbank.yaml` | depositbank | 6 | 5/6 | 61 % | 43 | 4 |
+| `novapay.yaml` | novapay | 5 | 5/5 | 75 % | 18 | 4 |
+| `real/adyen_payout_v68.yaml` | adyen_payout_v68 | 6 | 5/6 | 21 % | 211 | 4 |
+| `real/adyen_transfers_v4.yaml` | adyen_transfers_v4 | 12 | 11/12 | 35 % | 333 | 4 |
+| `real/paypal_payouts_v1.json` | paypal_payouts_v1 | 4 | 4/4 | 33 % | 86 | 4 |
 
 Смысл таблицы не в цифрах, а в том, что разница между провайдерами видна в
 одном экране и среди них есть чужие. Что именно различается:
@@ -462,9 +469,54 @@ ISO 4217, алгоритм — профиль справочника, стату
 коде.
 
 **Расширения overlay `x-specgen-*`** читаются анализаторами как источник
-`:overlay` уже сейчас, до OverlayApplier, и ровно они предлагаются в
-`suggested_overlay`. Таблица — в `docs/IR.md`. Значение вне словаря IR
-отвергается с `spec_element_unsupported`.
+`:overlay`, и ровно они предлагаются в `suggested_overlay`. Таблица — в
+`docs/IR.md`. Значение вне словаря IR отвергается с
+`spec_element_unsupported`.
+
+**Стадия overlay стоит между определением версии и проверкой структуры.**
+До разрешения `$ref` — иначе `$.components.schemas.X` перестала бы быть
+единственным местом и правка задела бы одну копию из нескольких. После
+определения версии — файл, который вообще не OpenAPI, отвергается раньше,
+чем к нему применяют поправки. Перед проверкой структуры — она контракт
+загрузчика с остальным конвейером и обязана видеть тот документ, который
+конвейер увидит, иначе overlay протащил бы схему с опечаткой в `type` прямо
+в анализаторы. Анализаторы про overlay не знают ничего и не менялись.
+
+**Подмножество JSONPath у целей overlay — ровно то, что печатает наш
+отчёт.** `JsonPath.parse` — строгая обратная операция к `JsonPath.build`
+(имя через точку, ключ в скобках в кавычках, индекс массива), и это
+проверяется round-trip-тестом. Движок общего вида (`..`, `*`, фильтры) не
+писан намеренно: цели мы предлагаем сами, а цель, адресующая несколько узлов
+сразу, сделала бы ответ «что именно переопределено» непроверяемым.
+Синтаксис вне подмножества — ошибка файла overlay, а не тихий пропуск.
+
+**Битый overlay — `OverlayError`, ненайденная цель — предупреждение.**
+Граница проходит по тому, известно ли намерение. Файл, который нельзя
+прочитать как overlay (нет `overlay` или `actions`, действие без `target`,
+действие сразу с `update` и `remove`), не даёт ни одного действия, о котором
+человек просил, — прогон останавливается с именем файла и местом внутри
+него. Цель, которой нет в спецификации, — расхождение версий: действие
+пропускается, остальные применяются, а в профиль идёт
+`overlay_target_missing`, потому что генерацию не блокирует ничто.
+
+**Предупреждения стадии пишет сама стадия, а не анализатор.** Только
+applier знает, что стояло в спецификации до слияния: после него документ
+единый, и анализатор честно назвал бы переопределённое значение структурным.
+`Overlay::Result#warn_into(profile)` вызывается из `Analyzers::Runner` одной
+строкой до анализаторов; `overlay_conflict` рождается на каждом ключе,
+который уже был и значил другое, и на каждом `remove`, а простое дополнение
+спором со спецификацией не считается. Тот же вызов кладёт лог стадии в
+`ProviderProfile#overlay` — единственный член профиля не про провайдера, а
+про прогон. Из него раздел 1 отчёта печатает таблицу применённых действий:
+переопределённое человеком видно там же, где сказано, из чего собран сервис.
+Без overlay член равен nil, таблицы нет, и артефакты байт-в-байт прежние —
+golden-эталон не обновлялся.
+
+**Слияние — по тексту Action Object спецификации Overlay 1.0.0:** вложенные
+объекты сливаются рекурсивно, скаляры и массивы заменяются целиком, цель-
+массив получает `update` последним элементом. Это не JSON Merge Patch
+(RFC 7386): `null` присваивается свойству, а не удаляет его — удаление в
+Overlay выражается отдельным действием `remove`.
 
 **Новый код предупреждения** добавляется в `IR::Warning::CODES` осознанно, с
 комментарием над константой (комментарии внутри `%i[...]` становятся
@@ -550,14 +602,53 @@ Adyen `resultCode` — исход авторизации, то есть стат
 `Texts.t('generators.service.*')`.
 
 **Раздел `platform` в `rules/contract.yml`** — то, как сгенерированный
-сервис разговаривает с платформой: `accessors` (роль → выражение значения,
-сумма сырая в мажорных единицах, пересчёт делает шаблон по роли `amount`),
-`lookup` и `writers` (с подстановкой `%{value}`), `callback` (сырое тело и
-заголовки аргумента `process_callback`), `result.success_predicate`. Всё
-это допущение (`source: допущение`), загружает `Rules::PlatformBindings`.
-Роль вне `IR::Roles::FIELD` или `lookup` без `%{value}` — ошибка загрузки.
-У хелперов `approve_operation` / `reject_operation` появилось поле `status`:
+сервис разговаривает с платформой, и после ответов экспертов от 5 сентября
+2026 (вопросы 18–25) он описывает не догадку, а форму объекта операции:
+`accessors` — только гарантированные поля (`operation.id`,
+`operation.amount`, `operation.provider_operation_key`, `operation.status`),
+сумма сырая в мажорных единицах; `requisites` — реквизиты получателя из
+JSONB-хеша `operation.payout_requisite`, где ключ верхнего уровня это
+`payment_method` шлюза, он же `request_method`; `failure_codes` — коды
+платформы для первого аргумента `failure` (`by_http`, `by_action`,
+`validation`, `internal`); `lookup` и `writers` (с подстановкой `%{value}`,
+оба пусты); `callback` (сырое тело и заголовки аргумента
+`process_callback`); `result.success_predicate` и `result.create_success`.
+Плоских полей `currency`, `recipient_phone`, `bank_code`, `card_number` в
+`accessors` нет вовсе — их у операции не существует. Загружают
+`Rules::PlatformBindings`, `Rules::RequisiteMap` и `Rules::FailureCodes`;
+роль вне `IR::Roles::FIELD`, выражение без `%{value}` там, где оно
+обязательно, и код отказа, не похожий на символ Ruby, — ошибки загрузки.
+У хелперов `approve_operation` / `reject_operation` есть поле `status`:
 по нему шаблон выбирает хелпер для внутреннего статуса.
+
+**Условная обязательность становится веткой, а не комментарием.**
+`Service::Requisites` ищет в теле запроса объект первого уровня
+(`recipient`, `destination`, `remitter`), внутри которого есть поле роли
+`recipient_type` с enum хотя бы из двух значений и хотя бы одно поле,
+обязательное при одном из этих значений. Каждое значение enum становится
+веткой `case request_method` в отдельном приватном методе
+`<поле>_requisites`; ключ ветки — способ выплаты платформы, найденный по
+нормализованному имени (`sbp`, `card`), а значение поля роли
+`recipient_type` внутри ветки — литерал из спецификации, потому что
+провайдер вправе называть способ иначе, чем платформа. Поле без условия
+общее для всех веток. Роль без выражения в `requisites` даёт TODO и строку
+таблицы «куда мапить» в INTEGRATION.md, а не выдуманный ключ хеша: догадка
+о спецификации обязательна, догадка о платформе запрещена. Значение
+поля с известной ролью, для которой выражения нет, — только `nil`:
+правдоподобный пример из спецификации ушёл бы провайдеру как настоящий.
+Ветка не генерируется, когда значений enum меньше двух, роли
+`recipient_type` нет вовсе или спецификация не выразила условной
+обязательности по этому enum: `case` с одинаковыми ветками хуже, чем его
+отсутствие.
+
+**Валюта — константа сервиса, а не поле операции.** Платформа валюту не
+сообщает, поэтому `CURRENCY` берётся из того же кода ISO 4217, по которому
+считается `AMOUNT_MULTIPLIER` (единственное значение `enum`, `const` или
+`example` поля с ролью `currency`), и печатается с обоснованием. Не
+выведена — константы нет, поле тела запроса получает TODO, а `report.md` —
+пункт «задайте валюту». Предпроверка `currency` при этом не генерируется:
+значение задано по построению, и лишний guard читался бы как настоящая
+проверка.
 
 **Презентеры сервиса — общие для всех артефактов.** `Service::View`
 отдаёт наружу `context` и `parts` (payload, polling, callback, signature,
@@ -752,10 +843,11 @@ rules-curator): `IR::Response` и `Operation` несут примеры, но н
 `docs/QUESTIONS.md`, следствия в `docs/ASSUMPTIONS.md`.
 
 Коротко: приоритет — чужие спецификации, потому что эксперты сказали это
-прямо. Измеренное покрытие после шагов 2 и 3 плана: NovaPay 76 % (55 из 72),
-ЮKassa 39 % (34 операции, 22 с ролью), PayPal Payouts 38 %, Adyen Transfers
-37 % (215 из 588), Mollie 29 % (128 операций, 111 с ролью), Adyen Payout
-23 %. Всё это одной командой: `./integrate --all --specs <каталог>`.
+прямо. Измеренное покрытие: NovaPay 75 % (54 из 72), ЮKassa 39 %
+(34 операции, 22 с ролью), PayPal Payouts 33 %, Adyen Transfers 35 %,
+Mollie 29 % (128 операций, 111 с ролью), Adyen Payout 21 %. Цифры ниже
+прежних после перехода на `payout_requisite`: реквизит, для которого
+выражения платформы нет, теперь честно не считается покрытым. Всё это одной командой: `./integrate --all --specs <каталог>`.
 
 Что уже сделано из плана: роли операций больше не оставляют пустого места
 (третий уровень доверия), добавлены роли `confirm` и `refund`, тело запроса
@@ -780,9 +872,9 @@ rules-curator): `IR::Response` и `Operation` несут примеры, но н
 чего инструмент не узнал в новых спеках, вылечено строками в `rules/`; четыре
 дефекта ядра, которые данными не выражаются, починены кодом.
 
-Дальше по таблице порядка: шаг 6 — OverlayApplier (флаг `--overlay` пока
-печатает «игнорируется», это единственная дыра в конвейере, видная прямо из
-справки), шаг 7 — вторая цифра покрытия «из того, что контракту вообще
+Шаг 6 закрыт: OverlayApplier применяет OpenAPI Overlay 1.0.0 до анализа,
+фрагменты из раздела 3 отчёта работают как есть, а `--overlay` больше не
+печатает «игнорируется». Дальше по таблице порядка: шаг 7 — вторая цифра покрытия «из того, что контракту вообще
 нужно», шаг 8 — репетиция живого прогона и README. Потом сверка сформированных
 запросов со спекой и `--fix`, который соберёт overlay из фрагментов раздела 3
 отчёта — инструкция по сборке уже напечатана в самом отчёте, а её формат
