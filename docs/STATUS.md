@@ -5,7 +5,9 @@
 закрывает этап. Всё, что здесь написано, обязано воспроизводиться командой —
 иначе это не состояние, а надежда.
 
-Обновлено: 5 сентября 2026, после промпта 6 из `docs/PROMPTS.md`.
+Обновлено: 5 сентября 2026, после шага 4 промпта 7 из `docs/PROMPTS.md`:
+стадия генерации закрыта целиком — `service.rb`, `INTEGRATION.md`,
+`fixtures.json` и `report.md` пишутся одной командой.
 
 ---
 
@@ -13,22 +15,22 @@
 
 ```
 SpecLoader → OverlayApplier → Analyzers + Matchers → IR → Generators → Validators → Reporter
-  готов        нет            10 из 10     готов     готов    нет         нет        Summary
+  готов        нет            10 из 10     готов     готов   4 из 4       нет     Summary + report.md
 ```
 
 | Стадия | Состояние | Точка входа | Проверка |
 |---|---|---|---|
 | SpecLoader | готов | `SpecGen::SpecLoader.load(path)` | `spec/unit/specgen/spec_loader/` — 18 видов плохого входа дают `SpecGen::Error` с файлом и JSONPath |
 | OverlayApplier | не начат, но расширения `x-specgen-*` анализаторы уже читают как источник `:overlay` | — | слот между `Reader` и `StructureValidator` описан в комментарии `spec_loader/loader.rb`; таблица расширений — `docs/IR.md` |
-| Rules (справочники) | готов, 10 книг | `SpecGen::Rules.load` | `rules/*.yml`; противоречие между книгами валит загрузку одним `RulesError` со всеми проблемами |
+| Rules (справочники) | готов, 11 книг | `SpecGen::Rules.load` | `rules/*.yml`; противоречие между книгами валит загрузку одним `RulesError` со всеми проблемами; одиннадцатая — `rules/assumptions.yml`, допущения проекта для INTEGRATION.md |
 | IR | готов | `SpecGen::IR::ProviderProfile` | `docs/IR.md`; `to_h` детерминирован; новый тип `Condition`, у `Idempotency` новый член `conflict_status` |
 | Analyzers, часть 1 | готов: Info, Auth, Operation, Schema | `SpecGen::Analyzers::Runner.call` | `./integrate analyze --spec ...` |
 | Analyzers, часть 2 | готов: Units, Status, Error, Webhook, Idempotency, Conditions | `SpecGen::Analyzers::Runner.call` | `spec/unit/specgen/analyzers/*_spec.rb`, по одному файлу на анализатор; в каждом есть пример на неоднозначный вход, где ожидается предупреждение |
 | Matchers (роли полей) | готов: Name, Type, Constraint, Structure, Composite, Assigner | `SpecGen::Matchers::Assigner.new(rules:).call(subjects)`; вызывается из SchemaReader и ParameterReader | `spec/unit/specgen/matchers/*_spec.rb`, стадия целиком — `spec/unit/specgen/analyzers/field_roles_spec.rb`; на выданной спеке 22 из 26 скалярных полей и все 3 параметра получают роль |
-| Generators | не начат | — | промпт 7; `./integrate --spec` пока падает с «не реализовано» |
+| Generators | готов: четыре артефакта из одной команды | `SpecGen::Generators.call(profile:, rules:, options:)` → `[Artifact]`; `./integrate --spec ... --provider ...` пишет `output/<provider>_service.rb`, `output/INTEGRATION.md` и `output/fixtures.json` | `ruby -c output/<provider>_service.rb`; `bundle exec rubocop --config config/rubocop_generated.yml output/<provider>_service.rb`; `grep '^## ' output/INTEGRATION.md` — ровно девять разделов; `ruby -rjson -e 'JSON.parse(File.read("output/fixtures.json"))'`; `grep '^## ' output/report.md` — ровно семь разделов; golden — `spec/golden/novapay_spec.rb` против `spec/fixtures/golden/novapay/` (все четыре файла); `spec/unit/specgen/generators/` |
 | Mock provider | не начат | — | промпт 8 |
 | Validators | не начат | — | промпт 9 |
-| Reporter | только консольный `Summary` | `SpecGen::Reporter::Summary` | `report.md` — промпт 7 |
+| Reporter | готов: `Summary` в консоли и `report.md` на диске | `SpecGen::Reporter::Summary`, `SpecGen::Generators::ReportGenerator` | `./integrate analyze --spec ... --explain`; `output/report.md` |
 | Texts (язык) | готов: ru по умолчанию, en | `SpecGen::Texts.t`, `locales/<код>/*.yml` | `--locale en`; `spec/unit/specgen/texts_spec.rb` следит за полнотой ключей |
 
 ---
@@ -45,6 +47,7 @@ SpecLoader → OverlayApplier → Analyzers + Matchers → IR → Generators →
 | Что | Где тексты | Ключей |
 |---|---|---|
 | CLI, справка, экран `analyze` | `locales/*/cli.yml` | 120 (ru) / 113 (en) |
+| Генерация: строки CLI об артефактах, комментарии, которые презентеры кладут в сгенерированный код, и пояснения `_todo` в фикстурах | `locales/*/generators.yml` | 101 (ru) / 100 (en) |
 | Ошибки загрузчика спецификации, формат места ошибки | `locales/*/spec_loader.yml` | 26 |
 | Ошибки загрузчика справочников | `locales/*/rules.yml` | 117 |
 | Предупреждения и обоснования всех анализаторов, кроме схем | `locales/*/analyzers.yml` | 147 |
@@ -53,7 +56,7 @@ SpecLoader → OverlayApplier → Analyzers + Matchers → IR → Generators →
 | Комментарии во всём `lib/` | в коде, по `docs/GLOSSARY.md` | — |
 | Описания примеров в тестах `it '...'` | остаются английскими намеренно | — |
 
-Всего ключей: 486 в `ru`, 479 в `en` (разница — формы множественного числа).
+Всего ключей: 499 в `ru`, 492 в `en` (разница — формы множественного числа).
 Overlay-фрагменты в обеих локалях побайтово одинаковы: это текст для машины;
 комментарии `#` внутри фрагмента — проза для человека, они переведены.
 
@@ -75,6 +78,11 @@ Overlay-фрагменты в обеих локалях побайтово од�
 ## Живая демонстрация на сегодня
 
 ```sh
+./integrate --spec spec/fixtures/specs/novapay.yaml --provider novapay
+ruby -c output/novapay_service.rb
+grep '^## ' output/report.md
+bundle exec rubocop --config config/rubocop_generated.yml output/novapay_service.rb
+ruby -rjson -e 'JSON.parse(File.read("output/fixtures.json")); puts "JSON OK"'
 ./integrate analyze --spec spec/fixtures/specs/novapay.yaml
 ./integrate analyze --spec spec/fixtures/specs/novapay.yaml --explain
 ./integrate analyze --spec spec/fixtures/specs/novapay.yaml --provider novapay
@@ -95,10 +103,67 @@ role=idempotency_key`), восемью схемами со сводкой рол
 сопоставление: name 5.0 (…), structure 4.0 (…), type 1.0 (…) = 10.0 из
 14.0») — и Overlay-фрагмент под каждым исправимым предупреждением.
 
-Что эта команда доказывает и что нет: она доказывает разбор целиком
-(критерии экспертов E1.1, E1.2, E1.3; техжюри T1.1–T1.5) и
-провайдер-нейтральность ядра (E4.2). Она **не** доказывает генерацию —
-артефактов в `output/` пока нет.
+Первая команда — генерация: `Генерация сервиса... ok (379 строк) ->
+output/novapay_service.rb` и итог по предупреждениям. Файл проходит
+`ruby -c` и RuboCop по `config/rubocop_generated.yml`. Внутри: четыре метода
+контракта с именами из `rules/contract.yml`, `STATUS_MAP` / `ERROR_MAP` /
+`RETRY_POLICY` / `EVENT_MAP` замороженными хешами с отсортированными
+ключами, `check_conditions` с пятью проверками, пересчитанными в мажорные
+единицы (`operation.amount < 1000` при `minimum: 100000`), ветка
+`DEDUP_STATUS` для 409 со схемой успеха, `verify_signature!` с
+`OpenSSL.fixed_length_secure_compare`, UUID v5 через `Digest::SHA1`,
+`cancel` и `balance` отдельными публичными методами. Те же команды на
+чужих спецификациях (`spec/fixtures/specs/real/`) дают `ruby -c`-валидные
+и RuboCop-чистые файлы, полные TODO.
+
+Та же первая команда второй строкой пишет `Генерация документации... ok
+(218 строк) -> output/INTEGRATION.md`: девять нумерованных разделов
+(авторизация и секрет, ENV, таблица методов с идемпотентностью, статусы и
+события, ошибки с действиями и RETRY_POLICY словами, YAML-фрагмент
+ProviderGateway с пересчётом `minimum: 100000` в `1000.00 RUB`, схема
+подписи с примером вычисления без секрета, пошаговое подключение, принятые
+допущения — восемь из `rules/assumptions.yml` плюс допущения прогона: два
+намёка условной обязательности 0.50 и ограничение отмены 0.60). Таблицы
+документа собираются из тех же презентеров, что константы сервиса
+(`Service::Tables#status_mappings`, `#code_rules`, `#retry_policy`,
+`Precheck#description`, `Signature#value`), поэтому совпадают с
+`STATUS_MAP` / `ERROR_MAP` / `RETRY_POLICY` по построению. На чужих
+спецификациях документ честно говорит «в спецификации не объявлено» и
+перечисляет, что взято по умолчанию (PayPal — 8 строк допущений прогона,
+Adyen Transfers — 60).
+
+Та же команда третьей строкой пишет `Генерация фикстур... ok (461 строка)
+-> output/fixtures.json`: все три вида, которых требует критерий T5.3, —
+пять запросов (по одному на операцию, с заголовками авторизации,
+`Content-Type` и ключом идемпотентности), пятнадцать ответов (у
+`createPayout` все восемь объявленных кодов, включая 201, 409 и ошибки) и
+шесть уведомлений (четыре события enum плюс две негативные: заведомо
+неверная подпись и незнакомое событие). Подпись уведомлений настоящая:
+64 шестнадцатеричных символа `HMAC-SHA256(raw_body, test_webhook_secret)`,
+которые проверяет юнит-тест, а фикстура годится для `process_callback` как
+есть. Каждая фикстура несёт `expected` (внутренний статус по `STATUS_MAP`,
+действие по `ERROR_MAP`, `dedup` у кода конфликта) и `source`. На чужих
+спецификациях файл остаётся разумного размера: Adyen Payout 24 КБ, Adyen
+Transfers 73 КБ, PayPal Payouts 16 КБ.
+
+Та же команда четвёртой строкой пишет `Генерация отчёта... ok (228 строк)
+-> output/report.md`: семь разделов. Сводка таблицей (операции, схемы и
+поля, роли по источникам, статусы, события, коды ошибок, условия,
+предупреждения) и список записанных артефактов с числом строк — их отдаёт
+`Runner`, отчёт идёт в `ORDER` последним. Покрытие спецификации одной
+цифрой: у novapay 76 % (55 из 72 элементов), у PayPal Payouts 38 %, Adyen
+Payout 18 %, Adyen Transfers 34 %, Mollie 27 %, ЮKassa 37 %. Дальше
+неоднозначности по кодам с готовыми Overlay-фрагментами и инструкцией, как
+склеить из них один файл; операции вне контракта таблицей (`cancelPayout` →
+`cancel(operation)`, `getBalance` → `balance()`); противоречия самой
+спецификации (три `error_code_undeclared`, три `error_code_unused`, четыре
+`undeclared_status_code`); справки, сокращённые до пяти элементов в группе;
+нумерованный чеклист ручной работы с итогом «11 пунктов». На чужих
+спецификациях отчёт остаётся читаемым: Mollie с 1855 предупреждениями — 1208
+строк, Adyen Transfers — 861.
+
+Команда `analyze` доказывает разбор целиком (критерии экспертов E1.1,
+E1.2, E1.3; техжюри T1.1–T1.5) и провайдер-нейтральность ядра (E4.2).
 
 Сценарий первого чекпоинта — `docs/CHECKPOINT-1.md`.
 
@@ -299,6 +364,179 @@ Adyen `resultCode` — исход авторизации, то есть стат
 строке; поэтому необязательные аргументы у них позиционные
 (`def analyze(data, family = :oas30)`).
 
+## Соглашения стадии генерации
+
+**Один генератор — один класс и один шаблон.** `Generators::Runner::ORDER`
+перечисляет классы-наследники `Generators::Base`; каждый объявляет
+`TEMPLATE` (файл в `templates/`), `KIND` и отдаёт объект-представление.
+Добавить артефакт (INTEGRATION.md, fixtures.json, report.md) — добавить
+класс в `ORDER`, шаблон в `templates/` и представление; `Runner`, `Writer`,
+`Naming` и CLI не меняются. `Base#render` оборачивает любую ошибку шаблона
+в `GenerationError` с именем шаблона и местом ошибки.
+
+**Шаблон видит только представление.** `templates/service.rb.erb` держит
+разметку класса и таблицы; всё остальное — строки от презентеров
+`Generators::Service::*` (`Payload`, `Tables`, `Precheck`, `Creation`,
+`Polling`, `Callback`, `Signature`, `Authorization`, `Extras`, `Privates`),
+собранных `Service::View`. Презентеры читают только IR и справочники через
+`Service::Context`; имена методов контракта, хелперов, выражения платформы и
+внутренние статусы — из `rules/contract.yml` (`ContractBook#method_for`,
+`#helper`, `#helper_for_status`, `#platform`). В шаблоне и в `lib/` нет ни
+одного литерала имени метода контракта. Комментарии в самом шаблоне — по-
+русски прямо в ERB; комментарии, которые формируют презентеры, — через
+`Texts.t('generators.service.*')`.
+
+**Раздел `platform` в `rules/contract.yml`** — то, как сгенерированный
+сервис разговаривает с платформой: `accessors` (роль → выражение значения,
+сумма сырая в мажорных единицах, пересчёт делает шаблон по роли `amount`),
+`lookup` и `writers` (с подстановкой `%{value}`), `callback` (сырое тело и
+заголовки аргумента `process_callback`), `result.success_predicate`. Всё
+это допущение (`source: допущение`), загружает `Rules::PlatformBindings`.
+Роль вне `IR::Roles::FIELD` или `lookup` без `%{value}` — ошибка загрузки.
+У хелперов `approve_operation` / `reject_operation` появилось поле `status`:
+по нему шаблон выбирает хелпер для внутреннего статуса.
+
+**Презентеры сервиса — общие для всех артефактов.** `Service::View`
+отдаёт наружу `context` и `parts` (payload, polling, callback, signature,
+authorization, creation, precheck, extras, tables, http);
+`Integration::View` строит `Service::View` и читает у него те же объекты.
+Данные, из которых печатаются строки Ruby, открыты как данные:
+`Tables#status_mappings` / `#events` / `#code_rules` / `#http_rules` /
+`#specific_rules` / `#retry_policy`, `Precheck#description` / `#major_text`
+/ `#amount` / `#role_of` / `#failure_code`, `Signature#value` / `#known?`,
+`Authorization#type` / `#entry` / `#param_names` / `#credential_keys` /
+`#stub_name`, `Extras#entries`, `Context#timeouts` / `#base_url_env` /
+`#sandbox_url` / `#full_class_name` / `#error_code_path`. Правило: документ
+никогда не пересчитывает то, что уже посчитал презентер сервиса, — иначе
+таблица INTEGRATION.md совпадёт с константой по совпадению, а не по
+построению. Презентеры документа (`Generators::Integration::*`) наследуют
+`Integration::Base` (контекст, части, `t` под `generators.integration.*`,
+Markdown-хелперы) и делятся по разделам: `Access` (1–2), `Methods` (3),
+`Statuses` (4), `Errors` (5), `Gateway` (6), `SignatureDoc` (7),
+`Assumptions` + `RunAssumptions` + `RunGaps` (9); проза разделов и раздел 8
+целиком — в `templates/INTEGRATION.md.erb`.
+
+**Допущения проекта — данные, не docs.** Раздел «Принятые допущения»
+берёт текст из `rules/assumptions.yml` (`Rules::AssumptionsBook`: `all`,
+`documented`, `find`; поля `id`, `text`, `source`, `affects`, `status`
+active | withdrawn, `replaced_by`, `documented`), а не из
+`docs/ASSUMPTIONS.md`: генератор не должен зависеть от документации
+репозитория. Журнал для людей остаётся в `docs/`, правится тем же коммитом;
+загрузчик отказывает на повторном `id` и на снятом допущении без
+`replaced_by`. `documented: false` — допущение о ходе проекта, в
+INTEGRATION.md не попадает. Допущения конкретного прогона генератор берёт
+из IR: только `Derived` ниже порога и `Derived.unknown`, которые стали кодом
+(роль поля, условная обязательность из прозы, условие из прозы, единицы,
+члены профиля подписи, код конфликта, авторизация, статусы и события без
+пары, действия по умолчанию, роли операций, песочница, параметры пути без
+роли, поле статуса не по роли), а не все предупреждения.
+
+**Параметр, который тело метода не использует, получает префикс `_`**
+(`Service::Method#signature`): контракт требует `request_method` в
+`create_request`, а `Lint/UnusedMethodArgument` — пометки; голый `super`
+считается использованием всех аргументов.
+
+**Отдельный RuboCop-конфиг для сгенерированного кода** —
+`config/rubocop_generated.yml`: наследует основной, отключает
+`Metrics/ClassLength` (сервис длиннее 150 строк по построению), поднимает
+`MethodLength` до 30 с `AllowedMethods: [build_payload, check_conditions]`
+(это таблицы, их не режут на хелперы), `AbcSize` 40, сложность 12. `Lint/*`,
+`Security/*`, `Style/Documentation`, `Layout/EndOfLine` в силе. Все
+переносы, `%w[]`/`%i[]`, `.freeze`, пустые строки после guard-блоков,
+`rescue` на уровне `def` — забота `Generators::Ruby`, не ручных правок.
+
+**Откуда берётся значение в fixtures.json и что значит `source`.** Тело,
+взятое из `examples` спецификации дословно, — `spec_example`; собранное из
+`example` / `const` / `enum[0]` / `default` свойств схемы —
+`schema_example`; содержащее хоть одну заглушку по типу (`"string"`, `0`,
+`true`) — `synthesized`. Придуманное значение никогда не выдаётся за пример
+из спецификации, и у каждой фикстуры не-`spec_example` есть `_todo` —
+единственный ключ с подчёркиванием и единственная русская проза в файле.
+Схема, у которой ни одно поле не подсказало значение, собирается целиком
+(`Fixtures::Values#object`): пустое тело в фикстуре бесполезнее заглушки.
+Глубина вложенности ограничена `MAX_DEPTH` 4 — иначе Adyen Transfers даёт
+мегабайты. Тело операции без `requestBody` — `null` с источником
+`spec_example`: «тела нет» сказала сама спецификация. Действие в
+`expected.action` считается по коду ошибки из тела только тогда, когда тело
+— пример спецификации; код, подставленный нами из `enum`, о политике
+ничего не говорит, и тогда действие определяет HTTP-код.
+
+**Подпись уведомлений в фикстурах считается по-настоящему**
+(`Fixtures::Signing`): HMAC от точных байтов `raw_body`
+(`JSON.generate(body)`) секретом-заглушкой `test_<ключ credentials>` по
+профилю `IR::SignatureProfile` — тем же, по которому сгенерирован
+`verify_signature!`. У профиля Standard Webhooks подписывается
+`{id}.{timestamp}.{body}` с фиксированными значениями
+(`SPECGEN_TIMESTAMP` с дефолтом 1767225600), потому что `Time.now` в
+генераторе запрещён. Негативная фикстура сохраняет длину и префикс
+значения, заменяя саму подпись нулями. Ключ идемпотентности в фикстуре
+считает `Generators::Uuid.v5` — тот же RFC 4122 §4.3, что печатает шаблон
+сервиса, от `"<slug>:<external_id из примера>"`.
+
+**Формула покрытия — доля покрытых элементов от всех**, а не среднее по
+измерениям: сумма покрытого по семи измерениям (операции, поля тел запросов,
+поля входящих тел, коды ответов, статусы, события, условия), делённая на
+сумму найденного. Среднее отброшено намеренно: измерения разного размера, и
+четыре события вебхука не должны весить столько же, сколько триста полей.
+Покрытым считается элемент, у которого в сгенерированном коде есть ветка,
+выражение или строка таблицы: операция — метод сервиса (роль `unmapped` не
+считается), поле тела запроса — выражение платформы по роли, поле входящего
+тела — одна из ролей `status`, `provider_operation_id`, `error_code`,
+`external_id` либо поле события, код ответа — успех, `DEDUP_STATUS` или
+правило `ERROR_MAP` по HTTP-коду (действие по умолчанию покрытием не
+считается), статус и событие — пара в `STATUS_MAP` / `EVENT_MAP`, условие —
+проверка в `check_conditions`, ограничение отмены или строка `RETRY_POLICY`.
+Поля тел запросов считаются по операциям, поля входящих тел — по схемам.
+
+**Раздел отчёта выбирается по коду предупреждения, а не по серьёзности.**
+`Report::Warnings::CONTRADICTIONS` — спецификация против самой себя (enum
+против примеров, коды соседей, проза против структуры, конфликты overlay и
+ролей), `NOTES` — факты, где инструмент ничего не решал, всё остальное —
+неоднозначности. Один код — ровно один раздел, иначе читатель искал бы одну
+проблему в двух местах; это проверяет
+`spec/unit/specgen/generators/report_generator_spec.rb`, там же — требование
+собственного текста `action_<код>` в обеих локалях. У кода со своим разделом
+(`operation_unmapped`, `contract_gap`) справка ссылается на раздел 4.
+
+**Golden обновляется только явно:** `SPECGEN_UPDATE_GOLDEN=1 bundle exec
+rspec spec/golden`; тест сравнивает каждый файл `spec/fixtures/golden/novapay/`
+байт-в-байт и отдельно проверяет, что два прогона в разные каталоги дают
+одинаковые байты. Файлы пишет `Generators::Writer` в бинарном режиме
+(`File.binwrite`), LF, один `\n` в конце.
+
+**UUID v5** в сгенерированном коде — `Digest::SHA1` по RFC 4122 §4.3, без
+`SecureRandom`; пространство имён — DNS-namespace из
+`rules/idempotency.yml`. Проверочный вектор: `uuid_v5(DNS, 'python.org') =
+886313e1-3b8a-5372-9b90-0c9aee199e5d`.
+
+**Чего не хватило в IR для фикстур** (заявки ir-architect и
+rules-curator): `IR::Response` и `Operation` несут примеры, но ни один
+элемент IR не помнит примеры на уровне свойств схемы иначе как
+`Field#example` — сборка тела из схемы живёт в `Fixtures::Values`, хотя
+это скорее свойство IR; `WebhookEvent#example` есть только у событий,
+названных в примерах (у novapay — у двух из четырёх), остальным тело
+одалживается у соседнего события с подстановкой enum; `rules/auth.yml`
+хранит значение заголовка авторизации выражением Ruby, поэтому фикстура
+раскрывает его текстом (`Basic`, `HMAC`, OAuth2 раскрыть нечем — заглушка
+и строка в `_todo`). Кодов отказа `signature_invalid` и `unknown_event`
+не было в одном месте: теперь это `Service::Signature::INVALID_CODE` и
+`Service::Callback::UNKNOWN_EVENT_CODE`, их читают негативные фикстуры.
+
+**Чего не хватило в IR для шаблонов** (заявки ir-architect):
+`Webhook#event_field` (поле события угадывается по полю, чей `enum`
+покрывает все имена событий); структурный список кандидатов роли с баллами
+(сейчас — только текст `Derived#evidence` и сообщение
+`field_role_low_confidence`, TODO в коде цитирует их); `value_prefix`
+профиля Standard Webhooks в `SignatureProfile` (берётся из
+`rules/signatures.yml`). Для INTEGRATION.md: у `ErrorRule` с
+`provider_code` нет HTTP-кодов, при которых код встречается (в примерах
+`unauthorized` лежит под 401, но правило этого не помнит — колонка
+«HTTP-код» у кодов провайдера говорит «любой, читается из тела»);
+`Condition` знает имя поля, но не схему, поэтому два поля `type` из разных
+схем Adyen сливаются в одну запись `fields:` фрагмента шлюза (второе
+условие уходит в комментарий); overlay-фрагмент подписи документ берёт из
+`profile.warnings`, а не из IR вебхука.
+
 **История коммитов** — по одному коммиту на этап, каждый самодостаточен:
 `rspec` и `rubocop` зелёные на каждом. Общие файлы (`analyzers.rb`,
 `warning.rb`, `registry.rb`, локали) входят в коммит промежуточным
@@ -328,16 +566,17 @@ Adyen `resultCode` — исход авторизации, то есть стат
 «Актуальный порядок после чекпоинта 1»; ответы экспертов дословно в
 `docs/QUESTIONS.md`, следствия в `docs/ASSUMPTIONS.md`.
 
-Промпт 7 (генераторы): ко второму чекпоинту 5 сентября эксперты должны
-увидеть четыре файла из одной команды. Генерация не блокируется никогда. В
-IR для неё всё есть: у каждого поля и параметра — роль с источником и
-уверенностью, у поля ниже порога — предупреждение с кандидатами (это текст
-для TODO в коде), у поля без роли — `Derived.unknown` и код
-`required_field_role_unknown` / `field_role_unknown`, по которому генератор
-решает, класть ли поле в payload как TODO. Мок-провайдер (промпт 8) ушёл в
-бонус: эксперты оценивают сгенерированный класс, а не живой трафик. Затем
-промпт 10 с настоящими публичными спецификациями — заготовки уже лежат в
-`spec/fixtures/specs/real/`; матчеры на них уже гоняются (см. соглашения),
-имена PayPal уже в словаре. Альтернативные спеки `cardpay.yaml`,
-`depositbank.yaml`, `broken.yaml` пишем сами агентом rules-curator в
-промпте 10, скачать их негде.
+Промпт 7 закрыт целиком: четыре артефакта пишутся одной командой, golden
+сравнивает все четыре файла. Дальше — промпт 10, настоящие публичные
+спецификации: `spec/fixtures/specs/real/` уже даёт три (Adyen Payout, Adyen
+Transfers, PayPal Payouts), `bin/fetch-real-specs` — ещё три в `tmp/`
+(Mollie, ЮKassa, Stripe; Stripe останавливается на циклическом `$ref` с
+внятным сообщением загрузчика). Альтернативные спеки `cardpay.yaml`,
+`depositbank.yaml`, `broken.yaml` пишем сами агентом rules-curator там же.
+
+Дальше по таблице порядка: промпт 12 (CLI и вывод), промпт 9 (тесты и сверка
+сформированных запросов со спекой), промпт 11 (`--fix`, который соберёт
+overlay из фрагментов раздела 3 отчёта — инструкция по сборке уже напечатана
+в самом отчёте, а её формат разбирает `YAML.safe_load` в юнит-тесте).
+Мок-провайдер (промпт 8) остаётся в бонусе: эксперты оценивают
+сгенерированный класс, а не живой трафик.
