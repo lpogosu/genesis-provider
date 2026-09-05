@@ -246,9 +246,20 @@ RSpec.describe 'the shipped dictionaries' do
 
       expect(actions).to eq('validation_error' => :reject, 'insufficient_balance' => :retry_backoff,
                             'recipient_not_found' => :reject, 'bank_unavailable' => :retry_backoff,
-                            'amount_limit_exceeded' => :escalate, 'rate_limit_exceeded' => :retry_backoff,
+                            'amount_limit_exceeded' => :reject, 'rate_limit_exceeded' => :retry_backoff,
                             'internal_error' => :retry_backoff, 'unauthorized' => :alert,
                             'not_found' => :reject, 'invalid_status' => :reject)
+    end
+
+    # Эксперты 5 сентября 2026 (вопрос 22): amount_limit_exceeded — лимит ОДНОЙ
+    # выплаты, операцию отклоняем. Суточная квота — другое: она восстановится,
+    # но не в окне ретраев, и решение принимает человек.
+    it 'tells a per-payout limit from a daily quota, since the answer differs' do
+      limit = rules.errors.rule_for_code('amount_limit_exceeded')
+      quota = rules.errors.rule_for_code('daily_limit_reached')
+
+      expect([limit.name, limit.action]).to eq(['operation_limit', :reject])
+      expect([quota.name, quota.action]).to eq(['quota', :escalate])
     end
   end
 

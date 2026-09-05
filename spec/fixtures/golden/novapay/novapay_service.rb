@@ -68,7 +68,7 @@ class Provider
     # таблицу не входит: это успешный путь, см. DEDUP_STATUS.
     ERROR_MAP = {
       # По коду ошибки провайдера из тела ответа.
-      'amount_limit_exceeded' => :escalate,
+      'amount_limit_exceeded' => :reject,
       'bank_unavailable' => :retry_backoff,
       'insufficient_balance' => :retry_backoff,
       'internal_error' => :retry_backoff,

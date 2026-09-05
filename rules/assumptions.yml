@@ -107,15 +107,21 @@ assumptions:
 
   - id: 8
     text: >-
-      Выражения платформы — чтение полей операции (operation.amount и
-      прочие) и предикат успешного результата базового класса — наш вывод;
-      реального класса Operation не выдали. Поиска операции в хранилище и
-      сохранения идентификатора провайдера в сервисе нет: по ответу
-      экспертов это делает платформа снаружи.
-    source: "наше решение; эксперты 5 сентября 2026: «сохранение будет происходить вне сервиса провайдера, сервис провайдера должен сделать запрос к самому провайдеру, через абстрактный client и отдать ответ»"
-    affects: "build_payload, callback_target, accept_response"
-    status: active
-    documented: true
+      Выражения платформы — чтение полей операции — были нашим выводом:
+      реального класса Operation не выдали, и сервис читал плоские поля
+      вроде operation.recipient_phone.
+    source: "наше решение"
+    affects: "build_payload, fetch_status"
+    status: withdrawn
+    replaced_by: >-
+      Таблицы accessors и requisites в rules/contract.yml. Эксперты
+      5 сентября 2026 назвали форму прямо: гарантированы operation.id,
+      operation.amount и operation.payout_requisite — JSONB-хеш, а не
+      плоские recipient_phone и bank_code, — плюс gateway,
+      provider_operation_key и status по необходимости. Догадкой осталась
+      только форма хеша для способов выплаты, которых эксперты не назвали;
+      для них генерируется TODO, см. допущение 12.
+    documented: false
 
   - id: 9
     text: >-
@@ -143,5 +149,36 @@ assumptions:
       аргумент.
     source: "эксперты 5 сентября 2026: process_callback «получает уже разобранный JSON внутри payload»"
     affects: "шаблон сервиса, INTEGRATION.md раздел 8, report.md чек-лист"
+    status: active
+    documented: true
+
+  - id: 11
+    text: >-
+      Валюта запроса берётся из спецификации — из единственного значения
+      enum, const или example поля с ролью currency, — а не у платформы:
+      поля currency у операции нет.
+    source: "эксперты 5 сентября 2026: в перечне полей операции валюты нет, «адрес, авторизация и т.д. должны браться из open api документа провайдера»"
+    affects: "константа CURRENCY сервиса, build_payload, INTEGRATION.md"
+    status: active
+    documented: true
+
+  - id: 12
+    text: >-
+      Реквизит, для которого в таблице requisites rules/contract.yml нет
+      выражения, вслепую не генерируется: поле получает TODO и строку
+      «куда мапить» в INTEGRATION.md. Догадка о спецификации обязательна,
+      догадка о платформе запрещена.
+    source: "эксперты 5 сентября 2026: «Для поля из спеки, которого нет в известной схеме платформы, не генерировать вслепую. Лучше TODO и явное место маппинга в INTEGRATION.md»"
+    affects: "build_payload, report.md, INTEGRATION.md"
+    status: active
+    documented: true
+
+  - id: 13
+    text: >-
+      Ключ верхнего уровня в payout_requisite — это payment_method шлюза,
+      он же request_method. Значение enum роли recipient_type из
+      спецификации сопоставляется с ним по нормализованному имени.
+    source: "эксперты 5 сентября 2026: «request_method — логический метод шлюза (gateway.payment_method: sbp, p2p, …), в одном сервисе — ветки по request_method и/или форме payout_requisite»; сопоставление имён — наше решение"
+    affects: "ветка case request_method в сборке реквизитов"
     status: active
     documented: true
