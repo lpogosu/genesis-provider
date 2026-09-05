@@ -93,6 +93,16 @@ module RulesFixtures
                     { 'name' => 'funds', 'pattern' => 'insufficient|balance', 'action' => 'escalate' },
                     { 'name' => 'rejected', 'pattern' => 'not_found|invalid', 'action' => 'reject' }] }
     },
+    'assumptions.yml' => lambda {
+      { 'version' => 1,
+        'assumptions' => [
+          { 'id' => 1, 'text' => 'Контракт восстановлен по описанию кейса.',
+            'source' => 'описание кейса', 'affects' => 'шаблон сервиса',
+            'status' => 'active', 'documented' => true },
+          { 'id' => 2, 'text' => 'Мок-провайдер — бонус.', 'source' => 'эксперты',
+            'affects' => 'план', 'status' => 'active', 'documented' => false }
+        ] }
+    },
     'contract.yml' => lambda {
       { 'version' => 1, 'base_class' => 'Provider::BaseService',
         'assumption' => 'Восстановлен по описанию кейса; реального класса нам не выдали.',
@@ -100,7 +110,8 @@ module RulesFixtures
         'internal_statuses' => %w[in_progress approved rejected],
         'request_method' => { 'semantics' => 'логический тип действия, а не HTTP-метод',
                               'known_values' => %w[create status] },
-        'operation' => { 'amount_unit' => 'major' } }
+        'operation' => { 'amount_unit' => 'major' },
+        'platform' => CONTRACT_PLATFORM }
     }
   }.freeze
 
@@ -120,25 +131,6 @@ module RulesFixtures
     'cancel' => { 'verbs' => %w[cancel void], 'nouns' => %w[cancel cancellation], 'resources' => %w[payout payouts], 'tail' => %w[cancel], 'http_methods' => %w[post delete], 'request_body' => false },
     'balance' => { 'verbs' => %w[get check], 'nouns' => %w[balance balances], 'resources' => %w[balance], 'tail' => %w[balance], 'http_methods' => %w[get], 'request_body' => false },
     'webhook' => { 'verbs' => %w[notify receive], 'nouns' => %w[webhook callback], 'resources' => %w[webhooks callbacks], 'tail' => %w[webhooks callbacks], 'http_methods' => %w[post], 'tags' => %w[webhooks], 'request_body' => true, 'unsecured' => true }
-  }.freeze
-
-  CONTRACT_METHODS = {
-    'check_conditions' => {
-      'params' => [{ 'name' => 'operation' }, { 'name' => 'request_method' }],
-      'calls_super' => true
-    },
-    'create_request' => {
-      'params' => [{ 'name' => 'operation' },
-                   { 'name' => 'request_method', 'default' => "'create'" }],
-      'roles' => %w[create_payout create_deposit]
-    },
-    'process_callback' => { 'params' => [{ 'name' => 'payload' }], 'roles' => ['webhook'] },
-    'fetch_status' => { 'params' => [{ 'name' => 'operation' }], 'roles' => ['fetch_status'] }
-  }.freeze
-
-  CONTRACT_HELPERS = {
-    'success' => {}, 'client' => {}, 'auth_headers' => {}, 'failure' => { 'params' => [{ 'name' => 'code' }, { 'name' => 'i18n_key' }] },
-    'approve_operation' => { 'params' => [{ 'name' => 'operation' }] }, 'reject_operation' => { 'params' => [{ 'name' => 'operation' }] }
   }.freeze
 
   # Пишет справочники во временный каталог и отдаёт его путь блоку.

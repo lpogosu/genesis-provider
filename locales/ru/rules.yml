@@ -76,6 +76,9 @@ rules:
     request_method: "раздел request_method"
     operation_section: "раздел operation"
     amount_unit: "единица суммы"
+    platform_section: "раздел platform"
+    platform_map: "таблица %{key} раздела platform"
+    expression: "выражение %{key}"
     alias_name: "алиас"
     error_action: "действие по ошибке"
     http_classes: "раздел http.classes"
@@ -89,6 +92,11 @@ rules:
     matchers_scoring: "раздел matchers.scoring"
     matcher_scores: "баллы матчера %{matcher}"
     matcher_setting: "настройка %{key}"
+    assumption_body: "описание допущения"
+    assumption_id: "номер допущения"
+    assumption_text: "текст допущения"
+    assumption_source: "источник допущения"
+    assumption_status: "статус допущения"
 
   book:
     version: "версия справочника: ожидается %{expected}, получено: %{got}"
@@ -159,6 +167,10 @@ rules:
     bad_class: "класс HTTP-кодов: ожидается 1xx..5xx, получено: %{key}"
     bad_status: "HTTP-код: ожидается целое число 100..599, получено: %{key}"
 
+  assumptions:
+    duplicate_id: "допущение №%{id} записано дважды (первое — %{other})"
+    withdrawn_without_replacement: "допущение №%{id} снято, но не сказано, чем заменено (replaced_by)"
+
   contract:
     bad_class: "базовый класс %{name} не похож на путь константы Ruby"
     no_methods: "нужен хотя бы один метод"
@@ -166,6 +178,8 @@ rules:
     helpers_missing: "не описаны хелперы: %{helpers}"
     statuses_mismatch: "внутренние статусы должны быть ровно %{statuses}"
     uncovered_roles: "ни один метод не обслуживает %{roles}; добавь список `roles:` тому методу, который это делает"
+    expression_needs_value: "выражение %{key} должно содержать подстановку %%{value}"
+    status_taken: "внутренний статус %{status} уже переводит хелпер %{helper}"
 
   method:
     bad_name: "имя метода %{name} не похоже на имя метода Ruby"

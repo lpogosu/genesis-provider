@@ -47,6 +47,51 @@ RSpec.describe SpecGen::Rules::ContractBook do
       expect(book.amount_unit).to eq(:major)
       expect(book.internal_statuses).to contain_exactly(:in_progress, :approved, :rejected)
     end
+
+    it 'knows which helper moves an operation into which internal status' do
+      book = contract
+
+      expect(book.helper_for_status(:approved)).to eq('approve_operation')
+      expect(book.helper_for_status(:rejected)).to eq('reject_operation')
+      expect(book.helper_for_status(:in_progress)).to be_nil
+    end
+
+    it 'refuses two helpers claiming the same internal status' do
+      patch = rule('contract.yml')
+      patch['helpers']['reject_operation']['status'] = 'approved'
+
+      expect(rules_error('contract.yml' => patch)).to include('approved').and include('approve_operation')
+    end
+  end
+
+  describe 'the platform section' do
+    it 'gives expressions by role and fills %{value} in lookups and writers' do
+      platform = contract.platform
+
+      expect(platform.accessor(:amount)).to eq('operation.amount')
+      expect(platform.accessor(:signature)).to be_nil
+      expect(platform.lookup(:provider_operation_id, "body['id']"))
+        .to eq("Operation.find_by(provider_operation_id: body['id'])")
+      expect(platform.writer(:provider_operation_id, 'x')).to eq('operation.update(provider_operation_id: x)')
+      expect(platform.callback_body).to eq('payload[:body]')
+      expect(platform.success_predicate).to eq('success?')
+      expect(platform.source).to eq('допущение')
+    end
+
+    it 'is optional: a contract without it yields no expressions instead of failing' do
+      platform = contract('platform' => nil).platform
+      expect(platform.accessor(:amount)).to be_nil
+      expect(platform.callback_body).to be_nil
+    end
+
+    it 'refuses a role outside the vocabulary and a lookup without %{value}' do
+      patch = rule('contract.yml')
+      patch['platform']['accessors']['iban'] = 'operation.iban'
+      patch['platform']['lookup']['external_id'] = 'Operation.first'
+
+      message = rules_error('contract.yml' => patch)
+      expect(message).to include('iban').and include('external_id').and include('%{value}')
+    end
   end
 
   describe 'binding methods to operation roles' do

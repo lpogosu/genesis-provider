@@ -14,6 +14,7 @@ RSpec.describe SpecGen::Rules::Registry do
       expect(registry.idempotency).to be_a(SpecGen::Rules::IdempotencyBook)
       expect(registry.auth).to be_a(SpecGen::Rules::AuthBook)
       expect(registry.contract).to be_a(SpecGen::Rules::ContractBook)
+      expect(registry.assumptions).to be_a(SpecGen::Rules::AssumptionsBook)
     end
 
     it 'is frozen, so nothing can edit a dictionary at runtime' do

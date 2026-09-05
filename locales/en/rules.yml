@@ -75,6 +75,9 @@ rules:
     request_method: "request_method"
     operation_section: "operation"
     amount_unit: "amount unit"
+    platform_section: "platform section"
+    platform_map: "table %{key} of the platform section"
+    expression: "expression %{key}"
     alias_name: "alias"
     error_action: "error action"
     http_classes: "http.classes"
@@ -88,6 +91,11 @@ rules:
     matchers_scoring: "matchers.scoring section"
     matcher_scores: "scores of matcher %{matcher}"
     matcher_setting: "setting %{key}"
+    assumption_body: "assumption entry"
+    assumption_id: "assumption number"
+    assumption_text: "assumption text"
+    assumption_source: "assumption source"
+    assumption_status: "assumption status"
 
   book:
     version: "dictionary version must be %{expected}, got %{got}"
@@ -158,6 +166,10 @@ rules:
     bad_class: "HTTP class must be 1xx..5xx, got %{key}"
     bad_status: "HTTP status must be a whole number 100..599, got %{key}"
 
+  assumptions:
+    duplicate_id: "assumption #%{id} is listed twice (first at %{other})"
+    withdrawn_without_replacement: "assumption #%{id} is withdrawn but does not say what replaced it (replaced_by)"
+
   contract:
     bad_class: "base class %{name} is not a Ruby constant path"
     no_methods: "at least one method is required"
@@ -165,6 +177,8 @@ rules:
     helpers_missing: "helpers missing: %{helpers}"
     statuses_mismatch: "internal statuses must be exactly %{statuses}"
     uncovered_roles: "no method serves %{roles}; add a `roles:` list to the method that handles it"
+    expression_needs_value: "expression %{key} must contain the %%{value} placeholder"
+    status_taken: "internal status %{status} is already set by helper %{helper}"
 
   method:
     bad_name: "method name %{name} is not a Ruby method name"

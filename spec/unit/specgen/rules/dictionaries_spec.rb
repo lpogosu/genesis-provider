@@ -242,6 +242,24 @@ RSpec.describe 'the shipped dictionaries' do
   end
 
   describe 'the contract' do
+    it 'reads every request-side role of the platform operation and keeps the amount raw' do
+      platform = rules.contract.platform
+
+      %i[amount currency external_id provider_operation_id recipient_type recipient_phone bank_code
+         bank_name card_number idempotency_key].each do |role|
+        expect(platform.accessor(role)).not_to be_nil, "no platform expression for #{role}"
+      end
+      expect(platform.accessor(:amount)).to eq('operation.amount')
+      expect(platform.lookup(:external_id, 'v')).to include('v')
+      expect(platform.writer(:provider_operation_id, 'v')).to include('v')
+      expect(platform.source).to eq('допущение')
+    end
+
+    it 'names the helpers for the two terminal statuses' do
+      expect(rules.contract.helper_for_status(:approved)).to eq('approve_operation')
+      expect(rules.contract.helper_for_status(:rejected)).to eq('reject_operation')
+    end
+
     it 'serves every operation role the contract covers' do
       SpecGen::IR::Roles::CONTRACT.each do |role|
         expect(rules.contract.method_for(role)).not_to be_nil, "no method serves #{role}"
@@ -259,6 +277,27 @@ RSpec.describe 'the shipped dictionaries' do
     it 'states that the contract is an assumption' do
       expect(rules.contract.assumption).not_to be_nil
       expect(rules.contract.amount_unit).to eq(:major)
+    end
+  end
+
+  describe 'assumptions' do
+    it 'carries every row of docs/ASSUMPTIONS.md with a source and marks the platform bindings as ours' do
+      book = rules.assumptions
+
+      expect(book.all.map(&:id)).to eq((1..book.all.size).to_a)
+      expect(book.all.map(&:source)).to all(match(/\S/))
+      documented = book.documented.map(&:text).join
+      expect(documented).to include('Provider::BaseService', 'ISO 4217', 'process_callback')
+    end
+
+    it 'keeps the project-planning assumption out of the integration guide' do
+      planning = rules.assumptions.all.reject(&:documented)
+
+      expect(planning.map(&:text).join).to include('Мок-провайдер')
+    end
+
+    it 'never names a provider: assumptions are common to every integration' do
+      expect(rules.assumptions.all.map(&:text).join.downcase).not_to include('novapay')
     end
   end
 end

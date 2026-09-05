@@ -107,6 +107,9 @@ helpers:
     params:
       - { name: operation }
     purpose: "перевести операцию во внутренний статус approved"
+    # Внутренний статус, в который хелпер переводит операцию: по нему шаблон
+    # выбирает хелпер для статуса из STATUS_MAP, не зная имён.
+    status: approved
     example: "approve_operation(operation)"
     source: "имя — описание кейса; арность — допущение"
 
@@ -138,6 +141,7 @@ helpers:
     params:
       - { name: operation }
     purpose: "перевести операцию во внутренний статус rejected"
+    status: rejected
     example: "reject_operation(operation)"
     source: "имя — описание кейса; арность — допущение"
 
@@ -168,3 +172,48 @@ operation:
     operation.amount задан в рублях (major units); множитель до единиц
     провайдера определяется экспонентой ISO 4217 для кода валюты операции.
   source: "описание кейса"
+
+# Как сгенерированный сервис разговаривает с остальной платформой: читает
+# данные операции, находит операцию по идентификатору из уведомления,
+# запоминает идентификатор провайдера, разбирает аргумент колбэка и результат
+# базового класса. Реального класса Operation нам не выдали, поэтому каждое
+# выражение здесь — допущение; шаблон подставляет их как есть и не пишет ни
+# одного своего. Поменялась платформа — правится этот раздел, не шаблон.
+#
+#   accessors  роль поля (IR::Roles::FIELD) → выражение Ruby со значением
+#              платформы. Сумма — в мажорных единицах, как её хранит
+#              платформа: пересчёт в единицы провайдера делает шаблон по
+#              роли amount (to_provider_units), а предпроверки сравнивают
+#              сырое значение с границей, пересчитанной в мажорные единицы.
+#              idempotency_key_for — приватный метод, который шаблон
+#              генерирует всегда.
+#   lookup     роль идентификатора → выражение, находящее операцию платформы;
+#              %{value} — выражение со значением из уведомления.
+#   writers    роль → выражение, сохраняющее значение из ответа провайдера.
+#   callback   что несёт аргумент process_callback: сырое тело (подпись
+#              проверяется по байтам, а не по разобранному JSON) и заголовки.
+#   result     как узнать, что результат базового класса успешный.
+platform:
+  source: "допущение"
+  accessors:
+    amount: "operation.amount"
+    currency: "operation.currency"
+    external_id: "operation.id"
+    provider_operation_id: "operation.provider_operation_id"
+    recipient_type: "operation.recipient_type"
+    recipient_phone: "operation.recipient_phone"
+    bank_code: "operation.bank_code"
+    bank_name: "operation.bank_name"
+    card_number: "operation.card_number"
+    status: "operation.status"
+    idempotency_key: "idempotency_key_for(operation)"
+  lookup:
+    provider_operation_id: "Operation.find_by(provider_operation_id: %{value})"
+    external_id: "Operation.find_by(id: %{value})"
+  writers:
+    provider_operation_id: "operation.update(provider_operation_id: %{value})"
+  callback:
+    body: "payload[:body]"
+    headers: "payload[:headers]"
+  result:
+    success_predicate: "success?"

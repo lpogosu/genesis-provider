@@ -36,6 +36,9 @@ module SpecGen
       attr_reader :request_method_values
       # @return [Symbol, nil] :major или :minor — единица operation.amount
       attr_reader :amount_unit
+      # @return [PlatformBindings] выражения, которыми сервис разговаривает с
+      #   платформой: доступ к операции, поиск, запись, аргумент колбэка
+      attr_reader :platform
 
       # @param name [String, Symbol]
       # @return [MethodSpec, nil]
@@ -61,9 +64,16 @@ module SpecGen
       end
 
       # @param key [Symbol]
-      # @return [Hash, nil] :method, :params, :purpose, :example
+      # @return [Hash, nil] :method, :params, :purpose, :example, :status
       def helper_spec(key)
         @helpers[key.to_sym]
+      end
+
+      # @param status [Symbol] внутренний статус из IR::Roles::INTERNAL_STATUS
+      # @return [String, nil] имя хелпера, который переводит операцию в этот
+      #   статус; nil, если статус не меняет операцию (in_progress)
+      def helper_for_status(status)
+        @status_helpers[status]
       end
 
       private
@@ -73,6 +83,7 @@ module SpecGen
         load_methods
         load_helpers
         load_semantics
+        @platform = PlatformBindings.new(data['platform'], file: file, problems: problems)
         report_uncovered_roles
       end
 
@@ -112,9 +123,10 @@ module SpecGen
 
       def load_helpers
         @helpers = {}
+        @status_helpers = {}
         section('helpers').each { |key, body| add_helper(key, body) }
         report_missing_helpers
-        @helpers.freeze
+        [@helpers, @status_helpers].each(&:freeze)
       end
 
       def report_missing_helpers
@@ -129,8 +141,24 @@ module SpecGen
         fields = mapping(body, noun(:helper_body, key: key), at)
         spec = MethodSpec.new(fields.fetch('method', key), fields)
         spec.problems.each { |message, suffix| complain(message, "#{at}#{suffix}") }
-        @helpers[key.to_sym] = { method: spec.name, params: spec.params,
+        status = helper_status(fields['status'], spec.name, "#{at}.status")
+        @helpers[key.to_sym] = { method: spec.name, params: spec.params, status: status,
                                  purpose: fields['purpose'], example: fields['example'] }.freeze
+      end
+
+      # Хелпер, переводящий операцию во внутренний статус: по этой записи
+      # шаблон выбирает approve или reject, не зная имён. Два хелпера на один
+      # статус — противоречие, а не выбор.
+      def helper_status(value, method_name, at)
+        return nil if value.nil?
+
+        status = symbol_in(value, IR::Roles::INTERNAL_STATUS, noun(:internal_status), at)
+        return nil if status.nil?
+
+        owner = @status_helpers[status]
+        return @status_helpers[status] = method_name if owner.nil?
+
+        fault('contract.status_taken', at, status: status, helper: owner)
       end
 
       def load_semantics
