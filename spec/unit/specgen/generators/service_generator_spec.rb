@@ -154,4 +154,68 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
       end
     end
   end
+
+  # Ключи payload и границы сумм приходят из спецификации: RuboCop не должен
+  # находить в них ни своего стиля имён, ни голых больших литералов.
+  describe 'a specification whose field names and limits fight the house style' do
+    let(:spec_body) do
+      <<~YAML
+        openapi: 3.0.3
+        info: { title: Wide Limits API, version: '0.1' }
+        paths:
+          /payouts:
+            post:
+              operationId: createPayout
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [amount, currency, xref_tag_9]
+                      properties:
+                        amount: { type: integer, minimum: 100, maximum: 500000000 }
+                        currency: { type: string, enum: [RUB] }
+                        xref_tag_9: { type: string, description: 'Cross-reference tag' }
+              responses:
+                '200':
+                  description: ok
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          status: { type: string, enum: [pending, completed] }
+      YAML
+    end
+
+    def source_for(dir)
+      spec = File.join(dir, 'wide.yaml')
+      File.binwrite(spec, spec_body)
+      artifact, = generate(spec, dir)
+      expect(syntax_ok?(artifact.path)).to be(true)
+      File.read(artifact.path, encoding: 'UTF-8')
+    end
+
+    it 'separates the digits of an amount limit recalculated into major units' do
+      Dir.mktmpdir('specgen-wide') do |dir|
+        source = source_for(dir)
+        expect(source).to include('operation.amount > 5_000_000')
+        expect(source).to include('operation.amount < 1')
+        expect(source).not_to match(/operation\.amount > \d{5,}/)
+      end
+    end
+
+    it 'keeps a payload key spelled exactly as the specification spells it' do
+      Dir.mktmpdir('specgen-wide') do |dir|
+        expect(source_for(dir)).to include('xref_tag_9: nil')
+      end
+    end
+
+    it 'turns off the name-style cop for generated code, since the spec names the keys' do
+      config = YAML.safe_load_file(File.expand_path('../../../../config/rubocop_generated.yml',
+                                                    __dir__))
+      expect(config.dig('Naming/VariableNumber', 'Enabled')).to be(false)
+    end
+  end
 end

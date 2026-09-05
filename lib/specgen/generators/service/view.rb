@@ -119,7 +119,7 @@ module SpecGen
         #   скалярные константы: имя, литерал, комментарии
         def constants
           list = [amount_constant, ['DEFAULT_ERROR_ACTION', default_error_action, []]]
-          list << ['DEDUP_STATUS', dedup_status.to_s, []] if dedup_status
+          list << ['DEDUP_STATUS', Ruby.number(dedup_status), []] if dedup_status
           list.concat(idempotency_constants)
           list << ['CANCELLABLE_STATUSES', "#{Ruby.literal(cancellable)}.freeze", []] if cancellable
           list + (webhooks? ? @parts[:signature].constants : [])

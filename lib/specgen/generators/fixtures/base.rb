@@ -18,6 +18,9 @@ module SpecGen
         SPEC_EXAMPLE = 'spec_example'
         SCHEMA_EXAMPLE = 'schema_example'
         SYNTHESIZED = 'synthesized'
+        # Тело обещано, но не описано: примера не существует, и выдавать
+        # пустое тело за пример спецификации нельзя.
+        UNDECLARED = 'undeclared'
         CONTENT_TYPE = 'Content-Type'
         # Выражение справочника rules/auth.yml, читающее секрет платформы.
         CREDENTIAL = /provider\.credentials\[:(\w+)\]/
@@ -28,7 +31,7 @@ module SpecGen
 
         # Тело фикстуры вместе с происхождением.
         #   value   само тело, nil для операций без тела
-        #   source  SPEC_EXAMPLE | SCHEMA_EXAMPLE | SYNTHESIZED
+        #   source  SPEC_EXAMPLE | SCHEMA_EXAMPLE | SYNTHESIZED | UNDECLARED
         #   name    имя примера спецификации или nil
         #   notes   пояснения, которые склеятся в ключ "_todo"
         Body = Struct.new(:value, :source, :name, :notes, keyword_init: true)
@@ -128,14 +131,36 @@ module SpecGen
         # @param examples [Hash{String => Object}] примеры спецификации
         # @param schema_name [String, nil] имя схемы тела
         # @param note [String] что написать, если примера в спецификации нет
+        # @param expected [Boolean] тело у этого элемента должно быть: тогда
+        #   отсутствие схемы — пробел спецификации, а не её утверждение
         # @return [Body]
-        def body_from(examples, schema_name, note)
+        def body_from(examples, schema_name, note, expected: false)
           return spec_body(*examples.first) unless examples.empty?
-          return Body.new(value: nil, source: SPEC_EXAMPLE, notes: []) if schema_name.nil?
+          return empty_body(expected) if schema_name.nil?
 
           built = values.body(schema_name)
+          return undeclared_body if built.value.nil?
+
           redact(Body.new(value: built.value, notes: [note],
                           source: built.synthesized ? SYNTHESIZED : SCHEMA_EXAMPLE))
+        end
+
+        # Тела нет по двум разным причинам, и их нельзя сливать в одну.
+        # Операция без requestBody и ответ без содержимого — утверждение
+        # самой спецификации, это пример: тела действительно нет. Тело,
+        # которое обещано и не описано, примером не является ни в каком
+        # смысле — там, где схемы не существует, не существует и примера.
+        # @param expected [Boolean]
+        # @return [Body]
+        def empty_body(expected)
+          return undeclared_body if expected
+
+          Body.new(value: nil, source: SPEC_EXAMPLE, notes: [])
+        end
+
+        # @return [Body] пробел: пустое тело с честным источником и "_todo"
+        def undeclared_body
+          Body.new(value: nil, source: UNDECLARED, notes: [t('body_undeclared')])
         end
 
         def spec_body(name, value)

@@ -164,7 +164,7 @@ module SpecGen
 
           schema = operation.request_schema
           lines = @ctx.parts_payload.lines(schema)
-          body = ['payload = {', *Ruby.indent(lines, 2), '}', 'compact_payload(payload)']
+          body = Ruby.assign_hash('payload', lines) + ['compact_payload(payload)']
           Method.new(name: builder, params: [{ name: 'operation' }],
                      doc: comment(@ctx.t('extra_payload_doc', key: operation.key, schema: schema),
                                   4),

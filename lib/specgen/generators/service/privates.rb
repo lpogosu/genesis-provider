@@ -92,7 +92,7 @@ module SpecGen
           schema = @ctx.create_operation&.request_schema
           lines = @parts[:payload].lines(schema)
           body = if lines.nil? then todo('payload_schema_missing') + ['compact_payload({})']
-                 else ['payload = {', *Ruby.indent(lines, 2), '}', 'compact_payload(payload)']
+                 else Ruby.assign_hash('payload', lines) + ['compact_payload(payload)']
                  end
           method('build_payload', ['operation'], 'build_payload_doc', body, schema: schema.to_s)
         end

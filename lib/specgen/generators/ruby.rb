@@ -14,6 +14,11 @@ module SpecGen
       IDENT = /\A[a-z_][a-z0-9_]*[?!]?\z/i
       # Элементы, которые можно писать через %w[]: без пробелов и скобок.
       WORD = /\A[^\s\[\]'"\\]+\z/
+      # С какого числа знаков целая часть разделяется подчёркиваниями: столько
+      # же требует Style/NumericLiterals (MinDigits 5), то есть от 10000.
+      GROUPED_DIGITS = 5
+      # Цифры целой части, считая от конца, группами по три.
+      GROUPS = /(\d)(?=(\d{3})+\z)/
 
       module_function
 
@@ -53,8 +58,26 @@ module SpecGen
         when String then str(value)
         when Array then array(value)
         when Hash then "{ #{value.map { |k, v| "#{key(k)} #{literal(v)}" }.join(', ')} }"
+        when Numeric then number(value)
         else value.to_s
         end
+      end
+
+      # Числовой литерал с разделителями-подчёркиваниями по три разряда от
+      # конца целой части: `maximum: 5000000` из спецификации печатается
+      # `5_000_000`, как того требует Style/NumericLiterals. Границу сумм,
+      # длины и паузы печатает только этот метод — числа в сгенерированный
+      # Ruby больше ниоткуда не попадают.
+      # @param value [Numeric]
+      # @return [String] литерал Ruby
+      def number(value)
+        text = value.is_a?(Rational) ? value.to_f.to_s : value.to_s
+        sign = text.start_with?('-') ? '-' : ''
+        whole, _, rest = text.delete_prefix('-').partition('.')
+        return "#{sign}#{text.delete_prefix('-')}" unless whole.match?(/\A\d+\z/)
+
+        whole = whole.gsub(GROUPS, '\1_') if whole.size >= GROUPED_DIGITS
+        rest.empty? ? "#{sign}#{whole}" : "#{sign}#{whole}.#{rest}"
       end
 
       # @param items [Array]
@@ -141,6 +164,19 @@ module SpecGen
         return [line] if indent + line.size <= WIDTH
 
         ["#{word} #{condition}", "  return #{action}", 'end', '']
+      end
+
+      # Присваивание хеша-литерала: пустой хеш пишется в одну строку, иначе
+      # блок с отступом. Схема без единого поля (у Adyen Transfers это
+      # ApproveTransfersRequest) иначе дала бы открывающую и закрывающую
+      # скобку на разных строках, а это Layout/SpaceInsideHashLiteralBraces.
+      # @param name [String] имя переменной
+      # @param lines [Array<String>] записи хеша
+      # @return [Array<String>]
+      def assign_hash(name, lines)
+        return ["#{name} = {}"] if lines.empty?
+
+        ["#{name} = {", *indent(lines, 2), '}']
       end
 
       # @param lines [Array<String>]

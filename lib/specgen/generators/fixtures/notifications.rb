@@ -78,7 +78,7 @@ module SpecGen
         end
 
         def schema_body(event)
-          body_from({}, webhook.schema, t('no_event_example', event: event.name))
+          body_from({}, webhook.schema, t('no_event_example', event: event.name), expected: true)
         end
 
         # Тело уведомления в спецификации одно на все события: отличаются в

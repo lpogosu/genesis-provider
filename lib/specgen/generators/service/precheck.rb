@@ -85,7 +85,7 @@ module SpecGen
           return "to_provider_units(#{raw})" if multiplier.nil? || !raw.is_a?(Numeric)
 
           major = Rational(raw, multiplier)
-          major.denominator == 1 ? major.to_i.to_s : major.to_f.to_s
+          Ruby.number(major.denominator == 1 ? major.to_i : major.to_f)
         end
 
         # Роль поля условия: по схеме тела запроса операции создания, иначе по
@@ -157,7 +157,7 @@ module SpecGen
           case condition.kind
           when :min_amount then [[], "#{accessor} < #{amount(value)}", false]
           when :max_amount then [[], "#{accessor} > #{amount(value)}", false]
-          when :field_max_length then [[], "#{accessor}.to_s.length > #{value}", false]
+          when :field_max_length then [[], "#{accessor}.to_s.length > #{Ruby.number(value)}", false]
           when :field_pattern then [[], "#{accessor}.to_s.match?(#{Ruby.regexp(value)})", true]
           else enum_predicate(role, accessor, Array(value).map(&:to_s))
           end

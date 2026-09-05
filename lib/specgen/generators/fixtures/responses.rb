@@ -11,6 +11,11 @@ module SpecGen
       # (те же таблицы, что в константах сервиса), ответ с кодом конфликта у
       # операции создания помечается dedup.
       class Responses < Base
+        # Коды, у которых тела не бывает по RFC 9110: у них отсутствие схемы
+        # — утверждение спецификации. У остальных кодов ответ без схемы это
+        # необъявленное тело, то есть пробел.
+        BODYLESS = %w[204 304].freeze
+
         # @return [Array<Hash>] фикстуры в порядке спецификации
         def all
           ctx.profile.operations.flat_map do |operation|
@@ -22,7 +27,8 @@ module SpecGen
 
         def fixtures(operation, response)
           if response.examples.empty?
-            built = body_from({}, response.schema, t('no_response_example'))
+            built = body_from({}, response.schema, t('no_response_example'),
+                              expected: !BODYLESS.include?(response.status))
             return [fixture(operation, response, built)]
           end
 

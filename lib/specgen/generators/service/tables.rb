@@ -49,7 +49,7 @@ module SpecGen
         #   → действие; дедупликация сюда не входит, у неё свой код DEDUP_STATUS
         def error_lines
           codes = code_rules.map { |rule| error_entry(Ruby.str(rule.provider_code), rule) }
-          http = http_rules.map { |rule| error_entry(rule.http_status.to_s, rule) }
+          http = http_rules.map { |rule| error_entry(Ruby.number(rule.http_status), rule) }
           entries = []
           entries.push(section('error_map_codes'), *codes) unless codes.empty?
           entries.push(section('error_map_http'), *http) unless http.empty?
@@ -62,7 +62,8 @@ module SpecGen
         def operation_error_lines
           grouped = specific_rules.group_by(&:operation).sort
           render(grouped.map do |key, rules|
-            inner = rules.sort_by(&:http_status).map { |r| error_entry(r.http_status.to_s, r) }
+            sorted = rules.sort_by(&:http_status)
+            inner = sorted.map { |r| error_entry(Ruby.number(r.http_status), r) }
             [[], ["#{Ruby.str(key)} => {", *Ruby.indent(render(inner), 2), '}']]
           end)
         end

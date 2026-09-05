@@ -37,7 +37,7 @@
 и это честно видно в цифре.
 
 <%= table(['Измерение', 'Найдено', 'Покрыто', 'Покрытие'],
-          coverage.dimensions.map { |d| [dimension_name(d), d.total, d.covered, "#{d.percent} %"] }).join("\n") %>
+          coverage.dimensions.map { |d| [dimension_name(d), d.total, d.covered, d.percent_text] }).join("\n") %>
 
 ### Что не покрыто и почему
 

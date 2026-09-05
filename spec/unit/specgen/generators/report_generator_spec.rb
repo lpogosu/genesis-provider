@@ -177,5 +177,26 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
     it 'reports full coverage of an empty specification without dividing by zero' do
       expect(text).to include('**Покрытие: 100 % (0 из 0 элементов).**')
     end
+
+    it 'says there is nothing to cover instead of claiming 100 % in an empty dimension' do
+      expect(text).not_to match(/\| 0 \| 0 \| 100 % \|/)
+      expect(text.scan('| 0 | 0 | нечего покрывать |').size).to eq(7)
+    end
+  end
+
+  describe SpecGen::Generators::Report::Dimension do
+    it 'has no percentage at all when nothing of the kind was found' do
+      empty = described_class.new(key: 'statuses', total: 0, covered: 0, gaps: [])
+      expect(empty).to be_empty
+      expect(empty.percent).to be_nil
+      expect(empty.percent_text).to eq('нечего покрывать')
+    end
+
+    it 'rounds the share of covered elements when there is something to cover' do
+      dimension = described_class.new(key: 'statuses', total: 3, covered: 2, gaps: [%w[a b]])
+      expect(dimension).not_to be_empty
+      expect(dimension.percent).to eq(67)
+      expect(dimension.percent_text).to eq('67 %')
+    end
   end
 end

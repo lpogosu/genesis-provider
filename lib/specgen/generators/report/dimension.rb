@@ -29,11 +29,29 @@ module SpecGen
           [gaps.size - MAX_GAPS, 0].max
         end
 
-        # @return [Integer] доля покрытых элементов, 100 для пустого измерения
+        # @return [Integer, nil] доля покрытых элементов; nil у измерения,
+        #   в котором нечего покрывать
         def percent
-          return 100 if total.to_i.zero?
+          return nil if empty?
 
           ((covered.to_f / total) * 100).round
+        end
+
+        # @return [Boolean] спецификация не дала ни одного элемента этого вида
+        def empty?
+          total.to_i.zero?
+        end
+
+        # Измерение без элементов не печатает 100 %: покрывать в нём нечего,
+        # и круглая цифра выглядела бы достижением там, где нет данных. На
+        # итоговую цифру покрытия это не влияет — она считается суммой
+        # покрытого к сумме найденного, а пустое измерение не добавляет ни
+        # к числителю, ни к знаменателю.
+        # @return [String] "76 %" либо «нечего покрывать»
+        def percent_text
+          return Texts.t('generators.report.coverage_empty') if empty?
+
+          "#{percent} %"
         end
 
         # @return [Integer]

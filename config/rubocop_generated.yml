@@ -33,3 +33,10 @@ Metrics/CyclomaticComplexity:
   Max: 12
 Metrics/PerceivedComplexity:
   Max: 12
+
+# Ключи payload — дословные имена полей из спецификации провайдера
+# (`address_line_1`, `xref_tag_9`). Переименовать их нельзя: запрос уйдёт с
+# неправильным именем поля. Стиль имён здесь задаёт спецификация, а не мы,
+# поэтому правило к сгенерированному коду неприменимо по построению.
+Naming/VariableNumber:
+  Enabled: false

@@ -203,5 +203,46 @@ RSpec.describe SpecGen::Generators::FixturesGenerator do
         expect(json['notifications']).to eq([])
       end
     end
+
+    it 'calls a promised but undescribed response body a gap, not an example of the spec' do
+      Dir.mktmpdir('specgen-bare') do |dir|
+        json, = generate(write_bare_spec(dir, bare), dir)
+        response = json['responses'].first
+        expect(response['body']).to be_nil
+        expect(response['source']).to eq('undeclared')
+        expect(response['_todo']).to include('не описано')
+      end
+    end
+  end
+
+  describe 'an operation that has no body and a response that may not have one' do
+    let(:bodyless) do
+      <<~YAML
+        openapi: 3.0.3
+        info: { title: Bodyless API, version: "0.1" }
+        paths:
+          /transfers/{ref}:
+            delete:
+              operationId: voidTransfer
+              parameters:
+                - { name: ref, in: path, required: true, schema: { type: string } }
+              responses:
+                "204": { description: voided }
+      YAML
+    end
+
+    it 'keeps a null body an example of the spec when the spec itself said there is none' do
+      Dir.mktmpdir('specgen-bodyless') do |dir|
+        json, = generate(write_bare_spec(dir, bodyless), dir)
+        request = json['requests'].first
+        expect(request['body']).to be_nil
+        expect(request['source']).to eq('spec_example')
+        expect(request['_todo'].to_s).not_to include('не описано')
+
+        response = json['responses'].first
+        expect(response['body']).to be_nil
+        expect(response['source']).to eq('spec_example')
+      end
+    end
   end
 end

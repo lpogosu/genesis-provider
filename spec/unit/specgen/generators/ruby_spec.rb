@@ -37,6 +37,27 @@ RSpec.describe SpecGen::Generators::Ruby do
     end
   end
 
+  describe '.number' do
+    it 'separates every three digits of an integer from 10000 up' do
+      expect(described_class.number(10_000)).to eq('10_000')
+      expect(described_class.number(5_000_000)).to eq('5_000_000')
+      expect(described_class.number(999)).to eq('999')
+      expect(described_class.number(9999)).to eq('9999')
+    end
+
+    it 'keeps the sign and groups only the whole part of a fraction' do
+      expect(described_class.number(-12_345)).to eq('-12_345')
+      expect(described_class.number(1234.56)).to eq('1234.56')
+      expect(described_class.number(12_345.678)).to eq('12_345.678')
+      expect(described_class.number(Rational(100_000, 100))).to eq('1000.0')
+    end
+
+    it 'is what .literal uses for numbers so that no generator prints a bare one' do
+      expect(described_class.literal(250_000)).to eq('250_000')
+      expect(described_class.literal([1_000_000, 'x'])).to eq("[1_000_000, 'x']")
+    end
+  end
+
   describe '.guard' do
     it 'keeps a short guard on one line and expands a long one into if/end with a blank line' do
       expect(described_class.guard('x', 'y', indent: 6)).to eq(['return x if y'])
