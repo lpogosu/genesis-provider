@@ -99,6 +99,13 @@ class Provider
     end
 
 <%- end -%>
+<%- webhook_methods.each do |method| -%>
+<%= indent(method.doc, 4) %>
+    def <%= method.signature %>
+<%= indent(method.body, 6) %>
+    end
+
+<%- end -%>
     private
 
 <%- helper_methods.each_with_index do |method, index| -%>

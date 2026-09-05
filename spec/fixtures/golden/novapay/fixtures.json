@@ -148,7 +148,7 @@
         }
       },
       "expected": {
-        "action": "escalate"
+        "action": "retry_backoff"
       },
       "source": "spec_example"
     },

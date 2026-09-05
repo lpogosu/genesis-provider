@@ -51,20 +51,34 @@ module SpecGen
           [build_payload, request_headers, *@parts[:authorization].methods, accept_response,
            apply_internal_status, fixed(:map_status), provider_failure, fixed(:parse_json),
            fixed(:compact_payload), to_provider_units, idempotency_key_for, fixed(:uuid_v5),
-           @parts[:signature].method, *signature_matches, fixed(:header_value),
-           fixed(:secure_equal?), find_callback_operation]
+           *webhook_methods]
         end
 
         private
+
+        # Приватные методы уведомлений. Спецификация без вебхуков не получает
+        # ни верификатора подписи, ни разбора цели: process_callback в этом
+        # случае и так отказывает, а мёртвый код в сгенерированном файле —
+        # лишний повод не доверять генератору.
+        def webhook_methods
+          return [] if @ctx.profile.webhooks.empty?
+
+          [@parts[:signature].unpack_method, *signature_matches, fixed(:header_value),
+           fixed(:secure_equal?), callback_target]
+        end
 
         def fixed(name)
           params, body = FIXED.fetch(name)
           method(name.to_s, params, "#{name.to_s.delete('?')}_doc", body)
         end
 
-        def find_callback_operation
-          method('find_callback_operation', ['body'], 'find_callback_operation_doc',
-                 @parts[:callback].lookup_lines)
+        # Цель уведомления: операция платформы, если платформа отдала сервису
+        # поиск, иначе идентификатор из тела уведомления — по ответу
+        # экспертов от 5 сентября 2026 хранилище живёт вне сервиса.
+        def callback_target
+          callback = @parts[:callback]
+          key = callback.lookup? ? 'callback_lookup_doc' : 'callback_target_doc'
+          method('callback_target', [callback.local], key, callback.target_lines)
         end
 
         def method(name, params, doc_key, body, **params_for_doc)
@@ -98,18 +112,27 @@ module SpecGen
         # Успешный ответ на создание или отмену: запомнить идентификатор
         # провайдера, перевести статус, если он пришёл и знаком.
         def accept_response
+          saves = @ctx.platform.roles(:writers).any?
+          key = saves ? 'accept_response_save_doc' : 'accept_response_doc'
           lines = remember_lines + ["internal = map_status(#{status_expression})",
                                     "return #{@ctx.success} if internal.nil?", '',
                                     'apply_internal_status(operation, internal)']
-          method('accept_response', %w[operation body], 'accept_response_doc', lines)
+          method('accept_response', %w[operation body], key, lines)
         end
 
+        # Идентификатор операции у провайдера. Сохраняет его платформа вне
+        # сервиса (эксперты кейса, 5 сентября 2026), поэтому по умолчанию
+        # здесь только комментарий с местом, где идентификатор лежит; если
+        # rules/contract.yml задаёт выражение записи, оно снова появится.
         def remember_lines
           path = response_path(:provider_operation_id)
-          writer = path && @ctx.platform.writer(:provider_operation_id, 'provider_id')
-          return todo('provider_id_unknown') if writer.nil?
+          return todo('provider_id_unknown') if path.nil?
 
-          ["provider_id = #{@ctx.dig('body', path)}", "#{writer} if provider_id"]
+          writer = @ctx.platform.writer(:provider_operation_id, 'provider_id')
+          field = @ctx.dig('body', path)
+          return note('provider_id_external', field: field) if writer.nil?
+
+          ["provider_id = #{field}", "#{writer} if provider_id"]
         end
 
         # Путь к полю с ролью в успешных ответах операции создания.
@@ -125,13 +148,15 @@ module SpecGen
           @ctx.dig('body', @parts[:polling].status_path || response_path(:status) || ['status'])
         end
 
+        # Аргумент называется target, а не operation: в колбэке это может
+        # быть идентификатор из уведомления, а не операция платформы.
         def apply_internal_status
           whens = @ctx.contract.internal_statuses.filter_map do |status|
             helper = @ctx.contract.helper_for_status(status)
-            helper && "when #{Ruby.sym(status)} then #{helper}(operation)"
+            helper && "when #{Ruby.sym(status)} then #{helper}(target)"
           end
           body = whens.empty? ? [@ctx.success] : ['case internal', *whens, 'end', @ctx.success]
-          method('apply_internal_status', %w[operation internal], 'apply_internal_status_doc', body)
+          method('apply_internal_status', %w[target internal], 'apply_internal_status_doc', body)
         end
 
         def provider_failure
@@ -170,6 +195,10 @@ module SpecGen
 
         def todo(key)
           Ruby.comment(@ctx.t(key), width: Ruby::WIDTH - INDENT, prefix: '# TODO: ')
+        end
+
+        def note(key, **params)
+          Ruby.comment(@ctx.t(key, **params), width: Ruby::WIDTH - INDENT)
         end
       end
     end

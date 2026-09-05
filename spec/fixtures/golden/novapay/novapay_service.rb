@@ -70,7 +70,7 @@ class Provider
       # По коду ошибки провайдера из тела ответа.
       'amount_limit_exceeded' => :escalate,
       'bank_unavailable' => :retry_backoff,
-      'insufficient_balance' => :escalate,
+      'insufficient_balance' => :retry_backoff,
       'internal_error' => :retry_backoff,
       'invalid_status' => :reject,
       'not_found' => :reject,
@@ -81,7 +81,7 @@ class Provider
       # По HTTP-коду, когда тело не несёт кода ошибки.
       400 => :reject,
       401 => :alert,
-      402 => :escalate,
+      402 => :retry_backoff,
       404 => :reject,
       409 => :reject,
       422 => :reject,
@@ -94,7 +94,7 @@ class Provider
     # очереди и алерты — инфраструктура платформы.
     RETRY_POLICY = {
       actions: %i[retry retry_backoff],
-      statuses: [429, 500],
+      statuses: [402, 429, 500],
       retry_after_header: 'Retry-After',
       retry_after_statuses: [429]
     }.freeze
@@ -169,19 +169,16 @@ class Provider
     # @param payload [Object]
     # @return [Object] success | failure
     def process_callback(payload)
-      raw_body = payload[:body].to_s
-      headers = payload[:headers] || {}
-      problem = verify_signature!(raw_body, headers)
+      problem = verify_signature!(payload)
       return problem if problem
 
-      body = parse_json(raw_body)
-      operation = find_callback_operation(body)
-      return failure(:operation_not_found, 'errors.operation_not_found') if operation.nil?
+      target = callback_target(payload)
+      return failure(:operation_not_found, 'errors.operation_not_found') if target.nil?
 
-      internal = EVENT_MAP[body['event']]
+      internal = EVENT_MAP[payload['event']]
       return failure(:unknown_event, 'errors.unknown_event') if internal.nil?
 
-      apply_internal_status(operation, internal)
+      apply_internal_status(target, internal)
     end
 
     # Опрос статуса операции у провайдера. Единственный путь получить статус, если провайдер не
@@ -232,6 +229,24 @@ class Provider
       body
     end
 
+    # Проверяет подпись входящего уведомления до любой другой логики: сравнение константное по
+    # времени, отсутствующий заголовок — отказ.
+    # @param raw_body [String]
+    # @param headers [Hash]
+    # @return [Object, nil] результат отказа или nil, если подпись верна
+    def verify_webhook_signature(raw_body, headers)
+      given = header_value(headers, SIGNATURE_HEADER)
+      return failure(:signature_missing, 'errors.signature_missing') if given.nil?
+
+      secret = provider.credentials[SIGNATURE_SECRET_KEY]
+      expected = OpenSSL::HMAC.hexdigest(SIGNATURE_ALGORITHM, secret, raw_body)
+      unless secure_equal?(expected, given)
+        return failure(:signature_invalid, 'errors.signature_invalid')
+      end
+
+      nil
+    end
+
     private
 
     # Тело запроса по ролям полей схемы CreatePayoutRequest; nil-значения убираются.
@@ -266,22 +281,23 @@ class Provider
       { 'X-API-Key' => provider.credentials[:api_key] }
     end
 
-    # Успешный ответ провайдера: запомнить его идентификатор и перевести статус, если он пришёл и
-    # знаком; незнакомый статус оставляет операцию in_progress.
+    # Успешный ответ провайдера: перевести статус, если он пришёл и знаком; незнакомый статус
+    # оставляет операцию in_progress.
     def accept_response(operation, body)
-      provider_id = body['id']
-      operation.update(provider_operation_id: provider_id) if provider_id
+      # Идентификатор операции у провайдера — body['id']; сохраняет его платформа вне сервиса
+      # провайдера.
       internal = map_status(body['status'])
       return success if internal.nil?
 
       apply_internal_status(operation, internal)
     end
 
-    # Перевод операции во внутренний статус хелперами базового класса; in_progress ничего не меняет.
-    def apply_internal_status(operation, internal)
+    # Перевод цели уведомления или операции во внутренний статус хелперами базового класса;
+    # in_progress ничего не меняет.
+    def apply_internal_status(target, internal)
       case internal
-      when :approved then approve_operation(operation)
-      when :rejected then reject_operation(operation)
+      when :approved then approve_operation(target)
+      when :rejected then reject_operation(target)
       end
       success
     end
@@ -336,22 +352,17 @@ class Provider
       [hex[0, 8], hex[8, 4], hex[12, 4], hex[16, 4], hex[20, 12]].join('-')
     end
 
-    # Проверяет подпись входящего уведомления до любой другой логики: сравнение константное по
-    # времени, отсутствующий заголовок — отказ.
-    # @param raw_body [String]
-    # @param headers [Hash]
+    # Подпись по аргументу process_callback: аргумент — уже разобранный JSON, сырые байты тела
+    # берутся из него по выражениям rules/contract.yml. Если маршрут вебхука их не передал, вызовите
+    # verify_webhook_signature до разбора тела.
+    # @param payload [Object]
     # @return [Object, nil] результат отказа или nil, если подпись верна
-    def verify_signature!(raw_body, headers)
-      given = header_value(headers, SIGNATURE_HEADER)
-      return failure(:signature_missing, 'errors.signature_missing') if given.nil?
+    def verify_signature!(payload)
+      raw_body = payload['raw_body']
+      headers = payload['headers']
+      return nil if raw_body.nil? || headers.nil?
 
-      secret = provider.credentials[SIGNATURE_SECRET_KEY]
-      expected = OpenSSL::HMAC.hexdigest(SIGNATURE_ALGORITHM, secret, raw_body)
-      unless secure_equal?(expected, given)
-        return failure(:signature_invalid, 'errors.signature_invalid')
-      end
-
-      nil
+      verify_webhook_signature(raw_body, headers)
     end
 
     # Значение заголовка без учёта регистра имени; nil, если заголовка нет.
@@ -369,11 +380,10 @@ class Provider
       OpenSSL.fixed_length_secure_compare(expected.to_s, given.to_s)
     end
 
-    # Операция платформы по идентификаторам из уведомления: сначала идентификатор провайдера, потом
-    # внешний — он может быть необязательным.
-    def find_callback_operation(body)
-      Operation.find_by(provider_operation_id: body['payout_id']) ||
-        Operation.find_by(id: body['external_id'])
+    # Кого касается уведомление: идентификатор операции у провайдера, потом внешний — он может быть
+    # необязательным. Поиск операции в хранилище происходит вне сервиса провайдера.
+    def callback_target(payload)
+      payload['payout_id'] || payload['external_id']
     end
   end
 end

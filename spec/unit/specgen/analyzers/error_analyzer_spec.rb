@@ -162,8 +162,8 @@ RSpec.describe SpecGen::Analyzers::ErrorAnalyzer do
       profile = with_examples({})
       rule = rule(profile, provider_code: 'insufficient_balance')
 
-      expect(rule.action).to have_attributes(value: :escalate, source: :registry, confidence: 0.8)
-      expect(rule.action.evidence).to eq('rules/errors.yml: код insufficient_balance совпал с шаблоном funds -> escalate')
+      expect(rule.action).to have_attributes(value: :retry_backoff, source: :registry, confidence: 0.8)
+      expect(rule.action.evidence).to eq('rules/errors.yml: код insufficient_balance совпал с шаблоном funds -> retry_backoff')
       expect(rule.json_path).to eq('$.components.schemas.ErrorResponse.properties.error.properties.code.enum[2]')
       expect(rule.seen_in).to eq([:enum])
     end

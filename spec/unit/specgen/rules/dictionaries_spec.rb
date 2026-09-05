@@ -216,9 +216,9 @@ RSpec.describe 'the shipped dictionaries' do
   end
 
   describe 'errors' do
-    it 'treats credentials as an alert, the provider balance as an escalation and the rest of 4xx as a rejection' do
+    it 'treats credentials as an alert, the provider balance as a delayed retry and the rest of 4xx as a rejection' do
       expect(rules.errors.action_for_status(401)).to eq([:alert, '401'])
-      expect(rules.errors.action_for_status(402)).to eq([:escalate, '402'])
+      expect(rules.errors.action_for_status(402)).to eq([:retry_backoff, '402'])
       expect(rules.errors.action_for_status(422)).to eq([:reject, '4xx'])
       expect(rules.errors.action_for_status(429)).to eq([:retry_backoff, '429'])
       expect(rules.errors.action_for_status(500)).to eq([:retry_backoff, '5xx'])
@@ -233,7 +233,7 @@ RSpec.describe 'the shipped dictionaries' do
                    amount_limit_exceeded rate_limit_exceeded internal_error unauthorized not_found
                    invalid_status].to_h { |code| [code, rules.errors.rule_for_code(code)&.action] }
 
-      expect(actions).to eq('validation_error' => :reject, 'insufficient_balance' => :escalate,
+      expect(actions).to eq('validation_error' => :reject, 'insufficient_balance' => :retry_backoff,
                             'recipient_not_found' => :reject, 'bank_unavailable' => :retry_backoff,
                             'amount_limit_exceeded' => :escalate, 'rate_limit_exceeded' => :retry_backoff,
                             'internal_error' => :retry_backoff, 'unauthorized' => :alert,
@@ -250,9 +250,17 @@ RSpec.describe 'the shipped dictionaries' do
         expect(platform.accessor(role)).not_to be_nil, "no platform expression for #{role}"
       end
       expect(platform.accessor(:amount)).to eq('operation.amount')
-      expect(platform.lookup(:external_id, 'v')).to include('v')
-      expect(platform.writer(:provider_operation_id, 'v')).to include('v')
-      expect(platform.source).to eq('допущение')
+      expect(platform.callback_body).to eq('payload')
+      expect(platform.source).to eq('эксперты кейса 5 сентября 2026 и допущение')
+    end
+
+    it 'leaves the lookup and the writers to the platform, keeping the mechanism' do
+      platform = rules.contract.platform
+
+      expect(platform.roles(:lookup)).to be_empty
+      expect(platform.roles(:writers)).to be_empty
+      expect(platform.lookup(:external_id, 'v')).to be_nil
+      expect(platform.writer(:provider_operation_id, 'v')).to be_nil
     end
 
     it 'names the helpers for the two terminal statuses' do

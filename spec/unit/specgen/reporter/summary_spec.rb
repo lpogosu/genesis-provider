@@ -62,10 +62,10 @@ RSpec.describe SpecGen::Reporter::Summary do
 
     it 'counts the error codes by where they were seen and names the deduplication' do
       expect(text).to include('Ошибки: 7 в enum + 3 только в примерах; дедупликация 409 у createPayout')
-        .and match(/insufficient_balance\s+escalate \(по справочнику 0\.80\)  \[enum \+ пример\]/)
+        .and match(/insufficient_balance\s+retry_backoff \(по справочнику 0\.80\)  \[enum \+ пример\]/)
         .and match(/not_found\s+reject \(по справочнику 0\.80\)  \[пример\]/)
-        .and match(/createPayout\s+400 reject, 401 alert, 402 escalate, 409 dedup, 422 reject, 429 retry_backoff \+Retry-After, 500 retry_backoff/)
-        .and match(/общие\s+400 reject, 401 alert, 402 escalate, 404 reject, 409 reject, 422 reject, 429 retry_backoff \+Retry-After, 500 retry_backoff/)
+        .and match(/createPayout\s+400 reject, 401 alert, 402 retry_backoff, 409 dedup, 422 reject, 429 retry_backoff \+Retry-After, 500 retry_backoff/)
+        .and match(/общие\s+400 reject, 401 alert, 402 retry_backoff, 404 reject, 409 reject, 422 reject, 429 retry_backoff \+Retry-After, 500 retry_backoff/)
     end
 
     it 'lists every operation with role, confidence and operationId' do

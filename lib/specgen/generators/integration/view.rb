@@ -123,7 +123,8 @@ module SpecGen
           @parts[:precheck].method&.name.to_s
         end
 
-        # @return [String] выражение сырого тела аргумента process_callback
+        # @return [String] выражение разобранного тела аргумента
+        #   process_callback
         def callback_body
           @ctx.platform.callback_body || 'payload'
         end
@@ -131,6 +132,14 @@ module SpecGen
         # @return [String] выражение заголовков аргумента process_callback
         def callback_headers
           @ctx.platform.callback_headers || '{}'
+        end
+
+        # Публичный метод проверки подписи: его вызывает маршрут вебхука по
+        # сырым байтам тела, потому что process_callback получает уже
+        # разобранный JSON.
+        # @return [String]
+        def signature_entrypoint
+          Service::Signature::PUBLIC_NAME
         end
 
         # @return [String] переменная окружения базового URL

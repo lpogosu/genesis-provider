@@ -3,9 +3,12 @@
 module SpecGen
   module Rules
     # Раздел `platform` контракта: как сгенерированный сервис читает данные
-    # операции платформы, находит операцию по идентификатору из уведомления,
-    # запоминает идентификатор провайдера, разбирает аргумент колбэка и
-    # результат базового класса.
+    # операции платформы, разбирает аргумент колбэка, при необходимости
+    # находит операцию по идентификатору из уведомления и запоминает
+    # идентификатор провайдера. Пустые lookup и writers — не пробел, а
+    # решение: по ответу экспертов от 5 сентября 2026 работа с хранилищем
+    # операций происходит вне сервиса провайдера. Механизм остался:
+    # заполненная таблица включает их обратно без правки шаблона.
     #
     # Всё это выражения Ruby, которые шаблон подставляет как есть. Реального
     # класса Operation нам не выдали, поэтому раздел целиком — допущение, и
@@ -21,8 +24,12 @@ module SpecGen
 
       # @return [String, nil] источник раздела, для документации
       attr_reader :source
-      # @return [String, nil] выражение с сырым телом входящего уведомления
+      # @return [String, nil] выражение с разобранным телом уведомления
       attr_reader :callback_body
+      # @return [String, nil] выражение с сырыми байтами тела уведомления,
+      #   если маршрут вебхука их передал; nil — подпись внутри
+      #   process_callback не проверяется
+      attr_reader :callback_raw_body
       # @return [String, nil] выражение с заголовками входящего уведомления
       attr_reader :callback_headers
       # @return [String, nil] имя предиката успешного результата базового
@@ -98,6 +105,7 @@ module SpecGen
         callback = mapping(section['callback'], noun(:platform_map, key: 'callback'),
                            "#{@at}.callback", required: false)
         @callback_body = optional_text(callback, 'body', "#{@at}.callback")
+        @callback_raw_body = optional_text(callback, 'raw_body', "#{@at}.callback")
         @callback_headers = optional_text(callback, 'headers', "#{@at}.callback")
         result = mapping(section['result'], noun(:platform_map, key: 'result'), "#{@at}.result",
                          required: false)

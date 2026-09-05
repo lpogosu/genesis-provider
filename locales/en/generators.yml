@@ -66,12 +66,14 @@ generators:
     status_field_unknown: "status field not found in the response by roles — body['status'] substituted"
     # Callbacks
     webhook_missing: "the specification describes no webhooks: status by polling only (fetch_status); the method fails"
-    callback_shape: "the contract does not describe the %{param} argument — assumed to be the raw body; headers for the signature are unavailable"
-    lookup_unknown: "the notification schema has no fields with roles provider_operation_id / external_id — nothing to find the operation by"
+    callback_shape: "the contract does not describe the %{param} argument — assumed to be the parsed notification body itself"
+    target_unknown: "the notification schema has no fields with roles provider_operation_id / external_id — nothing to tell which operation the notification is about"
     event_field_unknown: "the notification schema has neither an event field nor a status field — nothing to derive the internal status from"
     # Signature
     signature_doc: "Verifies the signature of an incoming notification before any other logic: constant-time comparison, a missing header is a failure."
     signature_returns: "failure result, or nil when the signature is valid"
+    signature_unpack_doc: "Signature by the process_callback argument: the argument is already parsed JSON, the raw body bytes are taken from it by the expressions in rules/contract.yml. If the webhook route did not pass them, call %{method} before parsing the body."
+    signature_outside_doc: "The signature is not verified here: process_callback receives already parsed JSON, while the HMAC is computed over the body bytes. Call %{method} on the webhook route before parsing the body — otherwise the notification is unverified."
     signature_absent: "the specification does not describe notification signatures — the header is unknown, the method always fails; set x-specgen-signature in the overlay"
     signature_header_unknown: "signature header not derived — the method always fails; set x-specgen-signature in the overlay"
     signature_member_unknown: "signature %{member} not derived (%{evidence}); default taken"
@@ -96,8 +98,9 @@ generators:
     build_payload_doc: "Request body by the field roles of schema %{schema}; nil values are dropped."
     request_headers_doc: "Headers of the create request: authorization, content type and the idempotency key."
     request_headers_plain_doc: "Headers of the create request: authorization and content type."
-    accept_response_doc: "Successful provider response: remember its identifier and apply the status if it came and is known; an unknown status leaves the operation in_progress."
-    apply_internal_status_doc: "Moves the operation to the internal status via base class helpers; in_progress changes nothing."
+    accept_response_doc: "Successful provider response: apply the status if it came and is known; an unknown status leaves the operation in_progress."
+    accept_response_save_doc: "Successful provider response: remember its identifier and apply the status if it came and is known; an unknown status leaves the operation in_progress."
+    apply_internal_status_doc: "Moves the notification target or the operation to the internal status via base class helpers; in_progress changes nothing."
     map_status_doc: "Provider status → internal by STATUS_MAP; nil for an unknown one."
     provider_failure_doc: "Error response: action by ERROR_MAP (provider code first, then HTTP status), the action symbol is the failure code for the platform."
     parse_json_doc: "Response body as a hash; broken or non-object JSON yields an empty hash."
@@ -107,8 +110,10 @@ generators:
     uuid_v5_doc: "UUID v5 per RFC 4122 §4.3: SHA-1 of namespace and name, version 5, RFC variant. Stdlib only."
     header_value_doc: "Header value, name compared case-insensitively; nil when absent."
     secure_equal_doc: "Constant-time comparison of equal-length strings (OpenSSL.fixed_length_secure_compare); different lengths give false, not an exception."
-    find_callback_operation_doc: "Platform operation by identifiers from the notification: provider identifier first, then the external one — it may be optional."
-    provider_id_unknown: "the success response has no field with role provider_operation_id — the provider identifier is not stored"
+    callback_target_doc: "What the notification is about: the provider operation identifier, then the external one — it may be optional. Looking the operation up in storage happens outside the provider service."
+    callback_lookup_doc: "Platform operation by identifiers from the notification: provider identifier first, then the external one — it may be optional."
+    provider_id_unknown: "the success response has no field with role provider_operation_id — nowhere to read the provider operation identifier from"
+    provider_id_external: "The provider operation identifier is %{field}; the platform stores it outside the provider service."
 
   # INTEGRATION.md: table cells and phrases assembled by the
   # Generators::Integration::* presenters. Section prose lives in the template.
@@ -221,7 +226,8 @@ generators:
     dedup_none: "No deduplication success path was derived: no operation with the idempotency header declares a retry response with the success schema, so a conflict response is treated as an error — %{report}."
     dedup_no_idempotency: "Idempotency is not declared in the specification: the provider cannot tell a retry from a new request — %{report}."
     # 6. Gateway
-    gateway_note: "The registration form is an assumption: the real ProviderGateway interface was not given to us. The values below are computed by the same code as the %{check} preconditions of the service: amounts are in internal (major) units."
+    gateway_note: "Everything below is derived from the specification itself: address, credential keys, currencies, amount units and limits, field constraints, notification path and header. The service needs no separate config — this is a summary to check against. The values are computed by the same code as the %{check} preconditions of the service: amounts are in internal (major) units."
+    gateway_env: "environment variable %{env}, address from the specification servers"
     currencies_unknown: "currency not derived from the specification"
     units_unknown: "amount units not derived, multiplier 1 — set x-specgen-amount-unit in the overlay"
     # 7. Signature
@@ -400,6 +406,7 @@ generators:
     todo_field_unknown: "fill in the required field %{path} in build_payload: no role was derived (%{evidence}) — add a synonym to `rules/roles.yml` or set `x-specgen-role` in an overlay"
     todo_field_doubt: "check the field %{path} in build_payload: role %{role} was assigned below the threshold (%{confidence}, %{evidence})"
     todo_unmapped: "write the body of %{method} (operation %{key}): the role was not recognised and the request is assembled empty"
+    todo_signature_route: "call %{method} on the webhook route before parsing the JSON: %{callback} receives an already parsed body while the HMAC is computed over the raw bytes — or put the bytes and headers into the argument per the rules/contract.yml expressions"
     todo_signature: "set the notification signature parameters (%{members}): defaults are in place, so verify_signature! checks something other than what the provider computes"
     todo_optional: "decide what to do with the optional field %{path}: it has no role and did not reach the payload"
     todo_fixture: "check the values of fixture %{name}: the body was not taken from the spec examples (%{source})"

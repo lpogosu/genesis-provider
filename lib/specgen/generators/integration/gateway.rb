@@ -5,10 +5,17 @@ require 'psych'
 module SpecGen
   module Generators
     module Integration
-      # Раздел 6: фрагмент регистрации сервиса в ProviderGateway. Форма —
-      # допущение; значения — те же, что в сервисе: множитель из
-      # profile.units, границы суммы через Service::Precheck, ограничения
-      # полей по ролям условий.
+      # Раздел 6: параметры подключения, выведенные из спецификации, —
+      # адрес, переменная окружения, ключи учётных данных, валюты, единицы и
+      # границы суммы, ограничения полей, путь и заголовок уведомлений.
+      #
+      # Раньше раздел назывался «конфигурация ProviderGateway» и предлагал
+      # платформе форму регистрации. Эксперты 5 сентября 2026 сказали, что
+      # такой конфиг платформе не нужен, а «адрес, авторизация и т.д. должны
+      # браться из open api документа провайдера». Поэтому здесь больше не
+      # предлагается интерфейс: это сводка того, что инструмент вывел из
+      # спецификации и подставил в сервис. Значения считает тот же код, что и
+      # предпроверки, — документ совпадает с кодом по построению.
       class Gateway < Base
         # Ключи YAML по виду условия.
         KEYS = { field_max_length: 'max_length', field_pattern: 'pattern', field_enum: 'enum',
@@ -18,12 +25,22 @@ module SpecGen
         def lines
           ['providers:', "  #{ctx.naming.slug}:",
            "    service: #{ctx.full_class_name}",
+           "    base_url: #{scalar(ctx.sandbox_url)}  # #{t('gateway_env', env: ctx.base_url_env)}",
+           "    credentials: #{inline(credential_keys)}",
            "    request_methods: #{inline(contract.request_method_values)}",
            "    currencies: #{currencies}",
            *amount_lines, *field_lines, *webhook_lines]
         end
 
         private
+
+        # Ключи provider.credentials, которые читает сервис: авторизация и,
+        # если есть уведомления, секрет подписи.
+        def credential_keys
+          keys = parts[:authorization].credential_keys.map(&:to_s)
+          keys << parts[:signature].value(:secret_key).to_s if ctx.webhook
+          keys.uniq
+        end
 
         def precheck
           parts[:precheck]

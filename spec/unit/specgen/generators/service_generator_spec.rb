@@ -79,15 +79,31 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
     end
 
     it 'rejects a callback without the signature header instead of raising' do
-      expect(@service.send(:verify_signature!, '{}', {})).to eq([:failure, :signature_missing, 'errors.signature_missing'])
+      expect(@service.verify_webhook_signature('{}', {})).to eq([:failure, :signature_missing, 'errors.signature_missing'])
     end
 
     it 'accepts a valid HMAC-SHA256 hex signature regardless of header case' do
       body = '{"event":"payout.completed"}'
       signature = OpenSSL::HMAC.hexdigest('SHA256', 'test_secret', body)
-      expect(@service.send(:verify_signature!, body, { 'x-novapay-signature' => signature })).to be_nil
-      expect(@service.send(:verify_signature!, body, { 'X-NovaPay-Signature' => signature.tr('0-9', '1-90') }))
+      expect(@service.verify_webhook_signature(body, { 'x-novapay-signature' => signature })).to be_nil
+      expect(@service.verify_webhook_signature(body, { 'X-NovaPay-Signature' => signature.tr('0-9', '1-90') }))
         .to eq([:failure, :signature_invalid, 'errors.signature_invalid'])
+    end
+
+    it 'verifies the signature inside the callback only when the route passed the raw bytes' do
+      body = '{"event":"payout.completed"}'
+      signature = OpenSSL::HMAC.hexdigest('SHA256', 'test_secret', body)
+      expect(@service.send(:verify_signature!, JSON.parse(body))).to be_nil
+      expect(@service.send(:verify_signature!, 'raw_body' => body,
+                                               'headers' => { 'X-NovaPay-Signature' => signature })).to be_nil
+      expect(@service.send(:verify_signature!, 'raw_body' => body, 'headers' => {}))
+        .to eq([:failure, :signature_missing, 'errors.signature_missing'])
+    end
+
+    it 'takes the notification target from the payload instead of looking the operation up' do
+      expect(@service.send(:callback_target, 'payout_id' => 'np_1')).to eq('np_1')
+      expect(@service.send(:callback_target, 'external_id' => 'op_1')).to eq('op_1')
+      expect(@service.send(:callback_target, {})).to be_nil
     end
 
     it 'compares signatures of different length as false, not as an exception' do
@@ -133,7 +149,8 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
         expect(profile.warnings).not_to be_empty
         source = File.read(artifact.path, encoding: 'UTF-8')
         expect(source).to include('class BareLedgerService', 'TODO', 'def create_request', 'def process_callback',
-                                  'def verify_signature!', 'SIGNATURE_HEADER = nil')
+                                  'webhooks_not_supported')
+        expect(source).not_to include('verify_signature!', 'SIGNATURE_HEADER')
       end
     end
   end

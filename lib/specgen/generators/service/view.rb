@@ -121,7 +121,12 @@ module SpecGen
           list << ['DEDUP_STATUS', dedup_status.to_s, []] if dedup_status
           list.concat(idempotency_constants)
           list << ['CANCELLABLE_STATUSES', "#{Ruby.literal(cancellable)}.freeze", []] if cancellable
-          list + @parts[:signature].constants
+          list + (webhooks? ? @parts[:signature].constants : [])
+        end
+
+        # @return [Boolean] спецификация описывает уведомления
+        def webhooks?
+          @ctx.profile.webhooks.any?
         end
 
         # @return [Array<String>]
@@ -159,6 +164,15 @@ module SpecGen
         # @return [Array<Method>] операции вне контракта
         def extra_methods
           @parts[:extras].methods
+        end
+
+        # Публичный верификатор подписи. Он публичный, потому что подпись
+        # считается по сырым байтам тела, а process_callback получает уже
+        # разобранный JSON: вызвать проверку обязан маршрут вебхука до
+        # разбора. Спецификация без уведомлений его не получает.
+        # @return [Array<Method>]
+        def webhook_methods
+          webhooks? ? [@parts[:signature].public_method] : []
         end
 
         # @return [Array<Method>]

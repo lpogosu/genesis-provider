@@ -28,10 +28,13 @@
 #   401/403 → alert, не reject. Сама выплата, может быть, и корректна, но
 #     пока ключ невалиден, упадёт каждая следующая — это инцидент, а не
 #     отказ одной операции.
-#   402 Payment Required → escalate. У платёжного провайдера это «на вашем
-#     балансе недостаточно средств»: повтор не поможет, отклонять операцию
-#     клиента из-за нашего баланса неправильно, пополнить баланс может
-#     только человек. Поэтому не alert (там нечего решать) и не reject.
+#   402 Payment Required → retry_backoff. У платёжного провайдера это «на
+#     вашем балансе недостаточно средств». Мы сначала поставили escalate
+#     (повтор не поможет, баланс пополняет человек), но таблица «Обработка
+#     ошибок» в описании кейса говорит «retry later», а эксперты 5 сентября
+#     2026 велели ориентироваться на неё: баланс пополняют между попытками,
+#     поэтому повтор с паузой корректнее эскалации. Отклонять операцию
+#     клиента из-за нашего баланса по-прежнему нельзя.
 #   409 → reject по умолчанию. Конфликт при повторе с тем же ключом
 #     идемпотентности — это дедупликация, но узнать её можно только по
 #     схеме ответа (409 возвращает ту же схему, что 201), а не по коду:
@@ -82,7 +85,7 @@ http:
   # Точные коды побеждают класс.
   codes:
     401: alert          # Unauthorized: ключ невалиден
-    402: escalate       # Payment Required: баланс провайдера
+    402: retry_backoff  # Payment Required: баланс провайдера, описание кейса
     403: alert          # Forbidden: нет прав у ключа
     408: retry          # Request Timeout: соединение, а не запрос
     409: reject         # Conflict: дедупликацию выводит анализатор по схеме
@@ -103,8 +106,17 @@ codes:
   - name: credentials
     pattern: 'unauthori|forbidden|invalid_(?:api_)?key|invalid_token|access_denied|permission'
     action: alert
+  # Нехватка средств на балансе провайдера: описание кейса даёт «retry
+  # later» для insufficient_balance, эксперты 5 сентября 2026 подтвердили
+  # эту таблицу как канон. Баланс пополняется между попытками.
   - name: funds
-    pattern: 'insufficient|balance|limit_exceeded|quota|funds'
+    pattern: 'insufficient|balance|funds'
+    action: retry_backoff
+  # Исчерпанный лимит — не то же самое: суточный лимит провайдера сам собой
+  # не восстановится в окне ретраев, а лимит одной операции от повтора не
+  # изменится. Решает человек (вопрос 5 в docs/QUESTIONS.md).
+  - name: limits
+    pattern: 'limit_exceeded|quota'
     action: escalate
   - name: rejected
     pattern: 'not_found|invalid|validation|malformed|duplicate|unsupported|not_allowed|expired|declined|blocked|cancel'

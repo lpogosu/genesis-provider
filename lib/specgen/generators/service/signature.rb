@@ -8,6 +8,14 @@ module SpecGen
       # — только OpenSSL.fixed_length_secure_compare, защищённое от разной
       # длины. Отсутствующий заголовок — отказ, а не исключение.
       #
+      # Методов два, и это следствие ответа экспертов от 5 сентября 2026:
+      # process_callback «получает уже разобранный JSON внутри payload», а
+      # HMAC считается по байтам, которых в разобранном JSON уже нет.
+      # Поэтому проверка живёт в публичном verify_webhook_signature(raw_body,
+      # headers) — его вызывает маршрут вебхука до разбора тела, — а
+      # приватный verify_signature! достаёт сырьё из аргумента колбэка, если
+      # маршрут его туда положил (выражения в rules/contract.yml).
+      #
       # Невыведенный параметр получает лучшее значение по умолчанию и TODO;
       # без заголовка метод всегда отказывает, но генерируется — молча
       # пропускать уведомления нельзя.
@@ -20,6 +28,8 @@ module SpecGen
         CASTS = { algorithm: ->(value) { DIGESTS.fetch(value) },
                   secret_key: :to_sym.to_proc }.freeze
         TIMESTAMP_CHECK = '(Time.now.to_i - timestamp.to_i).abs > SIGNATURE_TOLERANCE'
+        # Имя публичного метода: его вызывает маршрут вебхука по байтам тела.
+        PUBLIC_NAME = 'verify_webhook_signature'
         # Код отказа на неверную подпись; его же ждёт негативная фикстура
         # уведомления в fixtures.json.
         INVALID_CODE = :signature_invalid
@@ -41,10 +51,24 @@ module SpecGen
           list
         end
 
+        # Публичный верификатор по сырым байтам тела и заголовкам.
         # @return [Method]
-        def method
-          Method.new(name: 'verify_signature!', params: [{ name: 'raw_body' }, { name: 'headers' }],
+        def public_method
+          Method.new(name: PUBLIC_NAME, params: [{ name: 'raw_body' }, { name: 'headers' }],
                      doc: doc, body: body)
+        end
+
+        # Приватный: достаёт байты и заголовки из аргумента process_callback,
+        # если маршрут вебхука их туда положил, и зовёт публичный.
+        # @return [Method]
+        def unpack_method
+          Method.new(name: 'verify_signature!', params: [{ name: callback_param }],
+                     doc: unpack_doc, body: unpack_body)
+        end
+
+        # @return [Boolean] сырьё для подписи доступно внутри колбэка
+        def unpackable?
+          !@ctx.platform.callback_raw_body.nil? && !@ctx.platform.callback_headers.nil?
         end
 
         # @return [Boolean] подпись включает идентификатор и метку времени
@@ -79,6 +103,28 @@ module SpecGen
         attr_reader :profile
 
         private
+
+        # Имя аргумента process_callback — из rules/contract.yml.
+        def callback_param
+          params = @ctx.contract.method_for(:webhook)&.params
+          params&.first&.fetch(:name) || 'payload'
+        end
+
+        def unpack_doc
+          key = unpackable? ? 'signature_unpack_doc' : 'signature_outside_doc'
+          Ruby.comment(@ctx.t(key, method: PUBLIC_NAME), width: Ruby::WIDTH - 4) +
+            ["# @param #{callback_param} [Object]",
+             "# @return [Object, nil] #{@ctx.t('signature_returns')}"]
+        end
+
+        def unpack_body
+          platform = @ctx.platform
+          return ['nil'] unless unpackable?
+
+          ["raw_body = #{platform.callback_raw_body}", "headers = #{platform.callback_headers}",
+           'return nil if raw_body.nil? || headers.nil?', '',
+           "#{PUBLIC_NAME}(raw_body, headers)"]
+        end
 
         def doc
           Ruby.comment(@ctx.t('signature_doc'), width: Ruby::WIDTH - 4) +

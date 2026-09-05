@@ -22,8 +22,8 @@ module SpecGen
 
         # @return [Array<String>] пункты в порядке важности
         def items
-          all = payload_items + unmapped_items + signature_items + optional_items +
-                fixture_items + create_items + duplicate_items
+          all = payload_items + unmapped_items + signature_route_items + signature_items +
+                optional_items + fixture_items + create_items + duplicate_items
           all.map { |item| item.sub(/\A\p{Ll}/, &:upcase) }
         end
 
@@ -57,6 +57,17 @@ module SpecGen
             method = parts[:extras].entries.find { |op, _| op.equal?(operation) }&.last
             t('todo_unmapped', key: code(operation.key), method: code(method&.name))
           end
+        end
+
+        # Подпись считается по байтам тела, а process_callback получает уже
+        # разобранный JSON: связать одно с другим может только маршрут
+        # вебхука. Инструмент за интегратора этого не сделает, поэтому пункт
+        # стоит выше остальных подписей.
+        def signature_route_items
+          return [] if ctx.webhook.nil?
+
+          [t('todo_signature_route', method: code(parts[:signature].public_method.signature),
+                                     callback: code(ctx.contract.method_for(:webhook)&.name))]
         end
 
         def signature_items

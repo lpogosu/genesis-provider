@@ -107,7 +107,7 @@ RSpec.describe SpecGen::Generators::FixturesGenerator do
       expect(by_name['createPayout 201']).to eq('internal_status' => 'in_progress')
       expect(by_name['createPayout 409']).to eq('dedup' => true,
                                                 'internal_status' => 'in_progress')
-      expect(by_name['createPayout 402']).to eq('action' => 'escalate')
+      expect(by_name['createPayout 402']).to eq('action' => 'retry_backoff')
       expect(by_name['createPayout 429']).to eq('action' => 'retry_backoff')
     end
 
