@@ -20,6 +20,26 @@ module SpecGen
         # Ключи YAML по виду условия.
         KEYS = { field_max_length: 'max_length', field_pattern: 'pattern', field_enum: 'enum',
                  min_amount: 'minimum', max_amount: 'maximum' }.freeze
+        # Сколько строк печатать в таблице «куда мапить»: у чужих
+        # спецификаций полей бывает под три сотни.
+        MAX_ROWS = 40
+
+        # Таблица «куда мапить»: для каждого поля тела запроса — выражение
+        # платформы, которое его заполняет, а для поля без выражения пустая
+        # ячейка под ручной маппинг. Эксперты кейса 5 сентября 2026
+        # (вопрос 25) просили именно явное место маппинга в INTEGRATION.md.
+        # @return [Array<Array<String>>] строки таблицы
+        def mapping_rows
+          rows = mapping_entries.map { |entry| mapping_row(entry) }
+          return rows if rows.size <= MAX_ROWS
+
+          rows.take(MAX_ROWS) + [[t('mapping_more', count: rows.size - MAX_ROWS), '', '', '']]
+        end
+
+        # @return [Boolean] есть что печатать
+        def mapping?
+          !mapping_entries.empty?
+        end
 
         # @return [Array<String>] строки YAML-фрагмента
         def lines
@@ -33,6 +53,47 @@ module SpecGen
         end
 
         private
+
+        # Поля тела запроса операции создания: те же и в том же порядке, что
+        # печатает build_payload. Поле группы реквизитов раскрывается по
+        # веткам способов выплаты — выражение у него своё в каждой.
+        def mapping_entries
+          @mapping_entries ||= begin
+            fields = Generators::SchemaFields.new(ctx)
+            fields.of(ctx.create_operation&.request_schema).flat_map { |entry| expand(entry) }
+          end
+        end
+
+        def expand(entry)
+          branches = requisites.branches.select do |branch|
+            branch.fields.any? { |field| field.equal?(entry.field) }
+          end
+          return [[entry, nil]] if branches.empty?
+
+          branches.map { |branch| [entry, branch] }
+        end
+
+        def requisites
+          parts[:requisites]
+        end
+
+        def mapping_row((entry, branch))
+          field = entry.field
+          role = field.role.known? ? code(field.role.value) : t('mapping_no_role')
+          [code(entry.path), role, branch ? code(branch.key || branch.value) : t('none'),
+           mapping_expression(field, branch)]
+        end
+
+        # Пустая ячейка — это и есть место под ручной маппинг: выражения
+        # платформы для поля нет, а выдумывать его запрещено.
+        def mapping_expression(field, branch)
+          expression = if branch then requisites.expression(field, branch)
+                       elsif field.role.known?
+                         ctx.accessor(field.role.value) ||
+                           ctx.currency_constant_for(field.role.value)
+                       end
+          expression ? code(expression) : t('mapping_manual')
+        end
 
         # Ключи provider.credentials, которые читает сервис: авторизация и,
         # если есть уведомления, секрет подписи.
@@ -50,14 +111,22 @@ module SpecGen
           precheck.conditions
         end
 
+        # Валюта запроса: платформа её не сообщает, сервис берёт её из
+        # спецификации константой CURRENCY — здесь видно, откуда взялся код.
         def currencies
-          enum = conditions.find { |c| c.kind == :field_enum && precheck.role_of(c) == :currency }
-          return inline(Array(enum.value.value)) if enum
-
           currency = profile.units&.currency
-          return "#{inline([currency.value])}  # #{currency.evidence}" if currency&.known?
+          return known_currency(currency) if currency&.known?
 
-          "[]  # TODO: #{t('currencies_unknown')}"
+          values = currency_enum ? Array(currency_enum.value.value) : []
+          "#{inline(values)}  # TODO: #{t('currencies_unknown')}"
+        end
+
+        def known_currency(currency)
+          "#{inline([currency.value])}  # #{t('gateway_currency', evidence: currency.evidence)}"
+        end
+
+        def currency_enum
+          conditions.find { |c| c.kind == :field_enum && precheck.role_of(c) == :currency }
         end
 
         def amount_lines

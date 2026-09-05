@@ -10,33 +10,6 @@ module SpecGen
       # алерты), здесь не реализуется: это инфраструктура платформы.
       class Privates
         INDENT = 6
-        UUID_V5 = [
-          "digest = Digest::SHA1.digest([namespace.delete('-')].pack('H*') + name.to_s)",
-          'bytes = digest.bytes[0, 16]',
-          'bytes[6] = (bytes[6] & 0x0f) | 0x50', 'bytes[8] = (bytes[8] & 0x3f) | 0x80',
-          "hex = bytes.pack('C*').unpack1('H*')",
-          "[hex[0, 8], hex[8, 4], hex[12, 4], hex[16, 4], hex[20, 12]].join('-')"
-        ].freeze
-        PARSE_JSON = ['parsed = JSON.parse(text.to_s)', 'parsed.is_a?(Hash) ? parsed : {}',
-                      'rescue JSON::ParserError', '{}'].freeze
-        COMPACT = ['return value unless value.is_a?(Hash)', '',
-                   'value.transform_values { |item| compact_payload(item) }.compact'].freeze
-        HEADER_VALUE = ['return nil if name.nil? || headers.nil?', '',
-                        'headers.find { |key, _value| key.to_s.casecmp?(name) }&.last'].freeze
-        SECURE_EQUAL = ['return false unless expected.to_s.bytesize == given.to_s.bytesize', '',
-                        'OpenSSL.fixed_length_secure_compare(expected.to_s, given.to_s)'].freeze
-        MATCHES = ['given.split.any? do |item|',
-                   '  secure_equal?(expected, item.delete_prefix(SIGNATURE_VALUE_PREFIX))',
-                   'end'].freeze
-        # Методы с постоянным телом: имя, параметры, ключ текста, строки.
-        FIXED = {
-          map_status: [['raw'], ['STATUS_MAP[raw.to_s]']],
-          parse_json: [['text'], PARSE_JSON],
-          compact_payload: [['value'], COMPACT],
-          uuid_v5: [%w[namespace name], UUID_V5],
-          header_value: [%w[headers name], HEADER_VALUE],
-          secure_equal?: [%w[expected given], SECURE_EQUAL]
-        }.freeze
 
         # @param ctx [Context]
         # @param parts [Hash{Symbol => Object}] payload, polling, callback,
@@ -48,14 +21,32 @@ module SpecGen
 
         # @return [Array<Method>] в фиксированном порядке
         def methods
-          [build_payload, *@parts[:extras].payload_methods, request_headers,
-           *@parts[:authorization].methods, accept_response,
-           apply_internal_status, fixed(:map_status), provider_failure, fixed(:parse_json),
-           fixed(:compact_payload), to_provider_units, idempotency_key_for, fixed(:uuid_v5),
-           *webhook_methods]
+          [build_payload, *requisites_method, *@parts[:extras].payload_methods, request_headers,
+           *@parts[:authorization].methods, *accept_methods,
+           apply_internal_status, fixed(:map_status), provider_failure,
+           fixed(:platform_failure_code), fixed(:parse_json), fixed(:compact_payload),
+           to_provider_units, idempotency_key_for, fixed(:uuid_v5), *webhook_methods]
         end
 
         private
+
+        # Реквизиты получателя отдельным методом — только если ветка по
+        # request_method вообще сгенерирована.
+        def requisites_method
+          [@parts[:requisites].method].compact
+        end
+
+        # Разбор успешного ответа. Их два: создание обязано вернуть
+        # платформе идентификатор операции у провайдера, а отмена и
+        # подтверждение — нет, статус там меняют хелперы. Метод, которым
+        # никто не пользуется, не печатается: мёртвый код в сгенерированном
+        # файле — повод не доверять генератору.
+        def accept_methods
+          list = []
+          list << accept_created unless @ctx.create_operation.nil?
+          list << accept_response if @parts[:extras].accepting?
+          list
+        end
 
         # Приватные методы уведомлений. Спецификация без вебхуков не получает
         # ни верификатора подписи, ни разбора цели: process_callback в этом
@@ -69,7 +60,7 @@ module SpecGen
         end
 
         def fixed(name)
-          params, body = FIXED.fetch(name)
+          params, body = Snippets::FIXED.fetch(name)
           method(name.to_s, params, "#{name.to_s.delete('?')}_doc", body)
         end
 
@@ -90,11 +81,17 @@ module SpecGen
 
         def build_payload
           schema = @ctx.create_operation&.request_schema
-          lines = @parts[:payload].lines(schema)
+          lines = @parts[:payload].lines(schema, requisites: @parts[:requisites])
           body = if lines.nil? then todo('payload_schema_missing') + ['compact_payload({})']
                  else Ruby.assign_hash('payload', lines) + ['compact_payload(payload)']
                  end
-          method('build_payload', ['operation'], 'build_payload_doc', body, schema: schema.to_s)
+          method('build_payload', payload_params, 'build_payload_doc', body, schema: schema.to_s)
+        end
+
+        # request_method доходит до тела запроса только тогда, когда из него
+        # выбирается ветка реквизитов; иначе параметр там не нужен.
+        def payload_params
+          @parts[:requisites].branching? ? %w[operation request_method] : ['operation']
         end
 
         def request_headers
@@ -110,30 +107,35 @@ module SpecGen
           method('request_headers', ['operation'], 'request_headers_doc', body)
         end
 
-        # Успешный ответ на создание или отмену: запомнить идентификатор
-        # провайдера, перевести статус, если он пришёл и знаком.
+        # Успешный ответ на отмену или подтверждение: перевести статус, если
+        # он пришёл и знаком. Результата у этих методов нет — статус меняют
+        # хелперы апрува и реджекта.
         def accept_response
-          saves = @ctx.platform.roles(:writers).any?
-          key = saves ? 'accept_response_save_doc' : 'accept_response_doc'
-          lines = remember_lines + ["internal = map_status(#{status_expression})",
-                                    "return #{@ctx.success} if internal.nil?", '',
-                                    'apply_internal_status(operation, internal)']
-          method('accept_response', %w[operation body], key, lines)
+          lines = ["internal = map_status(#{status_expression})",
+                   "return #{@ctx.success} if internal.nil?", '',
+                   'apply_internal_status(operation, internal)']
+          method('accept_response', %w[operation body], 'accept_response_doc', lines)
         end
 
-        # Идентификатор операции у провайдера. Сохраняет его платформа вне
-        # сервиса (эксперты кейса, 5 сентября 2026), поэтому по умолчанию
-        # здесь только комментарий с местом, где идентификатор лежит; если
-        # rules/contract.yml задаёт выражение записи, оно снова появится.
-        def remember_lines
+        # Успешный ответ на создание: платформа забирает идентификатор
+        # операции у провайдера как payload.dig(:result, :id), поэтому голого
+        # success ей мало (эксперты кейса, 5 сентября 2026, вопрос 19).
+        # Сохраняет идентификатор платформа, вне сервиса провайдера.
+        def accept_created
+          lines = ["apply_internal_status(operation, map_status(#{status_expression}))"]
+          method('accept_created', %w[operation body], 'accept_created_doc',
+                 lines + created_result)
+        end
+
+        # Результат создания: идентификатор провайдера из разобранного тела
+        # по роли provider_operation_id. Роли в схеме успеха нет — вернуть
+        # платформе нечего, и об этом говорит TODO, а не тишина.
+        def created_result
           path = response_path(:provider_operation_id)
-          return todo('provider_id_unknown') if path.nil?
+          success = path && @ctx.platform.create_success(@ctx.dig('body', path))
+          return todo('provider_id_unknown') + [@ctx.success] if success.nil?
 
-          writer = @ctx.platform.writer(:provider_operation_id, 'provider_id')
-          field = @ctx.dig('body', path)
-          return note('provider_id_external', field: field) if writer.nil?
-
-          ["provider_id = #{field}", "#{writer} if provider_id"]
+          [success]
         end
 
         # Путь к полю с ролью в успешных ответах операции создания.
@@ -160,17 +162,22 @@ module SpecGen
           method('apply_internal_status', %w[target internal], 'apply_internal_status_doc', body)
         end
 
+        # Отказ по ответу провайдера. Первым аргументом уходит код платформы,
+        # а не наше действие: действие остаётся политикой обработки в
+        # ERROR_MAP и RETRY_POLICY и участвует в выборе кода, когда HTTP-кода
+        # нет в таблице.
         def provider_failure
           path = @ctx.error_code_path
           failure = @ctx.helper(:failure)
+          call = 'platform_failure_code(response.status, action)'
           lines = if path
                     ["code = #{@ctx.dig('body', path)}",
                      'action = ERROR_MAP[code] || ERROR_MAP[response.status] || ' \
                      'DEFAULT_ERROR_ACTION',
-                     "#{failure}(action, \"errors.\#{code || response.status}\")"]
+                     "#{failure}(#{call}, \"errors.\#{code || response.status}\")"]
                   else
                     ['action = ERROR_MAP[response.status] || DEFAULT_ERROR_ACTION',
-                     "#{failure}(action, \"errors.http_\#{response.status}\")"]
+                     "#{failure}(#{call}, \"errors.http_\#{response.status}\")"]
                   end
           method('provider_failure', %w[response body], 'provider_failure_doc', lines)
         end
@@ -183,15 +190,17 @@ module SpecGen
 
         def idempotency_key_for
           external = @ctx.profile.idempotency&.strategy&.value == :external_id
-          uuid = "uuid_v5(IDEMPOTENCY_NAMESPACE, \"\#{PROVIDER}:\#{operation.id}\")"
-          body = [external ? 'operation.id.to_s' : uuid]
-          method('idempotency_key_for', ['operation'], 'idempotency_key_doc', body)
+          id = @ctx.accessor(:external_id) || 'operation'
+          uuid = "uuid_v5(IDEMPOTENCY_NAMESPACE, \"\#{PROVIDER}:\#{#{id}}\")"
+          body = [external ? "#{id}.to_s" : uuid]
+          method('idempotency_key_for', ['operation'], 'idempotency_key_doc', body, id: id)
         end
 
         def signature_matches
           return [] unless @parts[:signature].value_prefix
 
-          [method('signature_matches?', %w[expected given], 'signature_matches_doc', MATCHES)]
+          [method('signature_matches?', %w[expected given], 'signature_matches_doc',
+                  Snippets::MATCHES)]
         end
 
         def todo(key)

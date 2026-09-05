@@ -12,8 +12,10 @@ class Provider
       Credentials.new({ api_key: 'test_api_key', webhook_secret: 'test_secret' })
     end
 
-    def success
-      :success
+    # create_request отдаёт платформе идентификатор операции у провайдера
+    # (эксперты кейса, 5 сентября 2026): success(result: { id: ... }).
+    def success(**payload)
+      payload.empty? ? :success : [:success, payload]
     end
 
     def failure(code, key)
@@ -79,7 +81,7 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
     end
 
     it 'rejects a callback without the signature header instead of raising' do
-      expect(@service.verify_webhook_signature('{}', {})).to eq([:failure, :signature_missing, 'errors.signature_missing'])
+      expect(@service.verify_webhook_signature('{}', {})).to eq([:failure, :unauthorized, 'errors.signature_missing'])
     end
 
     it 'accepts a valid HMAC-SHA256 hex signature regardless of header case' do
@@ -87,7 +89,7 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
       signature = OpenSSL::HMAC.hexdigest('SHA256', 'test_secret', body)
       expect(@service.verify_webhook_signature(body, { 'x-novapay-signature' => signature })).to be_nil
       expect(@service.verify_webhook_signature(body, { 'X-NovaPay-Signature' => signature.tr('0-9', '1-90') }))
-        .to eq([:failure, :signature_invalid, 'errors.signature_invalid'])
+        .to eq([:failure, :unauthorized, 'errors.signature_invalid'])
     end
 
     it 'verifies the signature inside the callback only when the route passed the raw bytes' do
@@ -97,7 +99,7 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
       expect(@service.send(:verify_signature!, 'raw_body' => body,
                                                'headers' => { 'X-NovaPay-Signature' => signature })).to be_nil
       expect(@service.send(:verify_signature!, 'raw_body' => body, 'headers' => {}))
-        .to eq([:failure, :signature_missing, 'errors.signature_missing'])
+        .to eq([:failure, :unauthorized, 'errors.signature_missing'])
     end
 
     it 'takes the notification target from the payload instead of looking the operation up' do
@@ -110,13 +112,40 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
       expect(@service.send(:secure_equal?, 'abc', 'abcd')).to be(false)
     end
 
-    it 'builds the payload from roles in provider units and drops nil optionals' do
-      fields = %i[amount currency id recipient_type recipient_phone bank_code bank_name card_number]
-      operation = Struct.new(*fields).new(1000.5, 'RUB', 'ext-1', 'sbp', '79001234567', '044525225', nil, nil)
-      expect(@service.send(:build_payload, operation)).to eq(
+    it 'builds the payload from the operation, its requisites hash and the spec currency' do
+      operation = Struct.new(:id, :amount, :payout_requisite)
+                        .new('ext-1', 1000.5,
+                             { 'sbp' => { 'phone' => '79001234567', 'bank_code' => '044525225' } })
+      expect(@service.send(:build_payload, operation, 'sbp')).to eq(
         amount: 100_050, currency: 'RUB', external_id: 'ext-1',
         recipient: { type: 'sbp', phone: '79001234567', bank_code: '044525225' }
       )
+    end
+
+    # Ветка по request_method — это условная обязательность спецификации,
+    # ставшая кодом: bank_code при type=sbp, card_number при type=card.
+    it 'branches the requisites on request_method and leaves an unknown method empty' do
+      requisite = { 'sbp' => { 'phone' => '79001234567' }, 'card_number' => '4111111111111111' }
+      operation = Struct.new(:id, :amount, :payout_requisite).new('ext-1', 1.0, requisite)
+      card = @service.send(:recipient_requisites, operation, 'card')
+      expect(card).to eq(type: 'card', phone: nil, card_number: '4111111111111111')
+      expect(@service.send(:recipient_requisites, operation, 'p2p')).to eq({})
+    end
+
+    # Платформа забирает идентификатор как payload.dig(:result, :id).
+    it 'returns the provider identifier from a created payout' do
+      operation = Struct.new(:id).new('ext-1')
+      result = @service.send(:accept_created, operation, 'id' => 'np_7f3a9b2c', 'status' => 'pending')
+      expect(result).to eq([:success, { result: { id: 'np_7f3a9b2c' } }])
+      expect(result.last.dig(:result, :id)).to eq('np_7f3a9b2c')
+    end
+
+    # Коды платформы, а не наши действия: 401 -> unauthorized, 429 ->
+    # too_many_requests, код вне таблицы — по действию ERROR_MAP.
+    it 'answers a provider error with a platform failure code' do
+      expect(@service.send(:platform_failure_code, 401, :alert)).to eq(:unauthorized)
+      expect(@service.send(:platform_failure_code, 429, :retry_backoff)).to eq(:too_many_requests)
+      expect(@service.send(:platform_failure_code, 418, :reject)).to eq(:unprocessable_entity)
     end
 
     it 'sends the API key from credentials and the idempotency key in the request headers' do

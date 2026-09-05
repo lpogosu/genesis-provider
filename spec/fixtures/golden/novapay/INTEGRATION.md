@@ -47,17 +47,17 @@
 
 | Метод | HTTP-метод и путь провайдера | request_method | Идемпотентность | Результат |
 |---|---|---|---|---|
-| `check_conditions(operation, request_method)` | — (без обращения к провайдеру) | значение шлюза, передаётся в super: `create`, `status`, `check` | не применимо | `success` или `failure` с кодом условия: `:amount_below_minimum`, `:currency_not_allowed`, `:external_id_too_long`, `:recipient_type_not_allowed`, `:recipient_phone_invalid_format` |
-| `create_request(operation, _request_method = 'create')` | `POST /payouts` | `'create'` по умолчанию | заголовок `Idempotency-Key`, ключ — UUID v5 от operation.id (пространство имён из rules/idempotency.yml); на повтор провайдер отвечает: 409 со схемой успешного ответа — сервис подхватывает существующую операцию | `success` — идентификатор провайдера сохранён, статус применён; `failure` с действием из ERROR_MAP |
-| `process_callback(payload)` | `POST /webhooks/payout` — входящий, вызывает провайдер | — | нет: входящий запрос; повторное уведомление применяет тот же статус ещё раз | `success` после `approve_operation` / `reject_operation`; `failure` при неверной подписи, неизвестной операции или событии |
-| `fetch_status(operation)` | `GET /payouts/{payout_id}` | — | идемпотентен по семантике HTTP (RFC 9110, GET) | `success` после перевода статуса; `failure` с кодом operation_not_found, status_unknown или действием из ERROR_MAP |
+| `check_conditions(operation, request_method)` | — (без обращения к провайдеру) | значение шлюза, передаётся в super: `create`, `status`, `check` | не применимо | `success` или `failure` с кодом платформы `:unprocessable_entity` и ключом условия: `errors.amount_below_minimum`, `errors.external_id_too_long` |
+| `create_request(operation, request_method = 'create')` | `POST /payouts` | `'create'` по умолчанию | заголовок `Idempotency-Key`, ключ — UUID v5 от operation.id (пространство имён из rules/idempotency.yml); на повтор провайдер отвечает: 409 со схемой успешного ответа — сервис подхватывает существующую операцию | `success` с идентификатором операции у провайдера — платформа берёт его как `payload.dig(:result, :id)`; `failure` с кодом платформы по FAILURE_CODES |
+| `process_callback(payload)` | `POST /webhooks/payout` — входящий, вызывает провайдер | — | нет: входящий запрос; повторное уведомление применяет тот же статус ещё раз | `success` после `approve_operation` / `reject_operation`, без result; `failure` с кодом платформы при неверной подписи, неизвестной операции или событии |
+| `fetch_status(operation)` | `GET /payouts/{payout_id}` | — | идемпотентен по семантике HTTP (RFC 9110, GET) | `success` после перевода статуса хелпером, без result; `failure` с кодом платформы и ключом `errors.operation_not_found`, `errors.status_unknown` или ошибкой провайдера |
 
 Не отображено на контракт Provider::BaseService: отдельные публичные методы, платформа зовёт их сама; см. report.md.
 
 | Метод | HTTP-метод и путь провайдера | request_method | Идемпотентность | Результат |
 |---|---|---|---|---|
-| `cancel(operation)` — роль cancel (эвристика 0.95) | `POST /payouts/{payout_id}/cancel` | — | нет | `success` или `failure`; до запроса — проверка CANCELLABLE_STATUSES |
-| `balance` — роль balance (эвристика 0.93) | `GET /balance` | — | идемпотентен по семантике HTTP (RFC 9110, GET) | тело ответа (Hash) или `failure` с действием из ERROR_MAP |
+| `cancel(operation)` — роль cancel (эвристика 0.95) | `POST /payouts/{payout_id}/cancel` | — | нет | `success` или `failure` с кодом платформы; до запроса — проверка CANCELLABLE_STATUSES |
+| `balance` — роль balance (эвристика 0.93) | `GET /balance` | — | идемпотентен по семантике HTTP (RFC 9110, GET) | тело ответа (Hash) или `failure` с кодом платформы по FAILURE_CODES |
 
 ## 4. Маппинг статусов
 
@@ -87,37 +87,40 @@
 ## 5. Обработка ошибок с действиями
 
 `ERROR_MAP` читается в два шага: сначала код ошибки из тела ответа, потом
-HTTP-код; символ действия становится кодом отказа для платформы.
+HTTP-код. Символ действия — это политика обработки на стороне платформы;
+первым аргументом `failure` уходит код платформы (см. ниже).
 
 | Код ошибки провайдера | HTTP-код | Где встречается | Действие | Что делает сервис |
 |---|---|---|---|---|
-| `amount_limit_exceeded` | любой — читается из тела ответа | enum | `reject` | `failure(:reject, 'errors.amount_limit_exceeded')` |
-| `bank_unavailable` | любой — читается из тела ответа | enum | `retry_backoff` | `failure(:retry_backoff, 'errors.bank_unavailable')` |
-| `insufficient_balance` | любой — читается из тела ответа | enum и примеры | `retry_backoff` | `failure(:retry_backoff, 'errors.insufficient_balance')` |
-| `internal_error` | любой — читается из тела ответа | enum | `retry_backoff` | `failure(:retry_backoff, 'errors.internal_error')` |
-| `invalid_status` | любой — читается из тела ответа | только в примерах | `reject` | `failure(:reject, 'errors.invalid_status')` |
-| `not_found` | любой — читается из тела ответа | только в примерах | `reject` | `failure(:reject, 'errors.not_found')` |
-| `rate_limit_exceeded` | любой — читается из тела ответа | enum и примеры | `retry_backoff` | `failure(:retry_backoff, 'errors.rate_limit_exceeded')` |
-| `recipient_not_found` | любой — читается из тела ответа | enum и примеры | `reject` | `failure(:reject, 'errors.recipient_not_found')` |
-| `unauthorized` | любой — читается из тела ответа | только в примерах | `alert` | `failure(:alert, 'errors.unauthorized')` |
-| `validation_error` | любой — читается из тела ответа | enum и примеры | `reject` | `failure(:reject, 'errors.validation_error')` |
+| `amount_limit_exceeded` | любой — читается из тела ответа | enum | `reject` | `failure(platform_failure_code(response.status, :reject), 'errors.amount_limit_exceeded')` |
+| `bank_unavailable` | любой — читается из тела ответа | enum | `retry_backoff` | `failure(platform_failure_code(response.status, :retry_backoff), 'errors.bank_unavailable')` |
+| `insufficient_balance` | любой — читается из тела ответа | enum и примеры | `retry_backoff` | `failure(platform_failure_code(response.status, :retry_backoff), 'errors.insufficient_balance')` |
+| `internal_error` | любой — читается из тела ответа | enum | `retry_backoff` | `failure(platform_failure_code(response.status, :retry_backoff), 'errors.internal_error')` |
+| `invalid_status` | любой — читается из тела ответа | только в примерах | `reject` | `failure(platform_failure_code(response.status, :reject), 'errors.invalid_status')` |
+| `not_found` | любой — читается из тела ответа | только в примерах | `reject` | `failure(platform_failure_code(response.status, :reject), 'errors.not_found')` |
+| `rate_limit_exceeded` | любой — читается из тела ответа | enum и примеры | `retry_backoff` | `failure(platform_failure_code(response.status, :retry_backoff), 'errors.rate_limit_exceeded')` |
+| `recipient_not_found` | любой — читается из тела ответа | enum и примеры | `reject` | `failure(platform_failure_code(response.status, :reject), 'errors.recipient_not_found')` |
+| `unauthorized` | любой — читается из тела ответа | только в примерах | `alert` | `failure(platform_failure_code(response.status, :alert), 'errors.unauthorized')` |
+| `validation_error` | любой — читается из тела ответа | enum и примеры | `reject` | `failure(platform_failure_code(response.status, :reject), 'errors.validation_error')` |
 
 | HTTP-код | Действие | Что делает сервис |
 |---|---|---|
-| `400` | `reject` | `failure(:reject, 'errors.400')` |
-| `401` | `alert` | `failure(:alert, 'errors.401')` |
-| `402` | `retry_backoff` | `failure(:retry_backoff, 'errors.402')` |
-| `404` | `reject` | `failure(:reject, 'errors.404')` |
-| `409` | `reject` | `failure(:reject, 'errors.409')` |
-| `422` | `reject` | `failure(:reject, 'errors.422')` |
-| `429` | `retry_backoff` | `failure(:retry_backoff, 'errors.429')` |
-| `500` | `retry_backoff` | `failure(:retry_backoff, 'errors.500')` |
+| `400` | `reject` | `failure(:bad_request, 'errors.400')` |
+| `401` | `alert` | `failure(:unauthorized, 'errors.401')` |
+| `402` | `retry_backoff` | `failure(:service_unavailable, 'errors.402')` |
+| `404` | `reject` | `failure(:not_found, 'errors.404')` |
+| `409` | `reject` | `failure(:conflict, 'errors.409')` |
+| `422` | `reject` | `failure(:unprocessable_entity, 'errors.422')` |
+| `429` | `retry_backoff` | `failure(:too_many_requests, 'errors.429')` |
+| `500` | `retry_backoff` | `failure(:internal_server_error, 'errors.500')` |
 
 | Действие | Что это значит для платформы |
 |---|---|
 | `alert` | тревога дежурному: учётные данные или права, повтор упадёт так же |
 | `reject` | операция отклоняется, повтор не поможет |
 | `retry_backoff` | повторить с нарастающей паузой; Retry-After, если объявлен |
+
+Первым аргументом `failure` уходит код платформы, а не наше действие: по HTTP-коду ответа (FAILURE_CODES: 400 → `:bad_request`, 401 → `:unauthorized`, 403 → `:forbidden`, 404 → `:not_found`, 409 → `:conflict`, 422 → `:unprocessable_entity`, 429 → `:too_many_requests`, 500 → `:internal_server_error`, 502 → `:bad_gateway`, 503 → `:service_unavailable`, 504 → `:gateway_timeout`), иначе по действию из ERROR_MAP (FAILURE_CODES_BY_ACTION: `reject` → `:unprocessable_entity`, `retry` → `:service_unavailable`, `retry_backoff` → `:service_unavailable`, `alert` → `:internal_server_error`, `escalate` → `:unprocessable_entity`). Действие остаётся политикой обработки — оно в ERROR_MAP, RETRY_POLICY и в таблицах выше.
 
 Политика ретраев (RETRY_POLICY): платформа повторяет запрос при действиях `retry`, `retry_backoff`; по HTTP-кодам это `402`, `429`, `500`. Заголовок паузы `Retry-After` объявлен у ответов `429` — платформа обязана выдержать его перед повтором.
 
@@ -138,21 +141,37 @@ providers:
     base_url: https://api.sandbox.novapay.example/v1  # переменная окружения NOVAPAY_BASE_URL, адрес из серверов спецификации
     credentials: [api_key, webhook_secret]
     request_methods: [create, status, check]
-    currencies: [RUB]
+    currencies: [RUB]  # константа CURRENCY сервиса: enum: [RUB] у поля `currency`
     amount:
       platform_unit: major
       provider_unit: minor
       multiplier: 100  # ISO 4217: экспонента RUB 2
       minimum: 1000  # minimum: 100000 в единицах провайдера = 1000.00 RUB в мажорных (задано явно 1.00)
     fields:
-      currency: { enum: [RUB] }  # роль currency
       external_id: { max_length: 64 }  # роль external_id
-      type: { enum: [sbp, card] }  # роль recipient_type
       phone: { pattern: "^7\\d{10}$" }  # роль recipient_phone
     webhook:
       path: "/webhooks/payout"
       signature_header: X-NovaPay-Signature
 ```
+
+### Куда мапить поля тела запроса
+
+Строка на каждое поле тела запроса операции создания: чем его заполняет сервис. Пустая ячейка выражения — место под ручной маппинг: платформа такого реквизита не описывает, и выдумывать его инструмент не имеет права (эксперты кейса, 5 сентября 2026). Реквизиты получателя раскрыты по способам выплаты: ключ верхнего уровня в `operation.payout_requisite` — это payment_method шлюза, он же request_method.
+
+| Поле тела запроса | Роль | Способ выплаты | Чем заполняется |
+|---|---|---|---|
+| `amount` | `amount` | нет | `operation.amount` |
+| `currency` | `currency` | нет | `CURRENCY` |
+| `external_id` | `external_id` | нет | `operation.id` |
+| `recipient.type` | `recipient_type` | `sbp` | `'sbp'` |
+| `recipient.type` | `recipient_type` | `card` | `'card'` |
+| `recipient.phone` | `recipient_phone` | `sbp` | `operation.payout_requisite.dig('sbp', 'phone')` |
+| `recipient.phone` | `recipient_phone` | `card` | — заполните вручную |
+| `recipient.bank_code` | `bank_code` | `sbp` | `operation.payout_requisite.dig('sbp', 'bank_code')` |
+| `recipient.bank_name` | `bank_name` | `sbp` | `operation.payout_requisite.dig('sbp', 'bank_name')` |
+| `recipient.bank_name` | `bank_name` | `card` | — заполните вручную |
+| `recipient.card_number` | `card_number` | `card` | `operation.payout_requisite['card_number']` |
 
 ## 7. Схема подписи вебхука
 
@@ -164,8 +183,8 @@ providers:
 | подписываемая строка | `raw_body` | по справочнику 0.90 |
 | секрет | `provider.credentials[:webhook_secret]` | по справочнику 0.90 |
 
-- нет заголовка с подписью — `failure(:signature_missing, 'errors.signature_missing')`, тело не разбирается
-- подпись не совпала — `failure(:signature_invalid, 'errors.signature_invalid')`
+- нет заголовка с подписью — `failure(:unauthorized, 'errors.signature_missing')`, тело не разбирается
+- подпись не совпала — `failure(:unauthorized, 'errors.signature_invalid')`
 - сравнение константное по времени (`OpenSSL.fixed_length_secure_compare`); строки разной длины не равны, исключения нет
 
 Как провайдер считает подпись (и как её пересчитывает сервис), без значения секрета:
@@ -213,7 +232,7 @@ valid = OpenSSL.fixed_length_secure_compare(expected, given)
 - №12. Реквизит, для которого в таблице requisites rules/contract.yml нет выражения, вслепую не генерируется: поле получает TODO и строку «куда мапить» в INTEGRATION.md. Догадка о спецификации обязательна, догадка о платформе запрещена. Источник: эксперты 5 сентября 2026: «Для поля из спеки, которого нет в известной схеме платформы, не генерировать вслепую. Лучше TODO и явное место маппинга в INTEGRATION.md». Где влияет: build_payload, report.md, INTEGRATION.md.
 - №13. Ключ верхнего уровня в payout_requisite — это payment_method шлюза, он же request_method. Значение enum роли recipient_type из спецификации сопоставляется с ним по нормализованному имени. Источник: эксперты 5 сентября 2026: «request_method — логический метод шлюза (gateway.payment_method: sbp, p2p, …), в одном сервисе — ветки по request_method и/или форме payout_requisite»; сопоставление имён — наше решение. Где влияет: ветка case request_method в сборке реквизитов.
 
-Выражения, которыми сервис разговаривает с платформой, — раздел platform в rules/contract.yml (источник: эксперты кейса 5 сентября 2026 и допущение), например `operation.amount`, `operation.id`, `operation.provider_operation_id`, `payload`; поменялась платформа — правится справочник, не сервис.
+Выражения, которыми сервис разговаривает с платформой, — раздел platform в rules/contract.yml (источник: эксперты кейса 5 сентября 2026 (вопросы 18–25 в docs/QUESTIONS.md) и допущение), например `operation.amount`, `operation.id`, `operation.provider_operation_key`, `payload`; поменялась платформа — правится справочник, не сервис.
 
 Допущения этого прогона — то, что в коде взято по лучшему кандидату или по умолчанию:
 

@@ -35,6 +35,9 @@ class Provider
     # operation.amount — в мажорных единицах; провайдер ждёт minor (ISO 4217: экспонента RUB 2,
     # валюта RUB).
     AMOUNT_MULTIPLIER = 100
+    # Валюта запроса: платформа её не сообщает, поле currency у операции есть не всегда — код взят
+    # из спецификации (enum: [RUB] у поля `currency`).
+    CURRENCY = 'RUB'
     DEFAULT_ERROR_ACTION = :reject
     DEDUP_STATUS = 409
     # Ключ идемпотентности отправляется всегда, даже если спецификация помечает заголовок
@@ -89,6 +92,35 @@ class Provider
       500 => :retry_backoff
     }.freeze
 
+    # Код отказа для платформы: первый аргумент failure. Это код платформы в
+    # духе HTTP, а не наше действие из ERROR_MAP, — платформа ветвится по
+    # своему словарю, а смысл отказа остаётся вторым аргументом, в ключе
+    # локализации. Таблица напечатана целиком: провайдер вправе ответить
+    # кодом, которого спецификация не объявляла.
+    FAILURE_CODES = {
+      400 => :bad_request,
+      401 => :unauthorized,
+      403 => :forbidden,
+      404 => :not_found,
+      409 => :conflict,
+      422 => :unprocessable_entity,
+      429 => :too_many_requests,
+      500 => :internal_server_error,
+      502 => :bad_gateway,
+      503 => :service_unavailable,
+      504 => :gateway_timeout
+    }.freeze
+
+    # Запасной путь для HTTP-кода вне FAILURE_CODES: код платформы по
+    # действию из ERROR_MAP.
+    FAILURE_CODES_BY_ACTION = {
+      reject: :unprocessable_entity,
+      retry: :service_unavailable,
+      retry_backoff: :service_unavailable,
+      alert: :internal_server_error,
+      escalate: :unprocessable_entity
+    }.freeze
+
     # Политика ретраев — данные, не механизм: какие действия из ERROR_MAP
     # платформа повторяет и какие коды несут заголовок паузы. Сами ретраи,
     # очереди и алерты — инфраструктура платформы.
@@ -119,29 +151,17 @@ class Provider
 
       # minimum: 100000 в единицах провайдера = 1000.00 RUB в мажорных (задано явно 1.00)
       if operation.amount < 1000
-        return failure(:amount_below_minimum, 'errors.amount_below_minimum')
-      end
-
-      # currency: допустимые значения RUB (задано явно 1.00)
-      unless %w[RUB].include?(operation.currency)
-        return failure(:currency_not_allowed, 'errors.currency_not_allowed')
+        return failure(:unprocessable_entity, 'errors.amount_below_minimum')
       end
 
       # external_id: maxLength 64 (задано явно 1.00)
       if operation.id.to_s.length > 64
-        return failure(:external_id_too_long, 'errors.external_id_too_long')
-      end
-
-      # type: допустимые значения sbp, card (задано явно 1.00)
-      unless %w[sbp card].include?(operation.recipient_type)
-        return failure(:recipient_type_not_allowed, 'errors.recipient_type_not_allowed')
+        return failure(:unprocessable_entity, 'errors.external_id_too_long')
       end
 
       # phone: pattern ^7\d{10}$ (задано явно 1.00)
-      unless operation.recipient_phone.to_s.match?(/^7\d{10}$/)
-        return failure(:recipient_phone_invalid_format, 'errors.recipient_phone_invalid_format')
-      end
-
+      # TODO: условие для поля phone: значение зависит от способа выплаты и собирается в
+      #       recipient_requisites — проверьте его там, где способ выплаты известен
       success
     end
 
@@ -150,16 +170,16 @@ class Provider
     # @param operation [Object]
     # @param request_method [Object]
     # @return [Object] success | failure
-    def create_request(operation, _request_method = 'create')
-      payload = build_payload(operation)
+    def create_request(operation, request_method = 'create')
+      payload = build_payload(operation, request_method)
       url = "#{BASE_URL}/payouts"
       response = client.post(url, payload, request_headers(operation))
       body = parse_json(response.body)
-      return accept_response(operation, body) if response.status == 201
+      return accept_created(operation, body) if response.status == 201
       # Повтор с тем же ключом идемпотентности: ответ с кодом конфликта несёт схему успешного
       # ответа, по draft-ietf-httpapi-idempotency-key-header это прежний результат, а не ошибка —
       # подхватываем существующую операцию.
-      return accept_response(operation, body) if response.status == DEDUP_STATUS
+      return accept_created(operation, body) if response.status == DEDUP_STATUS
 
       provider_failure(response, body)
     end
@@ -173,10 +193,10 @@ class Provider
       return problem if problem
 
       target = callback_target(payload)
-      return failure(:operation_not_found, 'errors.operation_not_found') if target.nil?
+      return failure(:not_found, 'errors.operation_not_found') if target.nil?
 
       internal = EVENT_MAP[payload['event']]
-      return failure(:unknown_event, 'errors.unknown_event') if internal.nil?
+      return failure(:unprocessable_entity, 'errors.unknown_event') if internal.nil?
 
       apply_internal_status(target, internal)
     end
@@ -186,14 +206,14 @@ class Provider
     # @param operation [Object]
     # @return [Object] success | failure
     def fetch_status(operation)
-      url = "#{BASE_URL}/payouts/#{operation.provider_operation_id}"
+      url = "#{BASE_URL}/payouts/#{operation.provider_operation_key}"
       response = client.get(url, auth_headers)
       body = parse_json(response.body)
-      return failure(:operation_not_found, 'errors.operation_not_found') if response.status == 404
+      return failure(:not_found, 'errors.operation_not_found') if response.status == 404
       return provider_failure(response, body) unless response.status == 200
 
       internal = map_status(body['status'])
-      return failure(:status_unknown, 'errors.status_unknown') if internal.nil?
+      return failure(:unprocessable_entity, 'errors.status_unknown') if internal.nil?
 
       apply_internal_status(operation, internal)
     end
@@ -206,10 +226,10 @@ class Provider
       # Отмена возможна только в статусах провайдера pending, processing (эвристика 0.60), во
       # внутренних терминах — CANCELLABLE_STATUSES.
       unless CANCELLABLE_STATUSES.include?(operation.status)
-        return failure(:cancel_not_allowed, 'errors.cancel_not_allowed')
+        return failure(:unprocessable_entity, 'errors.cancel_not_allowed')
       end
 
-      url = "#{BASE_URL}/payouts/#{operation.provider_operation_id}/cancel"
+      url = "#{BASE_URL}/payouts/#{operation.provider_operation_key}/cancel"
       response = client.post(url, {}, auth_headers)
       body = parse_json(response.body)
       return provider_failure(response, body) unless response.status == 200
@@ -236,12 +256,12 @@ class Provider
     # @return [Object, nil] результат отказа или nil, если подпись верна
     def verify_webhook_signature(raw_body, headers)
       given = header_value(headers, SIGNATURE_HEADER)
-      return failure(:signature_missing, 'errors.signature_missing') if given.nil?
+      return failure(:unauthorized, 'errors.signature_missing') if given.nil?
 
       secret = provider.credentials[SIGNATURE_SECRET_KEY]
       expected = OpenSSL::HMAC.hexdigest(SIGNATURE_ALGORITHM, secret, raw_body)
       unless secure_equal?(expected, given)
-        return failure(:signature_invalid, 'errors.signature_invalid')
+        return failure(:unauthorized, 'errors.signature_invalid')
       end
 
       nil
@@ -250,22 +270,50 @@ class Provider
     private
 
     # Тело запроса по ролям полей схемы CreatePayoutRequest; nil-значения убираются.
-    def build_payload(operation)
+    def build_payload(operation, request_method)
       payload = {
         amount: to_provider_units(operation.amount),
-        currency: operation.currency,
+        currency: CURRENCY,
         external_id: operation.id,
-        recipient: {
-          type: operation.recipient_type,
-          phone: operation.recipient_phone,
-          # обязательно при type = sbp (намёк в описании 0.50)
-          bank_code: operation.bank_code,
-          bank_name: operation.bank_name,
-          # обязательно при type = card (намёк в описании 0.50)
-          card_number: operation.card_number
-        }
+        recipient: recipient_requisites(operation, request_method)
       }
       compact_payload(payload)
+    end
+
+    # Реквизиты получателя для тела запроса (поле recipient). Форма хеша operation.payout_requisite
+    # задана платформой и зависит от способа выплаты, поэтому ветка по request_method (он же
+    # payment_method шлюза), а состав полей в ветке — из условной обязательности спецификации.
+    # @param operation [Object]
+    # @param request_method [Object]
+    # @return [Hash] реквизиты получателя; nil-значения убираются в build_payload
+    def recipient_requisites(operation, request_method)
+      case request_method
+      when 'sbp'
+        {
+          type: 'sbp',
+          phone: operation.payout_requisite.dig('sbp', 'phone'),
+          # обязательно при type = sbp (намёк в описании 0.50)
+          bank_code: operation.payout_requisite.dig('sbp', 'bank_code'),
+          bank_name: operation.payout_requisite.dig('sbp', 'bank_name')
+        }
+      when 'card'
+        {
+          type: 'card',
+          # TODO: роль recipient_phone выведена, но выражения платформы для неё нет. Обязательно по
+          #       спецификации.
+          #   тип: string, pattern: ^7\d{10}$
+          #   описание из спецификации: "Телефон получателя (11 цифр, начинается с 7)"
+          #   где это лежит у платформы, знает только человек: заполните вручную или добавьте
+          #   выражение в rules/contract.yml (раздел platform)
+          phone: nil,
+          # обязательно при type = card (намёк в описании 0.50)
+          card_number: operation.payout_requisite['card_number']
+        }
+      else
+        # TODO: способ выплаты вне sbp, card: спецификация его не объявляла, собрать реквизиты не из
+        #       чего
+        {}
+      end
     end
 
     # Заголовки запроса на создание: авторизация, тип содержимого и ключ идемпотентности.
@@ -281,11 +329,17 @@ class Provider
       { 'X-API-Key' => provider.credentials[:api_key] }
     end
 
-    # Успешный ответ провайдера: перевести статус, если он пришёл и знаком; незнакомый статус
-    # оставляет операцию in_progress.
+    # Успешный ответ на создание: перевести статус и вернуть платформе идентификатор операции у
+    # провайдера — она сохраняет его как provider_operation_key из result[:id].
+    def accept_created(operation, body)
+      apply_internal_status(operation, map_status(body['status']))
+      success(result: { id: body['id'] })
+    end
+
+    # Успешный ответ провайдера на отмену или подтверждение: перевести статус, если он пришёл и
+    # знаком; незнакомый статус оставляет операцию in_progress. Результата у метода нет — статус
+    # меняют хелперы.
     def accept_response(operation, body)
-      # Идентификатор операции у провайдера — body['id']; сохраняет его платформа вне сервиса
-      # провайдера.
       internal = map_status(body['status'])
       return success if internal.nil?
 
@@ -307,12 +361,17 @@ class Provider
       STATUS_MAP[raw.to_s]
     end
 
-    # Ответ с ошибкой: действие по ERROR_MAP (сначала код провайдера, потом HTTP-код), символ
-    # действия — код отказа для платформы.
+    # Ответ с ошибкой: действие по ERROR_MAP (сначала код провайдера, потом HTTP-код) — это политика
+    # обработки, а платформе уходит её код отказа.
     def provider_failure(response, body)
       code = body.dig('error', 'code')
       action = ERROR_MAP[code] || ERROR_MAP[response.status] || DEFAULT_ERROR_ACTION
-      failure(action, "errors.#{code || response.status}")
+      failure(platform_failure_code(response.status, action), "errors.#{code || response.status}")
+    end
+
+    # Код отказа для платформы: по HTTP-коду ответа провайдера, иначе по действию из ERROR_MAP.
+    def platform_failure_code(status, action)
+      FAILURE_CODES[status] || FAILURE_CODES_BY_ACTION[action]
     end
 
     # Тело ответа как хеш; битый или не-объектный JSON даёт пустой хеш.

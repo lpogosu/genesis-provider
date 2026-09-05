@@ -163,6 +163,10 @@ module SpecGen
         # проверки двух полей одной роли, и обе они покрыты одним guard'ом.
         def checked?(condition)
           precheck = parts[:precheck]
+          # Значение задано по построению (константа валюты, литерал способа
+          # выплаты в своей ветке): проверять нечего, но и пробелом это не
+          # является — ограничение спецификации соблюдено самим кодом.
+          return true if precheck.constant?(condition)
           return false if precheck.failure_code(condition).nil?
 
           precheck.conditions.any? { |item| same_check?(item, condition, precheck) }
@@ -178,10 +182,15 @@ module SpecGen
         end
 
         def condition_reason(condition)
-          return t('gap_condition_no_check', field: condition.field) if
-            Service::Precheck::CHECKED.include?(condition.kind)
+          unless Service::Precheck::CHECKED.include?(condition.kind)
+            return t("gap_condition_#{condition.kind}")
+          end
+          if parts[:precheck].in_requisites?(condition)
+            return t('gap_condition_in_requisites', field: condition.field,
+                                                    method: parts[:requisites].method_name)
+          end
 
-          t("gap_condition_#{condition.kind}")
+          t('gap_condition_no_check', field: condition.field)
         end
       end
     end

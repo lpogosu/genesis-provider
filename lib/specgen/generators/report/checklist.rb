@@ -17,17 +17,41 @@ module SpecGen
         # @param parts [Hash{Symbol => Object}]
         def initialize(ctx, parts)
           super
-          @fields = SchemaFields.new(ctx)
+          @fields = Generators::SchemaFields.new(ctx)
         end
+
+        # Пункты по важности: сначала то, без чего запрос не уйдёт, потом
+        # заглушки методов, потом проверяемое после первого прогона.
+        ORDER = %i[payload requisite currency unmapped signature_route signature optional
+                   fixture create duplicate].freeze
 
         # @return [Array<String>] пункты в порядке важности
         def items
-          all = payload_items + unmapped_items + signature_route_items + signature_items +
-                optional_items + fixture_items + create_items + duplicate_items
-          all.map { |item| item.sub(/\A\p{Ll}/, &:upcase) }
+          ORDER.flat_map { |kind| send(:"#{kind}_items") }
+               .map { |item| item.sub(/\A\p{Ll}/, &:upcase) }
         end
 
         private
+
+        # Реквизит, для которого выражения платформы нет: ровно то место,
+        # где инструмент останавливается сам (эксперты кейса, 5 сентября
+        # 2026: «не генерировать вслепую»). Тот же список печатает таблица
+        # «куда мапить» в INTEGRATION.md.
+        def requisite_items
+          capped(parts[:requisites].gaps.map do |field, branch|
+            t('todo_requisite', field: code(field.name), method: code(branch.key || branch.value),
+                                hash: code(ctx.requisites.hash_expression.to_s))
+          end)
+        end
+
+        # Валюта не выведена: платформа её не сообщает, а спецификация не
+        # назвала единственного значения.
+        def currency_items
+          return [] unless ctx.currency.nil?
+          return [] if ctx.role_path(ctx.create_operation&.request_schema, :currency).nil?
+
+          [t('todo_currency', constant: code(Service::Context::CURRENCY_CONSTANT))]
+        end
 
         # Обязательное поле тела запроса, которое в код попало с TODO или с
         # ролью ниже порога: без него запрос уйдёт неполным.

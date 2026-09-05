@@ -44,10 +44,25 @@ module SpecGen
         def conditions
           create = @ctx.create_operation
           selected = @ctx.profile.conditions.select do |condition|
-            CHECKED.include?(condition.kind) &&
+            CHECKED.include?(condition.kind) && !constant?(condition) &&
               (condition.operation.nil? || condition.operation == create&.key)
           end
           selected.uniq { |condition| [condition.kind, role_of(condition), condition.value.value] }
+        end
+
+        # Условие, которое проверять нечем и незачем: значение поля в теле
+        # запроса задано по построению. Валюту сервис берёт из спецификации
+        # константой (поля currency у операции нет), а способ выплаты
+        # печатается литералом из enum в своей ветке реквизитов — сравнение
+        # в обоих случаях всегда истинно, а лишний guard читается как
+        # настоящая проверка.
+        # @param condition [IR::Condition]
+        # @return [Boolean]
+        def constant?(condition)
+          role = role_of(condition)
+          return true unless @ctx.currency_constant_for(role).nil?
+
+          role == Requisites::BRANCH_ROLE && @ctx.parts_requisites.branching?
         end
 
         # Условие словами, как в комментарии над проверкой: «minimum: 100000
@@ -103,6 +118,18 @@ module SpecGen
           nil
         end
 
+        # Поле реквизитов: его значение зависит от способа выплаты, поэтому
+        # одной проверкой в check_conditions его не покрыть. Отчёт объясняет
+        # этот пробел теми же словами, что и TODO в коде.
+        # @param condition [IR::Condition]
+        # @return [Boolean]
+        def in_requisites?(condition)
+          requisites = @ctx.parts_requisites
+          requisites.branching? && requisites.branches.any? do |branch|
+            branch.fields.any? { |field| field.name == condition.field }
+          end
+        end
+
         # @param condition [IR::Condition]
         # @return [String, nil] код отказа, который даёт проверка; nil, если
         #   у платформы нет выражения для поля и проверка осталась TODO
@@ -141,8 +168,8 @@ module SpecGen
           return lines + todo(condition) if accessor.nil?
 
           setup, expression, negate = predicate(condition, role, accessor)
-          code = failure_code(condition)
-          lines + setup + Ruby.guard(@ctx.failure(code), expression, indent: INDENT, negate: negate)
+          failure = @ctx.validation_failure(failure_code(condition))
+          lines + setup + Ruby.guard(failure, expression, indent: INDENT, negate: negate)
         end
 
         def suffix(kind)
@@ -183,8 +210,19 @@ module SpecGen
           lines
         end
 
+        # Поле реквизитов проверить одной строкой нельзя: его значение
+        # зависит от способа выплаты и собирается в своей ветке. Ограничение
+        # спецификации от этого не пропадает — оно в INTEGRATION.md и в
+        # чек-листе report.md, но выдавать проверку одной ветки за проверку
+        # всех было бы хуже её отсутствия.
         def todo(condition)
-          comment(@ctx.t('condition_no_accessor', field: condition.field), prefix: '# TODO: ')
+          key, params = if in_requisites?(condition)
+                          ['condition_in_requisites',
+                           { method: @ctx.parts_requisites.method_name }]
+                        else
+                          ['condition_no_accessor', {}]
+                        end
+          comment(@ctx.t(key, field: condition.field, **params), prefix: '# TODO: ')
         end
 
         def comment(text, prefix: '# ')

@@ -80,6 +80,8 @@ rules:
     platform_section: "раздел platform"
     platform_map: "таблица %{key} раздела platform"
     expression: "выражение %{key}"
+    failure_code: "код отказа платформы для %{key}"
+    http_status: "HTTP-код ответа"
     alias_name: "алиас"
     error_action: "действие по ошибке"
     http_classes: "раздел http.classes"
@@ -181,6 +183,7 @@ rules:
     statuses_mismatch: "внутренние статусы должны быть ровно %{statuses}"
     uncovered_roles: "ни один метод не обслуживает %{roles}; добавь список `roles:` тому методу, который это делает"
     expression_needs_value: "выражение %{key} должно содержать подстановку %%{value}"
+    bad_failure_code: "код отказа платформы %{code} не похож на символ Ruby"
     status_taken: "внутренний статус %{status} уже переводит хелпер %{helper}"
 
   method:

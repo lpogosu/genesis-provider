@@ -57,11 +57,22 @@ module SpecGen
           operation.responses.all?(&:success?)
         end
 
+        # Ожидаемое от сервиса: у ошибки это и наше действие (политика
+        # обработки), и код платформы — именно его увидит платформа первым
+        # аргументом failure, и именно его проверяет тест на WebMock.
         def expected(operation, response, body)
           return dedup(response, body.value) if dedup?(operation, response)
           return success(response, body.value) if response.success?
 
-          { 'action' => action_for(response, body).to_s }
+          action = action_for(response, body)
+          { 'action' => action.to_s, 'failure_code' => failure_code(response, action).to_s }
+        end
+
+        # @return [Symbol, nil] код платформы по HTTP-коду ответа, иначе по
+        #   действию — тот же порядок, что у platform_failure_code сервиса
+        def failure_code(response, action)
+          codes = ctx.platform.failure_codes
+          codes.by_http[response.code] || codes.by_action[action]
         end
 
         # Повтор с тем же ключом идемпотентности: код конфликта несёт схему

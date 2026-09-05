@@ -35,6 +35,10 @@ module SpecGen
       # @return [String, nil] имя предиката успешного результата базового
       #   класса, например "success?"
       attr_reader :success_predicate
+      # @return [RequisiteMap] где платформа держит реквизиты получателя
+      attr_reader :requisites
+      # @return [FailureCodes] чем становится первый аргумент failure
+      attr_reader :failure_codes
 
       # @param data [Object] значение ключа `platform` из contract.yml
       # @param file [String] файл справочника, для сообщений
@@ -46,7 +50,20 @@ module SpecGen
         section = mapping(data, noun(:platform_section), @at, required: false)
         load_maps(section)
         load_scalars(section)
+        shared = { file: file, problems: problems }
+        @requisites = RequisiteMap.new(section['requisites'], at: "#{@at}.requisites", **shared)
+        @failure_codes = FailureCodes.new(section['failure_codes'],
+                                          at: "#{@at}.failure_codes", **shared)
         freeze
+      end
+
+      # Результат create_request: платформа забирает идентификатор операции у
+      # провайдера как payload.dig(:result, :id), поэтому голого success ей
+      # мало (эксперты кейса, 5 сентября 2026, вопрос 19).
+      # @param value [String] выражение с идентификатором из тела ответа
+      # @return [String, nil] выражение успешного результата
+      def create_success(value)
+        fill(@create_success, value)
       end
 
       # @param role [Symbol] роль поля
@@ -110,6 +127,17 @@ module SpecGen
         result = mapping(section['result'], noun(:platform_map, key: 'result'), "#{@at}.result",
                          required: false)
         @success_predicate = optional_text(result, 'success_predicate', "#{@at}.result")
+        @create_success = create_success_of(result)
+      end
+
+      # Выражение результата обязано нести %{value}: без подстановки
+      # идентификатора платформе нечего сохранить.
+      def create_success_of(result)
+        text = optional_text(result, 'create_success', "#{@at}.result")
+        return text if text.nil? || text.include?(VALUE_TOKEN)
+
+        fault('contract.expression_needs_value', "#{@at}.result.create_success",
+              key: 'create_success')
       end
 
       def optional_text(table, key, at)

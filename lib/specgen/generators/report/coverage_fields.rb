@@ -22,7 +22,7 @@ module SpecGen
         # @param parts [Hash{Symbol => Object}]
         def initialize(ctx, parts)
           super
-          @fields = SchemaFields.new(ctx)
+          @fields = Generators::SchemaFields.new(ctx)
         end
 
         # @return [Dimension] поля тел запросов, которые сервис отправляет
@@ -45,7 +45,7 @@ module SpecGen
           Dimension.new(key: key, total: total, covered: total - gaps.size, gaps: gaps)
         end
 
-        # @return [Array<Array(IR::Operation, SchemaFields::Entry)>]
+        # @return [Array<Array(IR::Operation, Generators::SchemaFields::Entry)>]
         def request_entries
           @request_entries ||= outgoing.flat_map do |operation|
             @fields.of(operation.request_schema).map { |entry| [operation, entry] }
@@ -71,8 +71,16 @@ module SpecGen
           operation.equal?(ctx.create_operation)
         end
 
+        # Выражение у поля есть, если его даёт платформа, константа валюты
+        # сервиса или таблица реквизитов в своей ветке. Роль, для которой
+        # выражения нет ни там, ни там, покрытием не считается: поле уйдёт с
+        # TODO и nil.
         def expression?(field)
-          field.role.known? && !ctx.accessor(field.role.value).nil?
+          return false unless field.role.known?
+          return true unless ctx.accessor(field.role.value).nil?
+          return true unless ctx.currency_constant_for(field.role.value).nil?
+
+          parts[:requisites].covers?(field)
         end
 
         def request_gap(operation, entry)
@@ -91,7 +99,7 @@ module SpecGen
 
         # Входящие тела: ответы всех операций плюс тело уведомления, которое
         # в спецификации объявлено запросом ко входящей точке.
-        # @return [Array<Array(String, SchemaFields::Entry)>]
+        # @return [Array<Array(String, Generators::SchemaFields::Entry)>]
         def response_entries
           @response_entries ||= incoming_schemas.flat_map do |name|
             @fields.of(name).map { |entry| [name, entry] }

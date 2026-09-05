@@ -83,6 +83,33 @@ module SpecGen
           render(retry_policy.map { |key, value| [[], ["#{key}: #{Ruby.literal(value)}"]] })
         end
 
+        # Коды платформы, которыми сервис отказывает: первый аргумент failure.
+        # Таблица печатается целиком, а не по объявленным кодам, — провайдер
+        # вправе ответить кодом, которого спецификация не объявляла.
+        # @return [Hash{Integer => Symbol}]
+        def failure_codes
+          @ctx.platform.failure_codes.by_http
+        end
+
+        # @return [Hash{Symbol => Symbol}] действие ERROR_MAP → код платформы
+        def failure_codes_by_action
+          @ctx.platform.failure_codes.by_action
+        end
+
+        # @return [Array<String>] записи FAILURE_CODES
+        def failure_code_lines
+          render(failure_codes.map do |status, code|
+            [[], ["#{Ruby.number(status)} => #{Ruby.sym(code)}"]]
+          end)
+        end
+
+        # @return [Array<String>] записи FAILURE_CODES_BY_ACTION
+        def failure_action_lines
+          render(failure_codes_by_action.map do |action, code|
+            [[], ["#{Ruby.key(action)} #{Ruby.sym(code)}"]]
+          end)
+        end
+
         # @return [Array<String>] записи EVENT_MAP: событие вебхука → внутренний
         #   статус; событие без статуса остаётся с nil и TODO
         def event_lines

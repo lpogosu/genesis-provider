@@ -117,7 +117,8 @@
         }
       },
       "expected": {
-        "action": "reject"
+        "action": "reject",
+        "failure_code": "bad_request"
       },
       "source": "schema_example",
       "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
@@ -133,7 +134,8 @@
         }
       },
       "expected": {
-        "action": "alert"
+        "action": "alert",
+        "failure_code": "unauthorized"
       },
       "source": "spec_example"
     },
@@ -148,7 +150,8 @@
         }
       },
       "expected": {
-        "action": "retry_backoff"
+        "action": "retry_backoff",
+        "failure_code": "service_unavailable"
       },
       "source": "spec_example"
     },
@@ -187,7 +190,8 @@
         }
       },
       "expected": {
-        "action": "reject"
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
       },
       "source": "spec_example"
     },
@@ -202,7 +206,8 @@
         }
       },
       "expected": {
-        "action": "retry_backoff"
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
       },
       "source": "spec_example"
     },
@@ -216,7 +221,8 @@
         }
       },
       "expected": {
-        "action": "retry_backoff"
+        "action": "retry_backoff",
+        "failure_code": "internal_server_error"
       },
       "source": "schema_example",
       "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
@@ -249,7 +255,8 @@
         }
       },
       "expected": {
-        "action": "alert"
+        "action": "alert",
+        "failure_code": "unauthorized"
       },
       "source": "spec_example"
     },
@@ -264,7 +271,8 @@
         }
       },
       "expected": {
-        "action": "reject"
+        "action": "reject",
+        "failure_code": "not_found"
       },
       "source": "spec_example"
     },
@@ -296,7 +304,8 @@
         }
       },
       "expected": {
-        "action": "reject"
+        "action": "reject",
+        "failure_code": "conflict"
       },
       "source": "spec_example"
     },
@@ -431,7 +440,8 @@
         "completed_at": "2026-07-30T10:05:00Z"
       },
       "expected": {
-        "result": "signature_invalid"
+        "failure_code": "unauthorized",
+        "error_key": "errors.signature_invalid"
       },
       "source": "synthesized",
       "_todo": "негативная фикстура: подпись намеренно неверна, process_callback обязан вернуть отказ signature_invalid."
@@ -452,7 +462,8 @@
         "completed_at": "2026-07-30T10:05:00Z"
       },
       "expected": {
-        "result": "unknown_event"
+        "failure_code": "unprocessable_entity",
+        "error_key": "errors.unknown_event"
       },
       "source": "synthesized",
       "_todo": "негативная фикстура: событие не объявлено в enum, process_callback обязан вернуть отказ unknown_event."

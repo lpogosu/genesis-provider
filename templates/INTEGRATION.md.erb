@@ -34,7 +34,7 @@
 ## 3. Таблица методов с идемпотентностью
 
 Методы контракта `<%= base_class %>` в порядке `rules/contract.yml`.
-Ключ идемпотентности — детерминированный UUID v5 от `operation.id`
+Ключ идемпотентности — детерминированный UUID v5 от `<%= external_id %>`
 (RFC 4122 §4.3, `Digest::SHA1`, без `SecureRandom`): повтор запроса даёт тот
 же ключ и дедуплицируется провайдером.
 
@@ -72,7 +72,8 @@
 
 <%- if errors.any? -%>
 `ERROR_MAP` читается в два шага: сначала код ошибки из тела ответа, потом
-HTTP-код; символ действия становится кодом отказа для платформы.
+HTTP-код. Символ действия — это политика обработки на стороне платформы;
+первым аргументом `failure` уходит код платформы (см. ниже).
 
 <%- unless errors.code_rows.empty? -%>
 <%= table(errors.code_headers, errors.code_rows).join("\n") %>
@@ -93,6 +94,8 @@ HTTP-код; символ действия становится кодом от�
 <%= t('errors_none', failure: code(helper(:failure)), default: code(errors.default_action)) %>
 <%- end -%>
 
+<%= errors.failure_codes_line %>
+
 <%- errors.retry_lines.each do |line| -%>
 <%= line %>
 
@@ -104,6 +107,14 @@ HTTP-код; символ действия становится кодом от�
 <%= t('gateway_note', check: code(precheck_method)) %>
 
 <%= fence(gateway.lines, 'yaml').join("\n") %>
+<%- if gateway.mapping? -%>
+
+### <%= t('mapping_title') %>
+
+<%= t('mapping_note', hash: code(requisites_hash)) %>
+
+<%= table([t('mapping_field_col'), t('mapping_role_col'), t('mapping_method_col'), t('mapping_expression_col')], gateway.mapping_rows).join("\n") %>
+<%- end -%>
 
 ## 7. Схема подписи вебхука
 

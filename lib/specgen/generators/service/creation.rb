@@ -10,7 +10,7 @@ module SpecGen
       # draft-ietf-httpapi-idempotency-key-header, не наша выдумка.
       class Creation
         INDENT = 6
-        ACCEPT = 'accept_response(operation, body)'
+        ACCEPT = 'accept_created(operation, body)'
         # Код отказа, когда спецификация не описывает операцию создания.
         MISSING_CODE = :create_not_supported
 
@@ -19,9 +19,12 @@ module SpecGen
 
         # @param ctx [Context]
         # @param http [Http]
-        def initialize(ctx, http)
+        # @param requisites [Requisites] реквизиты получателя: от них зависит,
+        #   получает ли сборка тела запроса request_method
+        def initialize(ctx, http, requisites)
           @ctx = ctx
           @http = http
+          @requisites = requisites
           @spec = ctx.contract.method_for(:create_payout) ||
                   ctx.contract.method_for(:create_deposit)
           @operation = ctx.create_operation
@@ -64,7 +67,8 @@ module SpecGen
 
           url, todos = @http.url(@operation)
           request = @http.request(@operation, payload: 'payload', headers: headers)
-          lines = todos + ['payload = build_payload(operation)', url, request,
+          args = @requisites.branching? ? 'operation, request_method' : 'operation'
+          lines = todos + ["payload = build_payload(#{args})", url, request,
                            'body = parse_json(response.body)']
           lines.concat(Ruby.guard(ACCEPT, @http.success_check(@operation), indent: INDENT))
           lines + dedup_lines + ['', 'provider_failure(response, body)']

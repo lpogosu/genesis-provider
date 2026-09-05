@@ -16,12 +16,14 @@ module SpecGen
           @ctx = Context.new(profile: profile, rules: rules, naming: naming)
           @http = Http.new(@ctx)
           @tables = Tables.new(@ctx)
-          @parts = { payload: Payload.new(@ctx), polling: Polling.new(@ctx, @http),
-                     callback: Callback.new(@ctx), signature: Signature.new(@ctx),
-                     authorization: Authorization.new(@ctx), creation: Creation.new(@ctx, @http),
+          @ctx.parts_payload = Payload.new(@ctx)
+          @ctx.parts_requisites = Requisites.new(@ctx)
+          @parts = { payload: @ctx.parts_payload, requisites: @ctx.parts_requisites,
+                     polling: Polling.new(@ctx, @http), callback: Callback.new(@ctx),
+                     signature: Signature.new(@ctx), authorization: Authorization.new(@ctx),
+                     creation: Creation.new(@ctx, @http, @ctx.parts_requisites),
                      precheck: Precheck.new(@ctx), extras: Extras.new(@ctx, @http),
                      tables: @tables, http: @http }
-          @ctx.parts_payload = @parts[:payload]
         end
 
         # @return [Binding] контекст рендеринга ERB
@@ -118,11 +120,7 @@ module SpecGen
         # @return [Array<Array(String, String, Array<String>)>] прочие
         #   скалярные константы: имя, литерал, комментарии
         def constants
-          list = [amount_constant, ['DEFAULT_ERROR_ACTION', default_error_action, []]]
-          list << ['DEDUP_STATUS', Ruby.number(dedup_status), []] if dedup_status
-          list.concat(idempotency_constants)
-          list << ['CANCELLABLE_STATUSES', "#{Ruby.literal(cancellable)}.freeze", []] if cancellable
-          list + (webhooks? ? @parts[:signature].constants : [])
+          Constants.new(@ctx, @parts).all
         end
 
         # @return [Boolean] спецификация описывает уведомления
@@ -148,6 +146,16 @@ module SpecGen
         # @return [Array<String>]
         def retry_policy_lines
           @tables.retry_lines
+        end
+
+        # @return [Array<String>] записи FAILURE_CODES: HTTP-код → код платформы
+        def failure_code_lines
+          @tables.failure_code_lines
+        end
+
+        # @return [Array<String>] записи FAILURE_CODES_BY_ACTION
+        def failure_action_lines
+          @tables.failure_action_lines
         end
 
         # @return [Array<String>]
@@ -192,45 +200,6 @@ module SpecGen
 
         def info
           @ctx.profile.info
-        end
-
-        def default_error_action
-          Ruby.sym(@ctx.rules.errors.default_action)
-        end
-
-        def dedup_status
-          idempotency = @ctx.profile.idempotency
-          idempotency&.dedup? ? idempotency.conflict_status.value : nil
-        end
-
-        def cancellable
-          @parts[:extras].cancellable_statuses
-        end
-
-        def amount_constant
-          units = @ctx.profile.units
-          return ['AMOUNT_MULTIPLIER', units.multiplier.to_s, units_comment(units)] if units&.known?
-
-          evidence = units.nil? ? @ctx.t('units_none') : units.unit.evidence
-          text = @ctx.t('units_unknown', evidence: evidence)
-          ['AMOUNT_MULTIPLIER', '1', Ruby.comment(text, width: DOC_WIDTH, prefix: '# TODO: ')]
-        end
-
-        def units_comment(units)
-          text = @ctx.t('units_comment', unit: units.unit.value, evidence: units.exponent.evidence,
-                                         currency: units.currency.value.to_s)
-          Ruby.comment(text, width: DOC_WIDTH)
-        end
-
-        def idempotency_constants
-          idempotency = @ctx.profile.idempotency
-          return [] unless idempotency&.supported?
-
-          header = @ctx.t('idempotency_comment', evidence: idempotency.header.evidence)
-          [['IDEMPOTENCY_HEADER', Ruby.str(idempotency.header.value),
-            Ruby.comment(header, width: DOC_WIDTH)],
-           ['IDEMPOTENCY_NAMESPACE', Ruby.str(@ctx.rules.idempotency.namespace),
-            Ruby.comment(@ctx.t('namespace_comment'), width: DOC_WIDTH)]]
         end
       end
     end

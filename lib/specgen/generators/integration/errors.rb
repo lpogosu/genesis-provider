@@ -22,15 +22,29 @@ module SpecGen
         def code_rows
           tables.code_rules.map do |rule|
             [code(rule.provider_code), t('error_http_any'), seen(rule), action(rule),
-             failure_of(rule.action.value, rule.provider_code)]
+             failure_of(runtime_code(rule.action.value), rule.provider_code)]
           end
         end
 
         # @return [Array<Array<String>>] HTTP-код → действие
         def http_rows
           tables.http_rules.map do |rule|
-            [code(rule.http_status), action(rule), failure_of(rule.action.value, http_key(rule))]
+            platform = failure_code(rule.http_status, rule.action.value)
+            [code(rule.http_status), action(rule),
+             failure_of(Ruby.sym(platform), http_key(rule))]
           end
+        end
+
+        # Строка о кодах платформы: первым аргументом failure уходит код
+        # платформы, а не наше действие (эксперты кейса, 5 сентября 2026,
+        # вопрос 20). Таблицы FAILURE_CODES и FAILURE_CODES_BY_ACTION в
+        # сервисе — это данные из rules/contract.yml.
+        # @return [String]
+        def failure_codes_line
+          codes = ctx.platform.failure_codes
+          t('failure_codes_note', pairs: codes.by_http.map { |s, c| "#{s} → `:#{c}`" }.join(', '),
+                                  actions: codes.by_action.map { |a, c| "`#{a}` → `:#{c}`" }
+                                                .join(', '))
         end
 
         # @return [Array<Array<String>>] операция, HTTP-код, действие — только
@@ -117,8 +131,20 @@ module SpecGen
           ctx.error_code_path ? rule.http_status.to_s : "http_#{rule.http_status}"
         end
 
-        def failure_of(action, key)
-          code("#{ctx.helper(:failure)}(#{Ruby.sym(action)}, #{Ruby.str("errors.#{key}")})")
+        def failure_of(first, key)
+          code("#{ctx.helper(:failure)}(#{first}, #{Ruby.str("errors.#{key}")})")
+        end
+
+        # @return [Symbol, nil] код платформы по HTTP-коду, иначе по действию
+        def failure_code(status, action)
+          codes = ctx.platform.failure_codes
+          codes.by_http[status] || codes.by_action[action]
+        end
+
+        # У правила по коду ошибки HTTP-кода нет: он известен только в
+        # рантайме, и сервис считает код платформы по нему.
+        def runtime_code(action)
+          "platform_failure_code(response.status, #{Ruby.sym(action)})"
         end
       end
     end

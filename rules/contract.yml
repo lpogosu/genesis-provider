@@ -174,62 +174,138 @@ operation:
   source: "описание кейса"
 
 # Как сгенерированный сервис разговаривает с остальной платформой: читает
-# данные операции, разбирает аргумент колбэка, при необходимости находит
-# операцию и сохраняет идентификатор провайдера. Реального класса Operation
-# нам не выдали, поэтому каждое выражение здесь — допущение; шаблон
-# подставляет их как есть и не пишет ни одного своего. Поменялась платформа —
-# правится этот раздел, не шаблон.
+# данные операции, берёт реквизиты получателя, разбирает аргумент колбэка,
+# при необходимости находит операцию и переводит отказ в код платформы.
+# Реального класса Operation нам не выдали, поэтому каждое выражение здесь —
+# допущение, ограниченное ответами экспертов от 5 сентября 2026 (вопросы
+# 18–25 в docs/QUESTIONS.md); шаблон подставляет их как есть и не пишет ни
+# одного своего. Поменялась платформа — правится этот раздел, не шаблон.
 #
-#   accessors  роль поля (IR::Roles::FIELD) → выражение Ruby со значением
-#              платформы. Сумма — в мажорных единицах, как её хранит
-#              платформа: пересчёт в единицы провайдера делает шаблон по
-#              роли amount (to_provider_units), а предпроверки сравнивают
-#              сырое значение с границей, пересчитанной в мажорные единицы.
-#              idempotency_key_for — приватный метод, который шаблон
-#              генерирует всегда.
-#   lookup     роль идентификатора → выражение, находящее операцию платформы;
-#              %{value} — выражение со значением из уведомления. Пусто —
-#              сервис не ищет операцию сам, а передаёт идентификатор из
-#              уведомления хелперам approve_operation/reject_operation, как в
-#              примере описания кейса.
-#   writers    роль → выражение, сохраняющее значение из ответа провайдера.
-#              Пусто — сохраняет платформа вне сервиса провайдера.
-#   callback   что несёт аргумент process_callback: разобранное тело
-#              уведомления и, если маршрут вебхука их передал, сырые байты и
-#              заголовки для проверки подписи.
-#   result     как узнать, что результат базового класса успешный.
+#   accessors      роль поля (IR::Roles::FIELD) → выражение Ruby со значением
+#                  платформы. Здесь только то, что платформа гарантирует у
+#                  операции: сумма, идентификаторы, статус. Сумма — в
+#                  мажорных единицах, как её хранит платформа: пересчёт в
+#                  единицы провайдера делает шаблон по роли amount
+#                  (to_provider_units), а предпроверки сравнивают сырое
+#                  значение с границей, пересчитанной в мажорные единицы.
+#                  idempotency_key_for — приватный метод, который шаблон
+#                  генерирует всегда.
+#   requisites     реквизиты получателя. Они лежат не плоскими полями
+#                  операции, а в JSONB-хеше payout_requisite; ключ верхнего
+#                  уровня — payment_method шлюза, он же request_method.
+#                  Отсюда methods: способ выплаты → роль → выражение.
+#                  Значение enum роли recipient_type из спецификации
+#                  сопоставляется с ключом по нормализованному имени, и из
+#                  условной обязательности спецификации получается настоящая
+#                  ветка по request_method, а не комментарий.
+#                  Роли, которой здесь нет, выражения не существует:
+#                  генерируется TODO и строка «куда мапить» в INTEGRATION.md
+#                  (эксперты: «не генерировать вслепую»).
+#   failure_codes  первый аргумент failure — код платформы в духе HTTP, а не
+#                  наше действие из ERROR_MAP и не выдуманный символ.
+#                  by_http — по HTTP-коду ответа провайдера; by_action — по
+#                  действию ERROR_MAP, когда HTTP-кода в таблице нет;
+#                  validation — любой отказ предпроверки; internal — отказы
+#                  самого сервиса. Смысл отказа во всех случаях остаётся
+#                  вторым аргументом, в ключе локализации.
+#   lookup         роль идентификатора → выражение, находящее операцию
+#                  платформы; %{value} — выражение со значением из
+#                  уведомления. Пусто — сервис не ищет операцию сам.
+#   writers        роль → выражение, сохраняющее значение из ответа
+#                  провайдера. Пусто — сохраняет платформа вне сервиса.
+#   callback       что несёт аргумент process_callback: разобранное тело
+#                  уведомления и, если маршрут вебхука их передал, сырые
+#                  байты и заголовки для проверки подписи.
+#   result         как узнать, что результат базового класса успешный, и как
+#                  вернуть платформе идентификатор созданной операции.
 #
-# Ответ экспертов кейса от 5 сентября 2026 сузил этот раздел дважды:
+# Ответы экспертов кейса от 5 сентября 2026 сузили этот раздел трижды:
 #   «сохранение будет происходить вне сервиса провайдера, сервис провайдера
 #   должен сделать запрос к самому провайдеру, через абстрактный client и
-#   отдать ответ» — поэтому writers пуст, а lookup вслед за ним: работа с
-#   хранилищем операций происходит за пределами сервиса;
+#   отдать ответ» — поэтому writers пуст, а lookup вслед за ним;
 #   process_callback «получает уже разобранный JSON внутри payload» —
-#   поэтому callback.body это сам payload, а не payload[:body].
+#   поэтому callback.body это сам payload, а не payload[:body];
+#   «operation.id, operation.amount, operation.payout_requisite — JSONB-хеш,
+#   не плоские recipient_phone / bank_code» — поэтому плоских реквизитов в
+#   accessors нет вовсе, а валюты нет и подавно: её сервис берёт из
+#   спецификации.
 # Механизмы остались: заполненная таблица снова включает и поиск, и запись,
 # без единой правки шаблона. Это и есть проверка на универсальность.
 platform:
-  source: "эксперты кейса 5 сентября 2026 и допущение"
+  source: "эксперты кейса 5 сентября 2026 (вопросы 18–25 в docs/QUESTIONS.md) и допущение"
+  # Поля, которые платформа гарантирует у операции. Плоских реквизитов
+  # (recipient_phone, bank_code, card_number) и валюты у операции НЕТ.
   accessors:
     amount: "operation.amount"
-    currency: "operation.currency"
     external_id: "operation.id"
-    provider_operation_id: "operation.provider_operation_id"
-    recipient_type: "operation.recipient_type"
-    recipient_phone: "operation.recipient_phone"
-    bank_code: "operation.bank_code"
-    bank_name: "operation.bank_name"
-    card_number: "operation.card_number"
+    provider_operation_id: "operation.provider_operation_key"
     status: "operation.status"
     idempotency_key: "idempotency_key_for(operation)"
+  # Реквизиты получателя из JSONB-хеша. hash — сам хеш, для документации и
+  # для TODO там, где выражения нет; methods — способ выплаты платформы
+  # (payment_method шлюза, он же request_method) → роль → выражение.
+  requisites:
+    hash: "operation.payout_requisite"
+    methods:
+      sbp:
+        recipient_phone: "operation.payout_requisite.dig('sbp', 'phone')"
+        bank_code: "operation.payout_requisite.dig('sbp', 'bank_code')"
+        bank_name: "operation.payout_requisite.dig('sbp', 'bank_name')"
+      card:
+        card_number: "operation.payout_requisite['card_number']"
+  # Коды платформы. Набор — из ответа экспертов: «символ в духе
+  # HTTP/доменного кода платформы… часто :bad_request, :unauthorized,
+  # :unprocessable_entity, :too_many_requests, :internal_server_error,
+  # :forbidden». Выдумывать :novapay_whatever не нужно.
+  failure_codes:
+    # По HTTP-коду ответа провайдера. Таблица печатается в сервисе целиком:
+    # провайдер вправе вернуть код, которого спецификация не объявляла.
+    by_http:
+      400: bad_request
+      401: unauthorized
+      403: forbidden
+      404: not_found
+      409: conflict
+      422: unprocessable_entity
+      429: too_many_requests
+      500: internal_server_error
+      502: bad_gateway
+      503: service_unavailable
+      504: gateway_timeout
+    # Запасной путь для HTTP-кода вне таблицы: код платформы по нашему
+    # действию из ERROR_MAP. Ключи — IR::Roles::ERROR_ACTION (кроме dedup:
+    # дедупликация идёт успешным путём и до отказа не доходит).
+    by_action:
+      reject: unprocessable_entity
+      retry: service_unavailable
+      retry_backoff: service_unavailable
+      alert: internal_server_error
+      escalate: unprocessable_entity
+    # Любой отказ предпроверки: набор проверок открыт (он растёт с каждым
+    # ограничением спецификации), а код платформы у них один. Что именно не
+    # сошлось, говорит ключ локализации вторым аргументом.
+    validation: unprocessable_entity
+    # Отказы самого сервиса, а не провайдера.
+    internal:
+      signature_missing: unauthorized
+      signature_invalid: unauthorized
+      signature_expired: unauthorized
+      operation_not_found: not_found
+      unknown_event: unprocessable_entity
+      status_unknown: unprocessable_entity
+      cancel_not_allowed: unprocessable_entity
+      webhooks_not_supported: not_implemented
+      create_not_supported: not_implemented
+      status_not_supported: not_implemented
   # Пусто: см. комментарий выше. Пример заполнения для платформы, которая
   # отдаёт сервису поиск операции:
-  #   provider_operation_id: "Operation.find_by(provider_operation_id: %{value})"
+  #   provider_operation_id: "Operation.find_by(provider_operation_key: %{value})"
   #   external_id: "Operation.find_by(id: %{value})"
   lookup: {}
-  # Пусто: идентификатор операции у провайдера сохраняет платформа. Пример
-  # заполнения для платформы, которая отдаёт запись сервису:
-  #   provider_operation_id: "operation.update(provider_operation_id: %{value})"
+  # Пусто: идентификатор операции у провайдера сохраняет платформа —
+  # provider_operation_key = payload.dig(:result, :id). Пример заполнения для
+  # платформы, которая отдаёт запись сервису:
+  #   provider_operation_id: "operation.update(provider_operation_key: %{value})"
   writers: {}
   callback:
     # Аргумент process_callback — уже разобранный JSON уведомления.
@@ -243,3 +319,8 @@ platform:
     headers: "payload['headers']"
   result:
     success_predicate: "success?"
+    # create_request обязан вернуть идентификатор операции у провайдера:
+    # платформа делает provider_operation_key = payload.dig(:result, :id).
+    # У fetch_status и process_callback результата нет: статус меняют
+    # хелперы апрува и реджекта (эксперты, 5 сентября 2026).
+    create_success: "success(result: { id: %{value} })"

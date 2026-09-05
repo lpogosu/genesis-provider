@@ -79,6 +79,8 @@ rules:
     platform_section: "platform section"
     platform_map: "table %{key} of the platform section"
     expression: "expression %{key}"
+    failure_code: "platform failure code for %{key}"
+    http_status: "response HTTP status"
     alias_name: "alias"
     error_action: "error action"
     http_classes: "http.classes"
@@ -180,6 +182,7 @@ rules:
     statuses_mismatch: "internal statuses must be exactly %{statuses}"
     uncovered_roles: "no method serves %{roles}; add a `roles:` list to the method that handles it"
     expression_needs_value: "expression %{key} must contain the %%{value} placeholder"
+    bad_failure_code: "platform failure code %{code} does not look like a Ruby symbol"
     status_taken: "internal status %{status} is already set by helper %{helper}"
 
   method:

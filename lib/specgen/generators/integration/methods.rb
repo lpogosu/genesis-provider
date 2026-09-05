@@ -119,12 +119,20 @@ module SpecGen
           end
         end
 
+        # У предпроверок один код платформы на всех: набор проверок открыт,
+        # он растёт с каждым ограничением спецификации. Что именно не
+        # сошлось, говорит ключ локализации вторым аргументом.
         def check_result
-          codes = parts[:precheck].conditions.filter_map { |c| parts[:precheck].failure_code(c) }
-          codes.uniq!
-          return t('result_check_plain', **names) if codes.empty?
+          precheck = parts[:precheck]
+          keys = precheck.conditions.filter_map { |item| precheck.failure_code(item) }.uniq
+          return t('result_check_plain', **names) if keys.empty?
 
-          t('result_check', codes: codes(codes.map { |c| ":#{c}" }), **names)
+          t('result_check', code: validation_code,
+                            codes: codes(keys.map { |key| "errors.#{key}" }), **names)
+        end
+
+        def validation_code
+          code(":#{contract.platform.failure_codes.validation}")
         end
 
         def extra_row(operation, method)
@@ -136,9 +144,18 @@ module SpecGen
            extra_idempotency(operation), t(key, **names)]
         end
 
-        # @return [Hash] подстановки success / failure для текстов результата
+        # @return [Hash] подстановки success / failure / result для текстов
+        #   результата: платформа читает идентификатор созданной операции
+        #   как payload.dig(:result, :id)
         def names
-          { success: code(ctx.helper(:success)), failure: code(ctx.helper(:failure)) }
+          { success: code(ctx.helper(:success)), failure: code(ctx.helper(:failure)),
+            result: code(result_read) }
+        end
+
+        # @return [String] как платформа достаёт идентификатор из результата
+        def result_read
+          success = contract.platform.create_success('…')
+          success ? 'payload.dig(:result, :id)' : t('none')
         end
 
         def extra_idempotency(operation)

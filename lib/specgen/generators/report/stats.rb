@@ -101,7 +101,7 @@ module SpecGen
         end
 
         def scalars
-          @scalars ||= fields.reject { |field| SchemaFields.container?(field) }
+          @scalars ||= fields.reject { |field| Generators::SchemaFields.container?(field) }
         end
       end
     end

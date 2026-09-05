@@ -64,8 +64,9 @@ RSpec.describe SpecGen::Generators::IntegrationGenerator do
     end
 
     it 'lists every ERROR_MAP entry with the failure call the service makes' do
-      expect(@text).to include("| `validation_error` | любой — читается из тела ответа | enum и примеры | `reject` | `failure(:reject, 'errors.validation_error')` |")
-      expect(@text).to include("| `429` | `retry_backoff` | `failure(:retry_backoff, 'errors.429')` |")
+      expect(@text).to include("| `validation_error` | любой — читается из тела ответа | enum и примеры | `reject` | `failure(platform_failure_code(response.status, :reject), 'errors.validation_error')` |")
+      expect(@text).to include("| `429` | `retry_backoff` | `failure(:too_many_requests, 'errors.429')` |")
+      expect(@text).to include('FAILURE_CODES_BY_ACTION')
       expect(@text).to include('`Retry-After` объявлен у ответов `429`')
       expect(@text).to include('draft-ietf-httpapi-idempotency-key-header')
     end

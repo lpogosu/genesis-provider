@@ -107,8 +107,10 @@ RSpec.describe SpecGen::Generators::FixturesGenerator do
       expect(by_name['createPayout 201']).to eq('internal_status' => 'in_progress')
       expect(by_name['createPayout 409']).to eq('dedup' => true,
                                                 'internal_status' => 'in_progress')
-      expect(by_name['createPayout 402']).to eq('action' => 'retry_backoff')
-      expect(by_name['createPayout 429']).to eq('action' => 'retry_backoff')
+      expect(by_name['createPayout 402'])
+        .to eq('action' => 'retry_backoff', 'failure_code' => 'service_unavailable')
+      expect(by_name['createPayout 429'])
+        .to eq('action' => 'retry_backoff', 'failure_code' => 'too_many_requests')
     end
 
     it 'admits in "_todo" that an operation declares no error response' do
@@ -121,7 +123,9 @@ RSpec.describe SpecGen::Generators::FixturesGenerator do
       expect(names).to eq(%w[payout.cancelled payout.completed payout.failed payout.processing
                              payout.completed payout.unknown])
       expect(@json['notifications'].last(2).map { |item| item['expected'] })
-        .to eq([{ 'result' => 'signature_invalid' }, { 'result' => 'unknown_event' }])
+        .to eq([{ 'failure_code' => 'unauthorized', 'error_key' => 'errors.signature_invalid' },
+                { 'failure_code' => 'unprocessable_entity',
+                  'error_key' => 'errors.unknown_event' }])
     end
 
     it 'signs every notification for real, over the exact bytes of raw_body' do
@@ -131,7 +135,7 @@ RSpec.describe SpecGen::Generators::FixturesGenerator do
         expected = OpenSSL::HMAC.hexdigest('SHA256', secret, notification['raw_body'])
         expect(signature.length).to eq(64)
         expect(JSON.generate(notification['body'])).to eq(notification['raw_body'])
-        matches = notification['expected']['result'] != 'signature_invalid'
+        matches = notification['expected']['error_key'] != 'errors.signature_invalid'
         expect(signature == expected).to be(matches)
       end
     end

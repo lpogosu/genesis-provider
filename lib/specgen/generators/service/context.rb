@@ -31,6 +31,8 @@ module SpecGen
         TIMEOUTS = [['OPEN_TIMEOUT', 5], ['READ_TIMEOUT', 15]].freeze
         # Базовый URL, когда спецификация не объявила ни одного сервера.
         BASE_URL_PLACEHOLDER = 'https://TODO.example'
+        # Константа сервиса с кодом валюты запроса.
+        CURRENCY_CONSTANT = 'CURRENCY'
 
         # @return [Rules::ContractBook]
         def contract
@@ -70,6 +72,10 @@ module SpecGen
         # и операция создания.
         # @return [Payload]
         attr_accessor :parts_payload
+        # Презентер реквизитов получателя. Его тоже ставит View: тело
+        # запроса, покрытие и таблица «куда мапить» спрашивают одно и то же.
+        # @return [Requisites]
+        attr_accessor :parts_requisites
 
         # @return [String] полное имя сгенерированного класса в пространстве
         #   имён базового класса: "Provider::AcmePayService"
@@ -105,10 +111,38 @@ module SpecGen
           contract.helper(key)
         end
 
-        # @param code [Symbol, String] символьный код отказа
-        # @return [String] "failure(:code, 'errors.code')"
-        def failure(code)
-          "#{helper(:failure)}(#{Ruby.sym(code)}, #{Ruby.str("errors.#{code}")})"
+        # Отказ самого сервиса: первым аргументом идёт код платформы из
+        # rules/contract.yml, а не наша причина. Эксперты кейса 5 сентября
+        # 2026 (вопрос 20 в docs/QUESTIONS.md, там дословно): это символ в
+        # духе HTTP или доменного кода платформы, а придумывать свои коды под
+        # конкретного провайдера не нужно. Смысл отказа остаётся вторым
+        # аргументом, в ключе локализации.
+        # @param reason [Symbol, String] причина отказа
+        # @return [String] "failure(:unauthorized, 'errors.signature_invalid')"
+        # @raise [ArgumentError] причины нет в таблице platform.failure_codes
+        def failure(reason)
+          code = platform.failure_codes.internal(reason)
+          raise ArgumentError, "нет кода платформы для отказа #{reason.inspect}" if code.nil?
+
+          failure_call(code, reason)
+        end
+
+        # Отказ предпроверки: набор проверок открыт (он растёт с каждым
+        # ограничением спецификации), поэтому код платформы у них один на всех.
+        # @param reason [String, Symbol] что именно не сошлось
+        # @return [String]
+        def validation_failure(reason)
+          code = platform.failure_codes.validation
+          raise ArgumentError, 'нет кода платформы для отказа предпроверки' if code.nil?
+
+          failure_call(code, reason)
+        end
+
+        # @param code [Symbol] код платформы
+        # @param reason [Symbol, String] ключ локализации без префикса
+        # @return [String] "failure(:code, 'errors.reason')"
+        def failure_call(code, reason)
+          "#{helper(:failure)}(#{Ruby.sym(code)}, #{Ruby.str("errors.#{reason}")})"
         end
 
         # @return [String] выражение успешного результата
@@ -120,6 +154,27 @@ module SpecGen
         # @return [String, nil] выражение платформы для роли
         def accessor(role)
           role && platform.accessor(role)
+        end
+
+        # @return [Rules::RequisiteMap] где платформа держит реквизиты
+        def requisites
+          platform.requisites
+        end
+
+        # Валюта запроса берётся из спецификации, а не у платформы: поля
+        # currency у операции нет, а код валюты уже выведен вместе с
+        # множителем ISO 4217 — из enum, const или example поля с ролью
+        # currency. Одно значение на весь сервис, поэтому константа.
+        # @return [String, nil] код валюты для константы CURRENCY
+        def currency
+          code = profile.units&.currency
+          code&.known? ? code.value.to_s : nil
+        end
+
+        # @param role [Symbol]
+        # @return [String, nil] имя константы, если роль — валюта и она выведена
+        def currency_constant_for(role)
+          role == :currency && currency ? CURRENCY_CONSTANT : nil
         end
 
         # @return [Float] порог отчёта у матчеров ролей

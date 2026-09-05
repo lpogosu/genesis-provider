@@ -33,7 +33,8 @@ module SpecGen
           @ctx = ctx
           @http = http
           @taken = ctx.contract.method_names +
-                   Rules::ContractBook::HELPERS.map { |helper| ctx.helper(helper) }
+                   Rules::ContractBook::HELPERS.map { |helper| ctx.helper(helper) } +
+                   [ctx.parts_requisites&.method_name].compact
         end
 
         # @return [Array<Method>] в порядке операций спецификации
@@ -61,6 +62,12 @@ module SpecGen
           return nil if name.nil? || operation.request_schema.nil?
 
           "build_#{name}_payload"
+        end
+
+        # @return [Boolean] есть операция, чей успешный ответ разбирает
+        #   accept_response: отмена или подтверждение той же операции
+        def accepting?
+          operations.any? { |op| ACCEPTING_ROLES.include?(op.role.value) }
         end
 
         # Операции вне контракта в порядке спецификации.

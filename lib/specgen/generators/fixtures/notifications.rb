@@ -14,10 +14,11 @@ module SpecGen
         # заведомо не попало в enum.
         UNKNOWN_SUFFIX = 'unknown'
         UNKNOWN_EVENT = 'unknown_event'
-        # Результаты негативных фикстур — те же коды отказа, что печатает
-        # сгенерированный сервис.
-        INVALID_SIGNATURE_RESULT = Service::Signature::INVALID_CODE
-        UNKNOWN_EVENT_RESULT = Service::Callback::UNKNOWN_EVENT_CODE
+        # Причины отказа негативных фикстур — те же, что печатает
+        # сгенерированный сервис ключом локализации; код платформы к ним
+        # берётся из rules/contract.yml.
+        INVALID_SIGNATURE_REASON = Service::Signature::INVALID_CODE
+        UNKNOWN_EVENT_REASON = Service::Callback::UNKNOWN_EVENT_CODE
 
         # @return [Array<Hash>] фикстуры событий, затем негативные
         def all
@@ -115,7 +116,7 @@ module SpecGen
 
         # Негативная фикстура: тело настоящее, подпись заведомо неверна.
         def invalid_signature(base)
-          negative(base, INVALID_SIGNATURE_RESULT, base['event'], t('negative_signature'))
+          negative(base, INVALID_SIGNATURE_REASON, base['event'], t('negative_signature'))
             .merge('headers' => headers(base['raw_body'], valid: false))
         end
 
@@ -125,14 +126,18 @@ module SpecGen
           name = unknown_name(base['event'])
           Values.assign(value, event_path, name)
           raw = ::JSON.generate(value)
-          negative(base, UNKNOWN_EVENT_RESULT, name, t('negative_event'))
+          negative(base, UNKNOWN_EVENT_REASON, name, t('negative_event'))
             .merge('headers' => headers(raw), 'raw_body' => raw, 'body' => value)
         end
 
-        def negative(base, result, event, note)
-          { 'name' => "webhook #{result}", 'event' => event, 'headers' => base['headers'],
+        # Ожидаемое от process_callback: код платформы первым аргументом
+        # failure и ключ локализации вторым — оба проверяет тест.
+        def negative(base, reason, event, note)
+          expected = { 'failure_code' => ctx.platform.failure_codes.internal(reason).to_s,
+                       'error_key' => "errors.#{reason}" }
+          { 'name' => "webhook #{reason}", 'event' => event, 'headers' => base['headers'],
             'raw_body' => base['raw_body'], 'body' => base['body'],
-            'expected' => { 'result' => result.to_s }, 'source' => SYNTHESIZED, '_todo' => note }
+            'expected' => expected, 'source' => SYNTHESIZED, '_todo' => note }
         end
 
         def unknown_name(known)

@@ -25,10 +25,14 @@ module RulesFixtures
   }.freeze
 
   # Минимум раздела platform: по одному выражению каждого вида, чтобы
-  # загрузчик и генератор были согласны о форме записи.
+  # загрузчик и генератор были согласны о форме записи. Реквизиты и коды
+  # отказа — тоже по одной записи: их форму проверяет contract_book_spec.
   CONTRACT_PLATFORM = {
-    'source' => 'допущение', 'callback' => { 'body' => 'payload[:body]', 'headers' => 'payload[:headers]' }, 'result' => { 'success_predicate' => 'success?' },
-    'accessors' => { 'amount' => 'operation.amount', 'currency' => 'operation.currency', 'external_id' => 'operation.id', 'provider_operation_id' => 'operation.provider_operation_id' },
+    'source' => 'допущение', 'callback' => { 'body' => 'payload[:body]', 'headers' => 'payload[:headers]' },
+    'result' => { 'success_predicate' => 'success?', 'create_success' => 'success(result: { id: %{value} })' },
+    'accessors' => { 'amount' => 'operation.amount', 'external_id' => 'operation.id', 'provider_operation_id' => 'operation.provider_operation_key' },
+    'requisites' => { 'hash' => 'operation.payout_requisite', 'methods' => { 'sbp' => { 'recipient_phone' => "operation.payout_requisite.dig('sbp', 'phone')" }, 'card' => { 'card_number' => "operation.payout_requisite['card_number']" } } },
+    'failure_codes' => { 'by_http' => { 401 => 'unauthorized', 429 => 'too_many_requests' }, 'by_action' => { 'reject' => 'unprocessable_entity' }, 'validation' => 'unprocessable_entity', 'internal' => { 'operation_not_found' => 'not_found' } },
     'lookup' => { 'provider_operation_id' => 'Operation.find_by(provider_operation_id: %{value})' }, 'writers' => { 'provider_operation_id' => 'operation.update(provider_operation_id: %{value})' }
   }.freeze
 end

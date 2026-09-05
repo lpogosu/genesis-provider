@@ -26,17 +26,36 @@ module SpecGen
         end
 
         # @param schema_name [String, nil] схема тела запроса
+        # @param requisites [Requisites, nil] презентер реквизитов; задан —
+        #   группа реквизитов заменяется вызовом метода с веткой по
+        #   request_method вместо разворачивания хеша на месте
         # @return [Array<String>, nil] строки записей хеша без внешних скобок;
         #   nil, если схемы нет
-        def lines(schema_name)
+        def lines(schema_name, requisites: nil)
           schema = @ctx.schema(schema_name)
           return nil if schema.nil?
 
+          @requisites = requisites
           render(entries(schema, [schema_name], 0))
         end
 
-        private
+        # Запись хеша для поля с уже посчитанным выражением: её собирает
+        # презентер реквизитов, чтобы TODO в ветке выглядели так же, как в
+        # build_payload.
+        # @param field [IR::Field]
+        # @param expression [String, nil] выражение значения; nil — TODO для
+        #   обязательного поля и пропуск для необязательного
+        # @param depth [Integer] глубина вложенности, от неё ширина комментария
+        # @return [Entry, nil]
+        def entry_for(field, expression, depth)
+          return todo(field, depth) if expression.nil? && needed?(field)
+          return nil if expression.nil?
 
+          Entry.new(comments: doubts(field, depth), lines: [entry_line(field, expression)])
+        end
+
+        # @param entries [Array<Entry>]
+        # @return [Array<String>] строки записей с запятыми между ними
         def render(entries)
           entries.each_with_index.flat_map do |entry, index|
             body = entry.lines.dup
@@ -44,6 +63,8 @@ module SpecGen
             entry.comments + body
           end
         end
+
+        private
 
         def entries(schema, visited, depth)
           schema.fields.filter_map { |field| entry(field, visited, depth) }
@@ -69,7 +90,13 @@ module SpecGen
           "#{Ruby.key(field.name)} #{value}"
         end
 
+        # Группа реквизитов получателя на месте не разворачивается: её
+        # собирает отдельный метод с веткой по request_method.
         def object(field, visited, depth)
+          if @requisites&.branching? && field.equal?(@requisites.group)
+            return Entry.new(comments: [], lines: [entry_line(field, @requisites.call)])
+          end
+
           inner = nested_lines(field, visited, depth)
           return nil if inner.nil? || (inner.empty? && !needed?(field))
           return Entry.new(comments: [], lines: [entry_line(field, '{}')]) if inner.empty?
@@ -97,10 +124,12 @@ module SpecGen
 
         # Платформа хранит сумму в мажорных единицах; провайдер ждёт свои —
         # роль amount единственная, чьё значение проходит через пересчёт.
+        # Валюты у операции нет вовсе: её сервис берёт из спецификации
+        # константой (эксперты кейса, 5 сентября 2026, вопрос 18).
         def expression_for(role)
           return nil unless role.known?
 
-          expression = @ctx.accessor(role.value)
+          expression = @ctx.accessor(role.value) || @ctx.currency_constant_for(role.value)
           return expression unless expression && role.value == :amount
 
           "to_provider_units(#{expression})"
@@ -130,8 +159,14 @@ module SpecGen
           @ctx.t(key, field: rule.field, origin: origin, value: rule.values.join(', '))
         end
 
+        # Значение поля, которого сервис заполнить не может. Роль не
+        # опознана — берём пример из спецификации: это лучшее, что есть, и
+        # человеку видно, что подставить. Роль опознана, а выражения
+        # платформы для неё нет — только nil: правдоподобный номер телефона
+        # из примера уйдёт провайдеру как настоящий, и ошибка станет тихой,
+        # а догадка о платформе запрещена (эксперты, 5 сентября 2026).
         def todo(field, depth)
-          value = field.example.nil? ? 'nil' : Ruby.literal(field.example)
+          value = field.role.known? || field.example.nil? ? 'nil' : Ruby.literal(field.example)
           Entry.new(comments: todo_comments(field, depth), lines: [entry_line(field, value)])
         end
 
@@ -142,11 +177,15 @@ module SpecGen
             todo_details(field).flat_map { |text| comment(text, depth, prefix: '#   ') }
         end
 
+        # Обоснование роли печатается только тогда, когда неизвестна сама
+        # роль: если роль выведена, а выражения платформы нет, читателю
+        # нужно не то, как роль нашлась, а куда её положить.
         def todo_details(field)
+          known = field.role.known?
           [@ctx.t('todo_shape', shape: shape(field)),
            field.description && @ctx.t('todo_description', text: field.description),
-           @ctx.t('todo_evidence', evidence: field.role.evidence),
-           @ctx.t('todo_fill')].compact
+           known ? nil : @ctx.t('todo_evidence', evidence: field.role.evidence),
+           @ctx.t(known ? 'todo_fill_platform' : 'todo_fill')].compact
         end
 
         def requirement(field)

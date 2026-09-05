@@ -113,15 +113,20 @@ module SpecGen
       end
 
       # Переносит текст по словам в строки комментария заданной ширины.
+      # Продолжение абзаца встаёт под текст первой строки: «# TODO: » на
+      # каждой строке переноса читается как три разных TODO, а не как одно.
       # @param text [String]
       # @param width [Integer] доступная ширина с учётом отступа
-      # @param prefix [String] начало каждой строки
+      # @param prefix [String] начало первой строки абзаца
       # @return [Array<String>]
       def comment(text, width:, prefix: '# ')
+        tail = "##{' ' * (prefix.size - 1)}"
         text.to_s.split("\n").flat_map do |paragraph|
           next [prefix.rstrip] if paragraph.strip.empty?
 
-          wrap(paragraph, width - prefix.size).map { |line| "#{prefix}#{line}" }
+          wrap(paragraph, width - prefix.size).each_with_index.map do |line, index|
+            "#{index.zero? ? prefix : tail}#{line}"
+          end
         end
       end
 

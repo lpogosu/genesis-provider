@@ -89,6 +89,17 @@ module SpecGen
           @gateway ||= Gateway.new(@ctx, @parts)
         end
 
+        # @return [String] выражение с хешем реквизитов получателя
+        def requisites_hash
+          @ctx.requisites.hash_expression.to_s
+        end
+
+        # @return [String] выражение платформы с внешним идентификатором
+        #   операции: от него считается ключ идемпотентности
+        def external_id
+          @ctx.accessor(:external_id).to_s
+        end
+
         # @return [SignatureDoc] раздел 7
         def signature
           @signature ||= SignatureDoc.new(@ctx, @parts)

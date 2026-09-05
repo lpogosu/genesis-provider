@@ -264,16 +264,60 @@ RSpec.describe 'the shipped dictionaries' do
   end
 
   describe 'the contract' do
-    it 'reads every request-side role of the platform operation and keeps the amount raw' do
+    # Ответ экспертов от 5 сентября 2026 (вопрос 18): у операции есть id,
+    # amount и payout_requisite; плоских реквизитов и валюты нет.
+    it 'reads only what the platform guarantees on an operation, keeping the amount raw' do
       platform = rules.contract.platform
 
-      %i[amount currency external_id provider_operation_id recipient_type recipient_phone bank_code
-         bank_name card_number idempotency_key].each do |role|
+      %i[amount external_id provider_operation_id status idempotency_key].each do |role|
         expect(platform.accessor(role)).not_to be_nil, "no platform expression for #{role}"
       end
       expect(platform.accessor(:amount)).to eq('operation.amount')
+      expect(platform.accessor(:provider_operation_id)).to eq('operation.provider_operation_key')
+      %i[currency recipient_type recipient_phone bank_code bank_name card_number].each do |role|
+        expect(platform.accessor(role)).to be_nil, "#{role} is not a field of an operation"
+      end
       expect(platform.callback_body).to eq('payload')
-      expect(platform.source).to eq('эксперты кейса 5 сентября 2026 и допущение')
+      expect(platform.source).to include('эксперты кейса 5 сентября 2026')
+    end
+
+    # Реквизиты — из JSONB-хеша, ключ верхнего уровня это payment_method
+    # шлюза; у карты плоский ключ (ответ на вопрос 23).
+    it 'keeps the recipient requisites per payout method of the platform' do
+      requisites = rules.contract.platform.requisites
+
+      expect(requisites.hash_expression).to eq('operation.payout_requisite')
+      expect(requisites.payment_methods).to eq(%w[sbp card])
+      expect(requisites.expression('sbp', :recipient_phone))
+        .to eq("operation.payout_requisite.dig('sbp', 'phone')")
+      expect(requisites.expression('card', :card_number))
+        .to eq("operation.payout_requisite['card_number']")
+      expect(requisites.expression('card', :bank_code)).to be_nil
+      expect(requisites.payment_methods_for(:bank_code)).to eq(['sbp'])
+    end
+
+    # Первым аргументом failure идёт код платформы, а не наше действие
+    # (ответ на вопрос 20). Действие остаётся в ERROR_MAP и участвует в
+    # выборе кода, когда HTTP-кода в таблице нет.
+    it 'translates a provider answer into a platform failure code' do
+      codes = rules.contract.platform.failure_codes
+      actions = SpecGen::IR::Roles::ERROR_ACTION
+
+      expect(codes.by_http[401]).to eq(:unauthorized)
+      expect(codes.by_http[429]).to eq(:too_many_requests)
+      expect(codes.by_http.keys).to eq(codes.by_http.keys.sort)
+      expect(codes.by_action.keys).to all(satisfy { |action| actions.include?(action) })
+      expect(codes.validation).to eq(:unprocessable_entity)
+      expect(codes.internal(:signature_invalid)).to eq(:unauthorized)
+      expect(codes.internal(:webhooks_not_supported)).to eq(:not_implemented)
+    end
+
+    # Голого success платформе мало: из результата она берёт
+    # provider_operation_key (ответ на вопрос 19).
+    it 'returns the provider identifier from create_request' do
+      platform = rules.contract.platform
+
+      expect(platform.create_success("body['id']")).to eq("success(result: { id: body['id'] })")
     end
 
     it 'leaves the lookup and the writers to the platform, keeping the mechanism' do
