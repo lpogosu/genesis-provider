@@ -57,7 +57,14 @@ module SpecGen
         end
 
         def request_covered?(operation, entry)
-          create?(operation) && expression?(entry.field)
+          builds_payload?(operation) && expression?(entry.field)
+        end
+
+        # Тело собирают операция создания и каждая операция вне контракта со
+        # своей схемой тела. Вторая операция создания остаётся непокрытой:
+        # контракт даёт один метод создания.
+        def builds_payload?(operation)
+          create?(operation) || !parts[:extras].payload_builder(operation).nil?
         end
 
         def create?(operation)
@@ -73,7 +80,9 @@ module SpecGen
         end
 
         def request_reason(operation, field)
-          return t('gap_field_other_operation', key: operation.key) unless create?(operation)
+          unless builds_payload?(operation)
+            return t('gap_field_other_operation', key: operation.key)
+          end
           return t('gap_field_no_accessor', role: field.role.value) if field.role.known?
           return t('gap_field_required_todo') if field.required? || field.conditionally_required?
 

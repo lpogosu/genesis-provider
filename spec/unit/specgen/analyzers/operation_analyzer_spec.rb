@@ -94,12 +94,13 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
   end
 
   describe 'when the signals disagree' do
-    it 'assigns no role when two of them fit equally well, and shows the arithmetic' do
+    it 'takes the leader when two roles fit equally well, warns and shows the arithmetic' do
       profile = analyze('/payouts' => { 'post' => { 'operationId' => 'receiveCallback',
                                                     'requestBody' => json_body } })
       warning = profile.warnings.first
+      role = profile.operations.first.role
 
-      expect(profile.operations.first.unmapped?).to be(true)
+      expect(role).to have_attributes(value: :create_payout, confidence: 8.0 / 13)
       expect(warning).to have_attributes(code: :operation_role_ambiguous, severity: :warning,
                                          json_path: "$.paths['/payouts'].post")
       expect(warning.message)

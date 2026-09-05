@@ -3,14 +3,26 @@
 module SpecGen
   module Generators
     module Service
-      # Операции вне контракта BaseService: отмена, баланс и всё, что не
-      # отобразилось ни на одну роль (`:unmapped`). Каждая — отдельный
-      # публичный метод с пометкой «не отображено на контракт»; unmapped —
-      # метод по operationId или пути с TODO. Ничего не выбрасывается молча.
+      # Операции вне контракта BaseService: отмена, подтверждение, возврат,
+      # баланс и всё, что не отобразилось ни на одну роль (`:unmapped`).
+      # Каждая — отдельный публичный метод с пометкой «не отображено на
+      # контракт»; unmapped — метод по operationId или пути с TODO. Ничего не
+      # выбрасывается молча.
+      #
+      # Тело запроса такая операция собирает по ролям тем же презентером
+      # Payload, что и операция создания: у каждой появляется свой приватный
+      # build_<метод>_payload. Раньше здесь стоял пустой хеш с TODO, и на
+      # чужих спецификациях это съедало покрытие полей запросов — у Adyen
+      # Transfers 81 поле из 97 не попадало в код только потому, что операция
+      # не та.
       class Extras
         INDENT = 6
         # Роли операций, которые получают отдельный метод.
-        EXTRA_ROLES = %i[cancel balance unmapped].freeze
+        EXTRA_ROLES = %i[cancel confirm refund balance unmapped].freeze
+        # Роли, чей ответ относится к той же операции платформы: статус из
+        # него переводится во внутренний. Возврат создаёт новую операцию,
+        # поэтому в список не входит — его тело просто возвращается.
+        ACCEPTING_ROLES = %i[cancel confirm].freeze
         # Naming/AccessorMethodName: метод без аргументов не может
         # называться get_*.
         GETTER = /\Aget_/
@@ -32,9 +44,38 @@ module SpecGen
         # @return [Array<Array(IR::Operation, Method)>] операция и метод,
         #   который для неё сгенерирован, в порядке спецификации
         def entries
-          @entries ||= @ctx.profile.operations
-                           .select { |op| EXTRA_ROLES.include?(op.role.value) }
-                           .map { |op| [op, build(op)] }
+          @entries ||= operations.map { |op| [op, build(op)] }
+        end
+
+        # Приватные сборщики тела запроса — по одному на операцию со схемой
+        # тела, в том же порядке.
+        # @return [Array<Method>]
+        def payload_methods
+          operations.filter_map { |operation| payload_method(operation) }
+        end
+
+        # @param operation [IR::Operation]
+        # @return [String, nil] имя сборщика тела для этой операции
+        def payload_builder(operation)
+          name = names[operation.key]
+          return nil if name.nil? || operation.request_schema.nil?
+
+          "build_#{name}_payload"
+        end
+
+        # Операции вне контракта в порядке спецификации.
+        # @return [Array<IR::Operation>]
+        def operations
+          @operations ||= @ctx.profile.operations
+                              .select { |op| EXTRA_ROLES.include?(op.role.value) }
+        end
+
+        # Имена методов считаются одним проходом и до тел: тело операции
+        # ссылается на имя её же сборщика payload, и вычислять имена лениво
+        # изнутри тела значило бы звать самого себя.
+        # @return [Hash{String => String}] ключ операции → имя метода
+        def names
+          @names ||= operations.to_h { |op| [op.key, method_name(op, params(op))] }
         end
 
         # Внутренние статусы, в которых отмена возможна, по ограничению из
@@ -57,7 +98,7 @@ module SpecGen
 
         def build(operation)
           params = params(operation)
-          Method.new(name: method_name(operation, params), params: params,
+          Method.new(name: names[operation.key], params: params,
                      doc: doc(operation, params), body: body(operation))
         end
 
@@ -92,8 +133,8 @@ module SpecGen
                   [url, request, 'body = parse_json(response.body)']
           lines.concat(Ruby.guard('provider_failure(response, body)',
                                   @http.success_check(operation), indent: INDENT, negate: true))
-          cancel = operation.role.value == :cancel
-          lines + ['', cancel ? 'accept_response(operation, body)' : 'body']
+          accepting = ACCEPTING_ROLES.include?(operation.role.value)
+          lines + ['', accepting ? 'accept_response(operation, body)' : 'body']
         end
 
         # Отмена только в разрешённых статусах — если спецификация об этом
@@ -109,15 +150,25 @@ module SpecGen
             Ruby.guard(@ctx.failure(:cancel_not_allowed), condition, indent: INDENT, negate: true)
         end
 
-        # Тело запроса операции вне контракта: пустой хеш и список
-        # обязательных полей схемы в TODO — собирать его по ролям некому.
+        # Тело запроса операции вне контракта: тот же сборщик по ролям, что
+        # и у операции создания, отдельным приватным методом.
         def payload_lines(operation)
-          schema = @ctx.schema(operation.request_schema)
-          return [] if schema.nil?
+          builder = payload_builder(operation)
+          builder.nil? ? [] : ["payload = #{builder}(operation)"]
+        end
 
-          required = schema.required_fields.map(&:name).join(', ')
-          text = @ctx.t('extra_payload', schema: schema.name, required: required)
-          comment(text, INDENT, '# TODO: ') + ['payload = {}']
+        # @return [Method, nil]
+        def payload_method(operation)
+          builder = payload_builder(operation)
+          return nil if builder.nil?
+
+          schema = operation.request_schema
+          lines = @ctx.parts_payload.lines(schema)
+          body = ['payload = {', *Ruby.indent(lines, 2), '}', 'compact_payload(payload)']
+          Method.new(name: builder, params: [{ name: 'operation' }],
+                     doc: comment(@ctx.t('extra_payload_doc', key: operation.key, schema: schema),
+                                  4),
+                     body: body)
         end
 
         def comment(text, indent, prefix = '# ')

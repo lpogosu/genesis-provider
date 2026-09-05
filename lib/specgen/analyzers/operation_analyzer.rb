@@ -159,9 +159,10 @@ module SpecGen
         missing_id(operation, at) if operation.id.nil?
         case result.reason
         when :ambiguous then ambiguous(result, at)
-        when nil then off_contract(operation, at)
-        else no_role(result, at)
+        when :below_threshold then doubtful(result, at)
+        when :no_signal then no_role(result, at)
         end
+        off_contract(operation, at)
       end
 
       def missing_id(operation, at)
@@ -179,6 +180,15 @@ module SpecGen
       def ambiguous(result, at)
         profile.warn(:operation_role_ambiguous,
                      Texts.t('analyzers.operation.ambiguous', scores: scores_of(result)),
+                     json_path: at)
+      end
+
+      # Роль взята ниже порога: по третьему уровню доверия из CLAUDE.md
+      # лучший кандидат всё равно присваивается, но человек должен об этом
+      # узнать из отчёта.
+      def doubtful(result, at)
+        profile.warn(:operation_role_ambiguous,
+                     Texts.t('analyzers.operation.below_threshold', scores: scores_of(result)),
                      json_path: at)
       end
 

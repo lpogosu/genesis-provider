@@ -51,7 +51,7 @@ RSpec.describe SpecGen::IR::Roles do
     it 'raise ArgumentError naming the vocabulary, because this is a bug, not bad input' do
       expect { described_class.field!(:bik) }
         .to raise_error(ArgumentError, /роль поля: неизвестное значение :bik.*amount, currency/)
-      expect { described_class.operation!(:refund) }.to raise_error(ArgumentError, /роль операции/)
+      expect { described_class.operation!(:teleport) }.to raise_error(ArgumentError, /роль операции/)
       expect { described_class.internal_status!(:done) }.to raise_error(ArgumentError, /внутренний статус/)
     end
   end

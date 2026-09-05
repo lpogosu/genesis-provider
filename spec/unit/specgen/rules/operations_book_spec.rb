@@ -52,9 +52,9 @@ RSpec.describe SpecGen::Rules::OperationsBook do
 
   describe 'guarding the data' do
     it 'refuses a role outside IR::Roles::OPERATION' do
-      message = error_for { |doc| doc['roles']['refund'] = { 'verbs' => ['refund'] } }
+      message = error_for { |doc| doc['roles']['teleport'] = { 'verbs' => ['teleport'] } }
 
-      expect(message).to include('роль операции: неизвестное значение "refund"')
+      expect(message).to include('роль операции: неизвестное значение "teleport"')
     end
 
     it 'refuses to leave a role undescribed, so the matcher can never silently lose one' do

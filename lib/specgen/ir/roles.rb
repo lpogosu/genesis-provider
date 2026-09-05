@@ -24,13 +24,13 @@ module SpecGen
       # существует и попадает в отчёт, просто ей нет места в контракте, а
       # молча выбросить её выглядело бы как потерянная функциональность.
       OPERATION = %i[
-        create_payout create_deposit fetch_status cancel balance webhook unmapped
+        create_payout create_deposit fetch_status cancel confirm refund balance webhook unmapped
       ].freeze
 
-      # Роли, которые отображаются на метод Provider::BaseService. Отмена и
-      # баланс сознательно остаются снаружи: по CLAUDE.md они генерируются
-      # отдельными публичными методами и попадают в report.md с пометкой «не
-      # отображено на контракт».
+      # Роли, которые отображаются на метод Provider::BaseService. Отмена,
+      # подтверждение, возврат и баланс сознательно остаются снаружи: по
+      # CLAUDE.md они генерируются отдельными публичными методами и попадают
+      # в report.md с пометкой «не отображено на контракт».
       CONTRACT = %i[create_payout create_deposit fetch_status webhook].freeze
 
       # Внутренние состояния операции на стороне платформы.

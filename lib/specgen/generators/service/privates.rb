@@ -48,7 +48,8 @@ module SpecGen
 
         # @return [Array<Method>] в фиксированном порядке
         def methods
-          [build_payload, request_headers, *@parts[:authorization].methods, accept_response,
+          [build_payload, *@parts[:extras].payload_methods, request_headers,
+           *@parts[:authorization].methods, accept_response,
            apply_internal_status, fixed(:map_status), provider_failure, fixed(:parse_json),
            fixed(:compact_payload), to_provider_units, idempotency_key_for, fixed(:uuid_v5),
            *webhook_methods]

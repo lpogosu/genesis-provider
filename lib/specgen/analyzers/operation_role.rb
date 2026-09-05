@@ -36,6 +36,13 @@ module SpecGen
       Result = Struct.new(:role, :derived, :reason, :scores, :cast, keyword_init: true)
 
       TEMPLATE = /\A\{.+\}\z/
+      # Сигналы, которые называют роль, а не просто сопутствуют ей.
+      IDENTIFYING = %i[operation_id path_tail path_resource tag unsecured].freeze
+
+      # Арифметика победившей роли: её голоса по сигналам, сумма и сколько
+      # весов вообще проголосовало. Держатся вместе, потому что и уверенность,
+      # и обоснование считаются из одной и той же тройки.
+      Tally = Struct.new(:vote, :score, :cast, keyword_init: true)
 
       # @param book [Rules::OperationsBook] слова, веса и пороги
       # @param id [String, nil] operationId
@@ -142,15 +149,26 @@ module SpecGen
         votes.values.flat_map(&:keys).uniq.sum { |signal| weight(signal) }
       end
 
+      # Третий уровень доверия из CLAUDE.md: ниже порога или в плотной
+      # борьбе роль всё равно присваивается лучшему кандидату — с настоящей
+      # (низкой) уверенностью и предупреждением в отчёте. Пустое место тоже
+      # ручной шаг, а эксперты 4 сентября 2026 просили, чтобы инструмент
+      # решал сам. :unmapped остаётся только там, где кандидата нет вовсе:
+      # ни один сигнал не совпал ни с одной ролью.
       def decide(votes, cast)
-        order = book.roles.each_with_index.to_h
-        ranked = votes.map { |role, vote| [role, vote.values.sum] }
-                      .sort_by { |role, score| [-score, order[role]] }
+        ranked = rank(votes)
         role, score = ranked.first
         reason = rejection(score, ranked[1], cast)
-        return unmapped(ranked, cast, reason) unless reason.nil?
+        reason = :no_signal unless identified?(votes[role])
+        return unmapped(ranked, cast, reason) if reason == :no_signal
 
-        matched(role, votes[role], score, cast, ranked)
+        matched(role, ranked, Tally.new(vote: votes[role], score: score, cast: cast), reason)
+      end
+
+      def rank(votes)
+        order = book.roles.each_with_index.to_h
+        votes.map { |role, vote| [role, vote.values.sum] }
+             .sort_by { |role, score| [-score, order[role]] }
       end
 
       # Порог `floor` проверяется раньше доли: когда голосуют только метод и
@@ -166,15 +184,43 @@ module SpecGen
         nil
       end
 
+      # Голос, который вообще ничего не говорит о роли: HTTP-метод и наличие
+      # тела есть у половины эндпоинтов любой спецификации. Роль присваивается
+      # только тому, за кого проголосовал хотя бы один опознающий сигнал —
+      # имя операции, хвост пути, ресурс, тег или отказ от авторизации.
+      def identified?(vote)
+        vote && IDENTIFYING.any? { |signal| vote.key?(signal) }
+      end
+
       def lead(score, runner_up, cast)
         (score - (runner_up ? runner_up.last : 0.0)) / cast
       end
 
-      def matched(role, vote, score, cast, ranked)
-        confidence = [score / cast, book.scoring(:ceiling)].min
-        evidence = won_evidence(vote, score, cast, ranked)
-        derived = IR::Derived.heuristic(role, confidence: confidence, evidence: evidence)
-        Result.new(role: role, derived: derived, reason: nil, scores: ranked, cast: cast)
+      # Знаменатель уверенности — поданные голоса, но не меньше абсолютного
+      # порога floor. Иначе операция, за которую проголосовали только метод и
+      # наличие тела, взяла бы 100% крошечного знаменателя и отчиталась о
+      # высокой уверенности, ничего о себе не зная.
+      def denominator(cast)
+        [cast, book.scoring(:floor).to_f].max
+      end
+
+      # Уверенность всегда настоящая — доля голосов победителя. Роль,
+      # взятая ниже порога, отличается от уверенной не подкрученным числом,
+      # а тем, что у неё есть reason: он поднимает предупреждение в отчёте.
+      def matched(role, ranked, tally, reason)
+        confidence = [tally.score / denominator(tally.cast), book.scoring(:ceiling)].min
+        derived = IR::Derived.heuristic(role, confidence: confidence,
+                                              evidence: evidence(ranked, tally, reason))
+        Result.new(role: role, derived: derived, reason: reason, scores: ranked, cast: tally.cast)
+      end
+
+      # Роль, взятая ниже порога или в плотной борьбе, объясняется тем же
+      # текстом, что и неприсвоенная: человеку важно увидеть, кто и с каким
+      # отрывом победил, а не только имя роли.
+      def evidence(ranked, tally, reason)
+        return lost_evidence(ranked, tally.cast, reason) if reason
+
+        won_evidence(tally.vote, tally.score, tally.cast, ranked)
       end
 
       # :unmapped — это решение, а не измерение, поэтому его уверенность

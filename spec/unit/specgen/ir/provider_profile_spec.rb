@@ -80,7 +80,7 @@ RSpec.describe SpecGen::IR::ProviderProfile do
     end
 
     it 'refuses a role outside the vocabulary rather than returning nothing' do
-      expect { profile.operations_by_role(:refund) }.to raise_error(ArgumentError, /роль операции/)
+      expect { profile.operations_by_role(:teleport) }.to raise_error(ArgumentError, /роль операции/)
     end
 
     it 'finds an operation by its key, which falls back to method and path' do

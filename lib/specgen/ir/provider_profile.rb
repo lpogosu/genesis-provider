@@ -94,10 +94,14 @@ module SpecGen
         operations.select { |operation| operation.role.value == role }
       end
 
+      # Операция, которая занимает слот роли в сгенерированном сервисе.
+      # Берётся самая уверенная: роль может быть присвоена и ниже порога, и
+      # тогда первая по порядку спецификации не должна вытеснять уверенную.
+      # При равной уверенности решает порядок спецификации.
       # @param role [Symbol] одна из Roles::OPERATION
-      # @return [Operation, nil] первая операция с такой ролью
+      # @return [Operation, nil]
       def operation_for(role)
-        operations_by_role(role).first
+        operations_by_role(role).min_by.with_index { |op, i| [-op.role.confidence.to_f, i] }
       end
 
       # @param key [String] Operation#key

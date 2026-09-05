@@ -129,6 +129,8 @@ module RulesFixtures
     'create_deposit' => { 'verbs' => %w[create new], 'nouns' => %w[deposit deposits], 'resources' => %w[deposit deposits], 'tail' => %w[deposits], 'http_methods' => %w[post], 'request_body' => true },
     'fetch_status' => { 'verbs' => %w[get fetch check], 'nouns' => %w[status state], 'resources' => %w[payout payouts deposits], 'tail' => %w[status], 'tail_parameter' => true, 'http_methods' => %w[get], 'tags' => %w[payouts], 'request_body' => false },
     'cancel' => { 'verbs' => %w[cancel void], 'nouns' => %w[cancel cancellation], 'resources' => %w[payout payouts], 'tail' => %w[cancel], 'http_methods' => %w[post delete], 'request_body' => false },
+    'confirm' => { 'verbs' => %w[approve confirm], 'nouns' => %w[approval confirmation], 'resources' => %w[payout payouts], 'tail' => %w[approve confirm], 'http_methods' => %w[post] },
+    'refund' => { 'verbs' => %w[refund return], 'nouns' => %w[refund refunds], 'resources' => %w[payout payouts], 'tail' => %w[refunds returns], 'http_methods' => %w[post] },
     'balance' => { 'verbs' => %w[get check], 'nouns' => %w[balance balances], 'resources' => %w[balance], 'tail' => %w[balance], 'http_methods' => %w[get], 'request_body' => false },
     'webhook' => { 'verbs' => %w[notify receive], 'nouns' => %w[webhook callback], 'resources' => %w[webhooks callbacks], 'tail' => %w[webhooks callbacks], 'http_methods' => %w[post], 'tags' => %w[webhooks], 'request_body' => true, 'unsecured' => true }
   }.freeze

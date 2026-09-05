@@ -65,6 +65,12 @@ module SpecGen
           contract.platform
         end
 
+        # Презентер тела запроса. Его ставит View сразу после создания
+        # презентеров: Extras собирает тела своих операций тем же кодом, что
+        # и операция создания.
+        # @return [Payload]
+        attr_accessor :parts_payload
+
         # @return [String] полное имя сгенерированного класса в пространстве
         #   имён базового класса: "Provider::AcmePayService"
         def full_class_name

@@ -98,13 +98,13 @@ roles:
     # чекпоинте 1 привели url-withdraw как пример имени той же операции.
     verbs: [create, disburse, execute, initiate, make, new, open, pay, register, send, start,
             submit, withdraw]
-    nouns: [disbursement, disbursements, payment, payments, payout, payouts, transfer,
-            transfers, withdrawal, withdrawals]
-    resources: [disbursement, disbursements, payment, payments, payout, payouts, transfer,
-                transfers, withdrawal, withdrawals]
-    tail: [disbursements, payments, payouts, transfers, withdrawals]
+    nouns: [cashout, cashouts, disbursement, disbursements, payment, payments, payout,
+            payouts, transfer, transfers, withdrawal, withdrawals]
+    resources: [cashout, cashouts, disbursement, disbursements, payment, payments, payout,
+                payouts, transfer, transfers, withdrawal, withdrawals]
+    tail: [cashouts, disbursements, payments, payouts, transfers, withdrawals]
     http_methods: [post]
-    tags: [disbursements, payment, payments, payout, payouts, transfer, transfers]
+    tags: [cashouts, disbursements, payment, payments, payout, payouts, transfer, transfers]
     request_body: true
 
   create_deposit:
@@ -142,6 +142,31 @@ roles:
     tags: [cancellation, cancellations, deposit, deposits, operation, operations, payment,
            payments, payout, payouts, transfer, transfers]
     request_body: false
+
+  # Подтверждение ранее созданной операции: двухфазный перевод, где создание
+  # только резервирует средства, а отправляет их отдельный вызов (Adyen
+  # /transfers/approve, карточный capture). На контракт не отображается:
+  # BaseService не знает второй фазы, поэтому это отдельный публичный метод.
+  confirm:
+    verbs: [accept, approve, capture, commit, confirm, settle]
+    nouns: [approval, approvals, capture, captures, confirmation, confirmations]
+    resources: [charge, charges, deposit, deposits, operation, operations, payment, payments,
+                payout, payouts, transfer, transfers]
+    tail: [approvals, approve, capture, captures, confirm, confirmations, settle]
+    http_methods: [post]
+    tags: [approvals, captures, confirmations]
+
+  # Возврат уже проведённой операции. От отмены отличается тем, что операция
+  # успела завершиться: отмена останавливает незавершённое, возврат заводит
+  # обратное движение денег. Поэтому reversal остался у cancel (разворот до
+  # расчёта), а returns и refunds — здесь.
+  refund:
+    verbs: [refund, repay, return]
+    nouns: [chargeback, chargebacks, refund, refunds, return, returns]
+    resources: [charge, charges, payment, payments, payout, payouts, transfer, transfers]
+    tail: [chargebacks, refund, refunds, return, returns]
+    http_methods: [post]
+    tags: [chargebacks, refund, refunds, returns]
 
   balance:
     verbs: [check, fetch, get, query, read, retrieve, show]

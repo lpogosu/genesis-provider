@@ -69,7 +69,8 @@ analyzers:
   operation:
     id_missing: "the operation declares no operationId; it is referred to as %{key} in this report and in the generated code"
     unmapped: "too little in the spec says what this operation is for, so no role was assigned (%{scores}); it needs a role in an overlay"
-    ambiguous: "two roles fit this operation equally well, so neither was assigned (%{scores}); pick one in an overlay"
+    ambiguous: "two roles fit this operation almost equally; the first one was taken, but the choice is worth confirming (%{scores}); override it in an overlay"
+    below_threshold: "few signals of a role, so the best candidate was taken with low confidence (%{scores}); check it or set the role in an overlay"
     off_contract: "recognised as %{role}, which Provider::BaseService has no method for; it is generated as a separate public method and not mapped to the contract"
     tags_shape: "`tags` must be a list of strings"
     status_unknown: "response key %{code} is not a status code, a range or `default`"

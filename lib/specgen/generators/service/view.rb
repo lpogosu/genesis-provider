@@ -21,6 +21,7 @@ module SpecGen
                      authorization: Authorization.new(@ctx), creation: Creation.new(@ctx, @http),
                      precheck: Precheck.new(@ctx), extras: Extras.new(@ctx, @http),
                      tables: @tables, http: @http }
+          @ctx.parts_payload = @parts[:payload]
         end
 
         # @return [Binding] контекст рендеринга ERB
