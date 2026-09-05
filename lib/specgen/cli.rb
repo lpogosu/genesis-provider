@@ -123,7 +123,8 @@ module SpecGen
     def generate_artifacts(rules)
       document = load_spec
       profile = Analyzers::Runner.call(document: document, rules: rules, options: options)
-      artifacts = Generators.call(profile: profile, rules: rules, options: options)
+      artifacts = Generators.call(profile: profile, rules: rules, document: document,
+                                  options: options)
       artifacts.each { |artifact| say artifact_line(artifact) }
       say warnings_line(profile)
       profile

@@ -352,6 +352,16 @@ generators:
     overlay_why: "Why (from the overlay itself)"
     overlay_kind_update: "`update` merge"
     overlay_kind_remove: "`remove` deletion"
+    # 1. Generated output checked against the specification
+    checks_line: "**Bodies checked: %{total}; passed the schema: %{passed}; failed: %{failed}; synthesized and failing: %{synthesized}; nothing to check against: %{unchecked}.**"
+    checks_kind_failed: "Failed the schema — %{count}"
+    checks_kind_synthesized: "Synthesized and failing — %{count}"
+    checks_kind_unchecked: "Nothing to check against — %{count}"
+    checks_meaning_failed: "the body is copied from the specification examples verbatim and fails the specification own schema: the specification argues with itself, and that has to be read by a human"
+    checks_meaning_synthesized: "the value was assembled by the generator from the field type, or the fixture is negative on purpose, so a `pattern` or `enum` mismatch is legitimate and is not a run failure"
+    checks_meaning_unchecked: "the specification declares no schema, so there is nothing to check against — a gap of the specification, not a result of the check"
+    checks_item: "**%{subject}** — %{reason}; place: %{place}"
+    checks_more: "and %{count} more of the same kind"
     # 2. Coverage
     dim_operations: "Operations"
     dim_request_fields: "Request body fields"

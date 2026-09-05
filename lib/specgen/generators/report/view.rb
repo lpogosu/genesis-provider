@@ -15,11 +15,14 @@ module SpecGen
         # @param rules [Rules::Registry]
         # @param naming [Naming]
         # @param artifacts [Array<Artifact>] уже записанные артефакты прогона
-        def initialize(profile:, rules:, naming:, artifacts: [])
+        # @param checks [Validators::Result] сверка фикстур со схемами
+        #   спецификации; её числа печатает раздел 1
+        def initialize(profile:, rules:, naming:, artifacts: [], checks: Validators::Result.new)
           @service = Service::View.new(profile: profile, rules: rules, naming: naming)
           @ctx = @service.context
           @parts = @service.parts.merge(view: @service)
           @artifacts = artifacts
+          @result = checks
         end
 
         # @return [Binding] контекст рендеринга ERB
@@ -86,6 +89,11 @@ module SpecGen
           overlay.applied.map do |action|
             [code(action.target), t("overlay_kind_#{action.kind}"), action.description]
           end
+        end
+
+        # @return [Checks] раздел 1: сверка фикстур со схемами спецификации
+        def checks
+          @checks ||= Checks.new(@ctx, @parts, @result)
         end
 
         # @return [Coverage] раздел 2

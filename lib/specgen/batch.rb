@@ -89,7 +89,8 @@ module SpecGen
       options = @options.merge(spec: file, output: output_for(file), provider: name_of(file))
       document = SpecLoader.load(file)
       profile = Analyzers::Runner.call(document: document, rules: @rules, options: options)
-      [profile, Generators.call(profile: profile, rules: @rules, options: options)]
+      [profile, Generators.call(profile: profile, rules: @rules, document: document,
+                                options: options)]
     end
 
     # Подкаталог вывода по имени файла, а не по провайдеру: имя провайдера

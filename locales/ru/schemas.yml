@@ -29,9 +29,11 @@ analyzers:
       equals: "`%{trigger}` = %{value}"
       dependent_required: "dependentRequired: наличие `%{trigger}` делает `%{field}` обязательным"
       if_then: "%{keywords}: %{condition} делает `%{field}` обязательным"
+      negated_enum: "%{keywords}: у `%{trigger}` enum ровно из двух значений (%{enum}), а `if` берёт %{tested} — значит, ветка `else` это оставшееся %{condition}, и оно делает `%{field}` обязательным"
       description_hint: "намёк в описании (%{pattern}): %{sentence} читается как %{condition}"
       hint_warning: "`%{field}` выглядит условно обязательным (%{condition}), но схема не задаёт условия; фрагмент ниже задаёт его формально"
       negative_branch: "`%{field}` объявлен обязательным в ветке `%{keyword}` — это отрицательное условие, которое IR выразить не может; сформулируйте его в overlay как положительное"
+      negative_branch_off_enum: "`%{field}` объявлен обязательным в ветке `%{keyword}`, а `if` проверяет `%{trigger}` = %{tested} — значения, которого нет среди объявленных этому полю (%{enum}); спецификация противоречит сама себе, поэтому отрицательное условие не выведено"
       overlay_equals: |
         - target: "%{schema_path}"
           update:

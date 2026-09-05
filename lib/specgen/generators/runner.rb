@@ -13,10 +13,14 @@ module SpecGen
 
       # @param profile [IR::ProviderProfile]
       # @param rules [Rules::Registry]
+      # @param document [SpecLoader::Document] спецификация, из которой
+      #   выведен профиль; нужна стадии проверки, чтобы сверить записанные
+      #   фикстуры со схемами той же спецификации
       # @param options [Hash] опции CLI, ключи строками или символами
-      def initialize(profile:, rules:, options: {})
+      def initialize(profile:, rules:, document: nil, options: {})
         @profile = profile
         @rules = rules
+        @document = document
         @options = options
       end
 
@@ -30,8 +34,22 @@ module SpecGen
         ORDER.each_with_object([]) do |generator, artifacts|
           artifacts << generator.new(profile: @profile, rules: @rules, options: @options,
                                      naming: naming, writer: writer,
-                                     artifacts: artifacts.dup).call
+                                     artifacts: artifacts.dup, checks: checks(artifacts)).call
         end
+      end
+
+      # Сверка фикстур со схемами спецификации. Считается один раз, сразу
+      # после того, как фикстуры записаны: проверяется файл на диске, а не
+      # то, что генератор держал в памяти. До этого момента проверять нечего,
+      # и стадия возвращает nil.
+      # @param artifacts [Array<Artifact>] уже записанное
+      # @return [Validators::Result, nil]
+      def checks(artifacts)
+        fixtures = artifacts.find { |artifact| artifact.kind == FixturesGenerator::KIND }
+        return nil if fixtures.nil?
+
+        @checks ||= Validators.check(document: @document, profile: @profile,
+                                     fixtures_file: fixtures.path)
       end
 
       # @return [String] каталог вывода из --output, иначе DEFAULT_OUTPUT

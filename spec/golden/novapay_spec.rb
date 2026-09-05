@@ -21,7 +21,7 @@ RSpec.describe 'golden artifacts for novapay.yaml' do
     document = SpecGen::SpecLoader.load(spec_fixture('novapay.yaml'))
     options = { provider: 'novapay', output: dir }
     profile = SpecGen::Analyzers::Runner.call(document: document, rules: rules, options: options)
-    SpecGen::Generators.call(profile: profile, rules: rules, options: options)
+    SpecGen::Generators.call(profile: profile, rules: rules, document: document, options: options)
   end
 
   def read(path)

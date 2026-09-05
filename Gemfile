@@ -4,8 +4,9 @@ source 'https://rubygems.org'
 
 ruby '>= 3.2'
 
-# Runtime: CLI and the thin Rack layer. The OpenAPI parser is added later,
-# once the loader stage is implemented.
+# Runtime: CLI, the thin Rack layer and the JSON Schema validator that checks
+# generated fixtures against the schemas of the source specification.
+gem 'json_schemer', '~> 2.5'
 gem 'rack', '~> 3.1'
 gem 'thor', '~> 1.3'
 

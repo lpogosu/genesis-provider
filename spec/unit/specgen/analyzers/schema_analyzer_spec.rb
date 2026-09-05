@@ -230,15 +230,77 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
       expect(condition.values).to eq(['sbp'])
     end
 
-    it 'reports a negative branch, which the IR cannot express' do
-      node = recipient({ 'if' => { 'properties' => { 'type' => { 'const' => 'sbp' } } },
-                         'else' => { 'required' => ['bank_code'] } })
+    # The `else` branch names a value only when the trigger has exactly two
+    # of them; with three, "not sbp" names none of them.
+    def branches(tested = 'sbp')
+      { 'if' => { 'properties' => { 'type' => { 'const' => tested } } },
+        'else' => { 'required' => ['bank_code'] } }
+    end
+
+    def with_enum(values, extra = {})
+      node = recipient(extra)
+      node['properties']['type'] = { 'type' => 'string' }
+      node['properties']['type']['enum'] = values unless values.nil?
+      node
+    end
+
+    it 'reads the else branch as the other value when the trigger enum has exactly two' do
+      profile = with_components({ 'R' => recipient(branches) }, oas31: true)
+      condition = profile.schema('R').field('bank_code').required_when
+
+      expect(condition).to have_attributes(field: 'type', equals: 'card', origin: :if_then,
+                                           confidence: 1.0)
+      expect(condition.formal?).to be(true)
+      expect(profile.warnings).to be_empty
+    end
+
+    it 'states in the evidence that the value came from negating a two-value enum' do
+      profile = with_components({ 'R' => recipient(branches) }, oas31: true)
+      evidence = profile.schema('R').field('bank_code').required_when.evidence
+
+      expect(evidence).to include('if/else', 'enum ровно из двух значений (sbp | card)',
+                                  'ветка `else`', '`type` = card')
+    end
+
+    it 'reads x-jsonschema-else in 3.0 exactly as it reads else in 3.1' do
+      node = recipient({ 'x-jsonschema-if' => branches['if'],
+                         'x-jsonschema-else' => { 'required' => ['bank_code'] } })
+      profile = with_components({ 'R' => node })
+
+      expect(profile.schema('R').field('bank_code').required_when)
+        .to have_attributes(field: 'type', equals: 'card', origin: :x_jsonschema_if,
+                            confidence: 1.0)
+      expect(profile.warnings).to be_empty
+    end
+
+    it 'reports a negative branch it cannot resolve when the enum has three values' do
+      node = with_enum(%w[sbp card account], branches)
       profile = with_components({ 'R' => node }, oas31: true)
 
       expect(profile.schema('R').field('bank_code').required_when).to be_nil
       expect(profile.warnings.first).to have_attributes(code: :conditional_required_hint,
                                                         severity: :warning)
       expect(profile.warnings.first.message).to include('отрицательное условие')
+      expect(profile.warnings.first.message).not_to include('противоречит сама себе')
+    end
+
+    it 'reports a negative branch when the trigger declares no enum at all' do
+      profile = with_components({ 'R' => with_enum(nil, branches) }, oas31: true)
+
+      expect(profile.schema('R').field('bank_code').required_when).to be_nil
+      expect(profile.warnings.first).to have_attributes(code: :conditional_required_hint,
+                                                        severity: :warning)
+      expect(profile.warnings.first.message).to include('отрицательное условие')
+    end
+
+    it 'reports the contradiction when the if branch tests a value outside the enum' do
+      profile = with_components({ 'R' => recipient(branches('wire')) }, oas31: true)
+
+      expect(profile.schema('R').field('bank_code').required_when).to be_nil
+      expect(profile.warnings.first).to have_attributes(code: :conditional_required_hint,
+                                                        severity: :warning)
+      expect(profile.warnings.first.message)
+        .to include('`if` проверяет `type` = wire', '(sbp | card)', 'противоречит сама себе')
     end
 
     it 'reads a hint out of prose as a heuristic, and offers the overlay that formalises it' do

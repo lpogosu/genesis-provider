@@ -361,6 +361,16 @@ generators:
     overlay_why: "Зачем (из самого overlay)"
     overlay_kind_update: "слияние `update`"
     overlay_kind_remove: "удаление `remove`"
+    # 1. Сверка сгенерированного со спецификацией
+    checks_line: "**Сверено тел: %{total}; прошли схему: %{passed}; не прошли: %{failed}; синтезированы и схему не проходят: %{synthesized}; сверить не с чем: %{unchecked}.**"
+    checks_kind_failed: "Не прошли схему — %{count}"
+    checks_kind_synthesized: "Синтезированы и схему не проходят — %{count}"
+    checks_kind_unchecked: "Сверить не с чем — %{count}"
+    checks_meaning_failed: "тело взято из примеров спецификации дословно и не проходит её же схему: спорят спецификация и её собственная схема, и это надо прочитать глазами"
+    checks_meaning_synthesized: "значение собрал генератор по типу поля либо фикстура негативна намеренно, поэтому расхождение с `pattern` или `enum` законно и ошибкой прогона не считается"
+    checks_meaning_unchecked: "схемы в спецификации нет, сверять не с чем — это пробел спецификации, а не итог проверки"
+    checks_item: "**%{subject}** — %{reason}; место: %{place}"
+    checks_more: "и ещё %{count} того же вида"
     # 2. Покрытие
     dim_operations: "Операции"
     dim_request_fields: "Поля тел запросов"

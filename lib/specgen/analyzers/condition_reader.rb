@@ -13,16 +13,22 @@ module SpecGen
     # предупреждением и готовым фрагментом overlay, но никогда не тихое
     # правило.
     #
+    # Ветка `else` читается тоже, но ровно в одном случае — см. #negated.
+    #
     # Намёк принимается только тогда, когда захваченное имя — соседнее
     # свойство той же схемы. Эта единственная проверка отбрасывает
     # совпадения вида «minimum is 100» без всякого понимания предложения.
     class ConditionReader
-      # Пары ключевых слов, выражающие «если это, то обязательно», в порядке
-      # доверия: сначала родная JSON Schema, затем написание из реестра
-      # расширений OpenAPI для 3.0.
+      # Тройка ключевых слов «если — то — иначе» и источник, которым
+      # помечается прочитанное ими условие.
+      Keywords = Struct.new(:if_key, :then_key, :else_key, :origin)
+
+      # Написания этой тройки в порядке доверия: сначала родная JSON Schema,
+      # затем написание из реестра расширений OpenAPI для 3.0.
       IF_KEYWORDS = [
-        ['if', 'then', 'else', :if_then],
-        ['x-jsonschema-if', 'x-jsonschema-then', 'x-jsonschema-else', :x_jsonschema_if]
+        Keywords.new('if', 'then', 'else', :if_then),
+        Keywords.new('x-jsonschema-if', 'x-jsonschema-then', 'x-jsonschema-else',
+                     :x_jsonschema_if)
       ].freeze
       DEPENDENT = 'dependentRequired'
 
@@ -67,22 +73,40 @@ module SpecGen
       end
 
       def conditional(name)
-        IF_KEYWORDS.each do |if_key, then_key, else_key, origin|
-          found = branch(if_key, then_key, name)
-          note_negative(if_key, else_key, name)
-          next if found.nil?
+        IF_KEYWORDS.each do |keys|
+          found = positive(keys, name) || negated(keys, name)
+          return found unless found.nil?
 
-          trigger, value = found
-          return condition(field: trigger, equals: value, origin: origin,
-                           evidence: if_then_evidence(if_key, then_key, trigger, value, name))
+          note_negative(keys, name)
         end
         nil
       end
 
-      def if_then_evidence(if_key, then_key, trigger, value, name)
-        Texts.t('analyzers.schema.condition.if_then', keywords: "#{if_key}/#{then_key}",
-                                                      condition: describe(trigger, value),
-                                                      field: name)
+      def positive(keys, name)
+        found = branch(keys.if_key, keys.then_key, name)
+        return nil if found.nil?
+
+        trigger, value = found
+        evidence = Texts.t('analyzers.schema.condition.if_then',
+                           keywords: "#{keys.if_key}/#{keys.then_key}",
+                           condition: describe(trigger, value), field: name)
+        condition(field: trigger, equals: value, origin: keys.origin, evidence: evidence)
+      end
+
+      # Отрицательная ветка читается как равенство, когда NegatedBranch
+      # смог назвать оставшееся значение; источник и уверенность те же, что
+      # у положительной ветки, потому что вывод структурный. Когда назвать
+      # значение нельзя — предупреждение, см. #note_negative.
+      def negated(keys, name)
+        found = NegatedBranch.new(parent, keys, name)
+        rest = found.value
+        return nil if rest.nil?
+
+        evidence = Texts.t('analyzers.schema.condition.negated_enum',
+                           keywords: "#{keys.if_key}/#{keys.else_key}", trigger: found.trigger,
+                           tested: found.tested, enum: found.listed,
+                           condition: describe(found.trigger, rest), field: name)
+        condition(field: found.trigger, equals: rest, origin: keys.origin, evidence: evidence)
       end
 
       # @return [Array(String, Object), nil] соседнее поле и значение, которое
@@ -92,25 +116,37 @@ module SpecGen
         return nil unless test.is_a?(Hash)
 
         consequence = parent[then_key] || test['then']
-        return nil unless consequence.is_a?(Hash) && required?(consequence, name)
+        return nil unless required?(consequence, name)
 
         trigger_of(test)
       end
 
-      # Отрицательную ветку нельзя выразить как «обязательно, когда X равен
-      # Y», поэтому о ней сообщается, а не молчится.
-      def note_negative(if_key, else_key, name)
-        otherwise = parent[else_key] || (parent[if_key].is_a?(Hash) ? parent[if_key]['else'] : nil)
-        return unless otherwise.is_a?(Hash) && required?(otherwise, name)
+      # Отрицание, которое не свелось к равенству, нельзя выразить как
+      # «обязательно, когда X равен Y», поэтому о нём сообщается, а не
+      # молчится.
+      def note_negative(keys, name)
+        found = NegatedBranch.new(parent, keys, name)
+        return unless found.declared?
 
-        add_note(:conditional_required_hint,
-                 Texts.t('analyzers.schema.condition.negative_branch', field: name,
-                                                                       keyword: else_key),
+        add_note(:conditional_required_hint, negative_message(keys, name, found),
                  severity: :warning)
       end
 
+      def negative_message(keys, name, found)
+        return off_enum_message(keys, name, found) if found.off_enum?
+
+        Texts.t('analyzers.schema.condition.negative_branch', field: name,
+                                                              keyword: keys.else_key)
+      end
+
+      def off_enum_message(keys, name, found)
+        Texts.t('analyzers.schema.condition.negative_branch_off_enum',
+                field: name, keyword: keys.else_key, trigger: found.trigger,
+                tested: found.tested, enum: found.listed)
+      end
+
       def required?(node, name)
-        node['required'].is_a?(Array) && node['required'].include?(name)
+        node.is_a?(Hash) && node['required'].is_a?(Array) && node['required'].include?(name)
       end
 
       # @return [Array(String, Object), nil]

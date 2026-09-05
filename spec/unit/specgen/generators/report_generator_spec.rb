@@ -17,7 +17,7 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
     document = SpecGen::SpecLoader.load(spec)
     options = { provider: provider, output: dir }.compact
     profile = SpecGen::Analyzers::Runner.call(document: document, rules: rules, options: options)
-    artifacts = SpecGen::Generators.call(profile: profile, rules: rules, options: options)
+    artifacts = SpecGen::Generators.call(profile: profile, rules: rules, document: document, options: options)
     artifact = artifacts.find { |item| item.kind == :report }
     [File.read(artifact.path, encoding: 'UTF-8'), artifact, artifacts]
   end

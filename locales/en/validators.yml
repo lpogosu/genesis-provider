@@ -1,0 +1,21 @@
+# locales/en/validators.yml — texts of the validation stage: written fixtures
+# checked against the schemas of the specification they came from.
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с
+# locales/ru/validators.yml, это проверяет spec/unit/specgen/texts_spec.rb.
+#
+# Ключевые слова схемы (`enum`, `pattern`, `maxLength`) не переводятся: это
+# слова JSON Schema, читатель ищет их в спецификации как есть.
+
+validators:
+  subject_request: "request %{name}"
+  subject_response: "response %{name}"
+  subject_notification: "notification %{name}"
+  mismatch: "field `%{field}` fails `%{keyword}`"
+  mismatch_more: "(and %{count} more mismatches)"
+  whole_body: "the body itself"
+  schema_undeclared: "the specification declares no schema for this body — nothing to check against"
+  body_undeclared: "the specification promised a body but never described it — nothing to check"
+  validator_failed: "the schema could not be checked: %{error}"
+  fixtures_unreadable: "the fixtures file is not readable as JSON: %{error}"

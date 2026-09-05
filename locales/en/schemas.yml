@@ -29,9 +29,11 @@ analyzers:
       equals: "`%{trigger}` = %{value}"
       dependent_required: "dependentRequired: `%{trigger}` present makes `%{field}` required"
       if_then: "%{keywords}: %{condition} makes `%{field}` required"
+      negated_enum: "%{keywords}: `%{trigger}` declares an enum of exactly two values (%{enum}) and `if` takes %{tested}, so the `else` branch is the remaining %{condition}, which makes `%{field}` required"
       description_hint: "description hint (%{pattern}): %{sentence} reads as %{condition}"
       hint_warning: "`%{field}` looks conditionally required (%{condition}), but the schema states no condition; the fragment below states it formally"
       negative_branch: "`%{field}` is required by the `%{keyword}` branch, a negative condition the IR cannot express; state it as a positive condition in an overlay"
+      negative_branch_off_enum: "`%{field}` is required by the `%{keyword}` branch, while `if` tests `%{trigger}` = %{tested}, a value the schema never declares for that field (%{enum}); the spec contradicts itself, so no negative condition was derived"
       overlay_equals: |
         - target: "%{schema_path}"
           update:

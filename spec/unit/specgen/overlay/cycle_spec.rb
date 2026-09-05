@@ -23,8 +23,8 @@ RSpec.describe 'the report → overlay → rerun cycle' do
   end
 
   def report_of(dir, overlay: nil)
-    profile, = analyze(overlay: overlay)
-    artifacts = SpecGen::Generators.call(profile: profile, rules: rules,
+    profile, document = analyze(overlay: overlay)
+    artifacts = SpecGen::Generators.call(profile: profile, rules: rules, document: document,
                                          options: { provider: 'novapay', output: dir })
     File.read(artifacts.find { |artifact| artifact.kind == :report }.path, encoding: 'utf-8')
   end
@@ -69,7 +69,10 @@ RSpec.describe 'the report → overlay → rerun cycle' do
     end
   end
 
-  it 'reads dependentRequired natively once the overlay states it, hint and warning gone' do
+  # One action states both conditions: `then` names the requisite for the
+  # value under test, `else` the requisite for the only value left, since
+  # `Recipient.type` is an enum of exactly two.
+  it 'reads the overlay if/then/else, both conditions formal and both hints gone' do
     before, = analyze
     expect(before.warnings.map(&:code)).to include(:conditional_required_hint)
     expect(conditions_of(before).map { |field| field.required_when.origin }.uniq)
@@ -80,10 +83,11 @@ RSpec.describe 'the report → overlay → rerun cycle' do
     expect(after.warnings.map(&:code)).not_to include(:conditional_required_hint)
     expect(conditions_of(after).map(&:name)).to contain_exactly('bank_code', 'card_number')
     conditions_of(after).each do |field|
-      expect(field.required_when).to have_attributes(origin: :dependent_required, confidence: 1.0,
+      expect(field.required_when).to have_attributes(origin: :x_jsonschema_if, confidence: 1.0,
                                                      field: 'type')
       expect(field.required_when).to be_formal
     end
+    expect(conditions_of(after).map { |field| field.required_when.equals }).to eq(%w[sbp card])
   end
 
   # Переопределённое человеком видно там же, где сказано, из чего собран

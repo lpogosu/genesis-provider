@@ -10,6 +10,7 @@ require_relative 'specgen/rules'
 require_relative 'specgen/matchers'
 require_relative 'specgen/analyzers'
 require_relative 'specgen/generators'
+require_relative 'specgen/validators'
 require_relative 'specgen/reporter'
 require_relative 'specgen/batch'
 

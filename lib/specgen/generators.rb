@@ -60,6 +60,7 @@ require_relative 'generators/report/warnings'
 require_relative 'generators/report/stats'
 require_relative 'generators/report/operations'
 require_relative 'generators/report/checklist'
+require_relative 'generators/report/checks'
 require_relative 'generators/report/view'
 require_relative 'generators/report_generator'
 require_relative 'generators/runner'
@@ -80,12 +81,15 @@ module SpecGen
   module Generators
     # @param profile [IR::ProviderProfile] заполненный анализаторами
     # @param rules [Rules::Registry] справочники
+    # @param document [SpecLoader::Document] спецификация, из которой выведен
+    #   профиль: по ней стадия проверки сверяет записанные фикстуры со
+    #   схемами запросов и ответов
     # @param options [Hash] опции CLI (:output, :provider), ключи строками
     #   или символами
     # @return [Array<Artifact>] записанные артефакты в порядке генерации
     # @raise [GenerationError] шаблон не отрендерился или файл не записался
-    def self.call(profile:, rules:, options: {})
-      Runner.new(profile: profile, rules: rules, options: options).call
+    def self.call(profile:, rules:, document: nil, options: {})
+      Runner.new(profile: profile, rules: rules, document: document, options: options).call
     end
   end
 end

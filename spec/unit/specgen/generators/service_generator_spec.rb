@@ -32,7 +32,7 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
     document = SpecGen::SpecLoader.load(spec)
     options = { provider: provider, output: dir }.compact
     profile = SpecGen::Analyzers::Runner.call(document: document, rules: rules, options: options)
-    [SpecGen::Generators.call(profile: profile, rules: rules, options: options).first, profile]
+    [SpecGen::Generators.call(profile: profile, rules: rules, document: document, options: options).first, profile]
   end
 
   def syntax_ok?(path)

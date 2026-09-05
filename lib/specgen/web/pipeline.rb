@@ -55,7 +55,7 @@ module SpecGen
           result = body(profile, document)
           next result unless with_artifacts
 
-          result.merge(artifacts: artifacts(profile, options))
+          result.merge(artifacts: artifacts(profile, document, options))
         end
       rescue SpecGen::Error => e
         raise renamed(e)
@@ -78,8 +78,9 @@ module SpecGen
           warnings: warnings(profile) }
       end
 
-      def artifacts(profile, options)
-        Generators.call(profile: profile, rules: rules, options: options).map do |artifact|
+      def artifacts(profile, document, options)
+        Generators.call(profile: profile, rules: rules, document: document,
+                        options: options).map do |artifact|
           content = File.binread(artifact.path).force_encoding(Encoding::UTF_8)
           { kind: artifact.kind, filename: artifact.file,
             language: LANGUAGES.fetch(artifact.kind, DEFAULT_LANGUAGE),

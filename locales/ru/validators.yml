@@ -1,0 +1,21 @@
+# locales/ru/validators.yml — тексты стадии проверки: сверка записанных
+# фикстур со схемами той спецификации, из которой они выведены.
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с
+# locales/en/validators.yml, это проверяет spec/unit/specgen/texts_spec.rb.
+#
+# Ключевые слова схемы (`enum`, `pattern`, `maxLength`) не переводятся: это
+# слова JSON Schema, читатель ищет их в спецификации как есть.
+
+validators:
+  subject_request: "запрос %{name}"
+  subject_response: "ответ %{name}"
+  subject_notification: "уведомление %{name}"
+  mismatch: "поле `%{field}` не проходит `%{keyword}`"
+  mismatch_more: "(и ещё расхождений: %{count})"
+  whole_body: "тело целиком"
+  schema_undeclared: "схема тела в спецификации не объявлена — сверить не с чем"
+  body_undeclared: "спецификация обещала тело, но не описала его — сверить нечего"
+  validator_failed: "схему не удалось проверить: %{error}"
+  fixtures_unreadable: "файл фикстур не читается как JSON: %{error}"
