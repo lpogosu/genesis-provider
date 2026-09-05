@@ -48,6 +48,17 @@
 #   reversed, refunded → ambiguous. Операция сначала была успешной, потом
 #     развёрнута; это не «отказ в проведении» и не «в процессе».
 #   authorized → ambiguous. В карточной схеме средства только захолдированы.
+#     Британское authorised — отдельной строкой: сравнение точное, а не по
+#     основе слова.
+#   booked, posted, cleared → approved. Банковская лексика проводки: деньги
+#     списаны со счёта и отражены в выписке. У Adyen booked описан прямо:
+#     «the funds are deducted from your user's balance account».
+#   received, approval_pending → in_progress. Запрос принят и ждёт своей
+#     очереди; терминальным это состояние не бывает.
+#   revoked → rejected. Отзыв уже выданного разрешения: для платформы это
+#     то же, что отмена.
+#   chargeback → ambiguous, по той же причине, что refunded и reversed:
+#     операция была успешной, деньги вернулись позже.
 #   confirmed → ambiguous. Подтверждение приёма запроса или подтверждение
 #     зачисления — зависит от провайдера.
 #
@@ -69,6 +80,9 @@ canonical:
 synonyms:
   approved:
     - approved
+    - booked
+    - captured
+    - cleared
     - complete
     - credited
     - disbursed
@@ -78,18 +92,22 @@ synonyms:
     - fulfilled
     - ok
     - paid
+    - posted
     - settled
     - succeeded
     - success
     - successful
   in_progress:
     - accepted
+    - approval_pending
     - created
     - in_flight
     - in_progress
     - initiated
     - new
+    - pending_approval
     - queued
+    - received
     - scheduled
     - sent
     - started
@@ -105,6 +123,7 @@ synonyms:
     - refused
     - rejected
     - returned
+    - revoked
     - timed_out
     - timeout
     - void
@@ -114,7 +133,9 @@ synonyms:
 # как объяснение предупреждения, поэтому пишется для человека, который будет
 # принимать решение руками.
 ambiguous:
+  authorised: "британское написание authorized; у Adyen это «средства зарезервированы», у других — «списаны»"
   authorized: "средства захолдированы, но не переведены: между in_progress и approved"
+  chargeback: "успешная операция, деньги отозваны держателем карты"
   blocked: "блокировка комплаенсом бывает и временной, и окончательной"
   confirmed: "подтверждение приёма запроса или подтверждение зачисления — зависит от провайдера"
   hold: "то же, что on_hold, короткая форма"

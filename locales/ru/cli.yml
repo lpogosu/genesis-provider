@@ -12,6 +12,19 @@ cli:
   unsupported_lang: "--lang %{lang} не поддерживается (доступно: %{supported})"
   unsupported_locale: "--locale %{locale} не поддерживается (доступно: %{supported})"
   need_spec_or_all: "нужен --spec или --all"
+  batch_empty: "в каталоге нет спецификаций (.yaml, .yml, .json)"
+  batch_heading: "Пакетный прогон: %{dir}"
+  batch_failed: "не разобрана"
+  batch_errors: "Не разобрано:"
+  batch_total: "Итого: %{specs}, сгенерировано %{ok} из %{total}"
+  batch_column:
+    spec: "Спецификация"
+    provider: "Провайдер"
+    operations: "Операций"
+    roles: "С ролью"
+    coverage: "Покрытие"
+    warnings: "Замечаний"
+    artifacts: "Файлов"
   version: "integrate %{version}"
   desc:
     generate: "Сгенерировать артефакты интеграции из OpenAPI-спецификации (команда по умолчанию)"
@@ -38,7 +51,8 @@ cli:
     with_mock: "Сгенерировать из той же спецификации ещё и мок-сервер провайдера"
     fix: "Записать заготовку overlay со слотом TODO на каждую неоднозначность"
     strict: "Завершиться с кодом 1, если в отчёте есть предупреждения"
-    all: "Прогнать все спецификации из spec/fixtures/specs и напечатать сводку"
+    all: "Прогнать все спецификации из каталога --specs и напечатать сводку"
+    specs: "Каталог со спецификациями для --all (по умолчанию spec/fixtures/specs)"
     old: "Предыдущая версия спецификации"
     new: "Новая версия спецификации"
     explain: "Печатать обоснование под каждым выведенным значением"
@@ -104,6 +118,7 @@ plural:
   warning: { one: "предупреждение", few: "предупреждения", many: "предупреждений" }
   info: { one: "справка", few: "справки", many: "справок" }
   event: { one: "событие", few: "события", many: "событий" }
+  spec: { one: "спецификация", few: "спецификации", many: "спецификаций" }
 
 severity:
   error: "ОШИБКА"

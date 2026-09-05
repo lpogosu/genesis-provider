@@ -7,6 +7,7 @@ require_relative 'reporter/condition_lines'
 require_relative 'reporter/operation_lines'
 require_relative 'reporter/schema_lines'
 require_relative 'reporter/summary'
+require_relative 'reporter/batch_lines'
 
 module SpecGen
   # Последняя стадия конвейера: говорит человеку, что выведено и что нет.

@@ -59,6 +59,8 @@ module SpecGen
     method_option :fix, type: :boolean, default: false, desc: Texts.t('cli.option.fix')
     method_option :strict, type: :boolean, default: false, desc: Texts.t('cli.option.strict')
     method_option :all, type: :boolean, default: false, desc: Texts.t('cli.option.all')
+    method_option :specs, type: :string, default: Batch::DEFAULT_DIR,
+                          desc: Texts.t('cli.option.specs')
     def generate
       apply_locale!
       validate_generate_options!
@@ -67,7 +69,7 @@ module SpecGen
       # платёжного запроса, а ошибка при старте — самое дешёвое место сказать
       # об этом.
       rules = Rules.load
-      return not_implemented('generate --all') if options[:spec].nil?
+      return batch(rules) if options[:spec].nil?
 
       profile = generate_artifacts(rules)
       # --strict — код выхода 1 при предупреждениях ПОСЛЕ записи файлов, не
@@ -125,6 +127,15 @@ module SpecGen
       artifacts.each { |artifact| say artifact_line(artifact) }
       say warnings_line(profile)
       profile
+    end
+
+    # Пакетный прогон: одна команда по каталогу чужих спецификаций и сводная
+    # таблица. Спецификация, которую загрузчик отверг, занимает свою строку с
+    # сообщением и не мешает остальным.
+    def batch(rules)
+      rows = Batch.new(dir: options[:specs], rules: rules, options: options).call
+      Reporter::BatchLines.new(rows, dir: options[:specs]).print_to($stdout)
+      strict_exit(nil) if options[:strict] && rows.any? { |row| !row.ok? }
     end
 
     def artifact_line(artifact)

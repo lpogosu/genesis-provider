@@ -26,6 +26,13 @@ module SpecGen
       def view
         Report::View.new(profile: profile, rules: rules, naming: naming, artifacts: artifacts)
       end
+
+      # Покрытие уже посчитано для раздела 2 отчёта; пакетный прогон берёт
+      # его отсюда, а не считает заново.
+      def metrics
+        coverage = template_view.coverage
+        { coverage_percent: coverage.percent, covered: coverage.covered, total: coverage.total }
+      end
     end
   end
 end

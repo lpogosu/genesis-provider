@@ -12,6 +12,19 @@ cli:
   unsupported_lang: "--lang %{lang} is not supported (supported: %{supported})"
   unsupported_locale: "--locale %{locale} is not supported (supported: %{supported})"
   need_spec_or_all: "either --spec or --all is required"
+  batch_empty: "the directory holds no specifications (.yaml, .yml, .json)"
+  batch_heading: "Batch run: %{dir}"
+  batch_failed: "not parsed"
+  batch_errors: "Not parsed:"
+  batch_total: "Total: %{specs}, generated %{ok} of %{total}"
+  batch_column:
+    spec: "Specification"
+    provider: "Provider"
+    operations: "Operations"
+    roles: "With a role"
+    coverage: "Coverage"
+    warnings: "Notices"
+    artifacts: "Files"
   version: "integrate %{version}"
   desc:
     generate: "Generate integration artifacts from an OpenAPI spec (default command)"
@@ -38,7 +51,8 @@ cli:
     with_mock: "Also generate a mock provider server from the same spec"
     fix: "Write an overlay skeleton with a TODO slot for every ambiguity"
     strict: "Exit with status 1 when the report contains warnings"
-    all: "Run on every spec in spec/fixtures/specs and print a summary"
+    all: "Run on every spec in the --specs directory and print a summary"
+    specs: "Directory with the specifications for --all (default spec/fixtures/specs)"
     old: "Previous spec version"
     new: "New spec version"
     explain: "Print the evidence behind every derived value"
@@ -104,6 +118,7 @@ plural:
   warning: { one: "warning", other: "warnings" }
   info: { one: "info", other: "info" }
   event: { one: "event", other: "events" }
+  spec: { one: "specification", other: "specifications" }
 
 severity:
   error: "ERROR"

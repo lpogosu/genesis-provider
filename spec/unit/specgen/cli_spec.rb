@@ -138,9 +138,24 @@ RSpec.describe SpecGen::CLI do
       expect(result.stdout).to include('overlay').and include('demo_service.rb')
     end
 
-    it 'accepts --all without --spec' do
-      result = run_cli('generate', '--all')
-      expect(result.stderr).to include('ещё не реализована')
+    it 'runs every specification of a directory and prints one summary table' do
+      result = run_cli('generate', '--all', '--specs', File.dirname(novapay), '--output', @out)
+
+      expect(result.status).to eq(0)
+      expect(result.stdout).to include('Пакетный прогон', 'novapay.yaml', 'Покрытие')
+      expect(result.stdout).to match(/Итого: \d+ спецификаци\S*, сгенерировано \d+ из \d+/)
+    end
+
+    it 'reports a specification it could not read as a row, and keeps the run going' do
+      broken = File.join(@out, 'specs', 'broken.yaml')
+      FileUtils.mkdir_p(File.dirname(broken))
+      FileUtils.cp(novapay, File.join(File.dirname(broken), 'novapay.yaml'))
+      File.binwrite(broken, "openapi: 3.0.3\npaths: [not, a, map]\n")
+      result = run_cli('generate', '--all', '--specs', File.dirname(broken),
+                       '--output', File.join(@out, 'batch'))
+
+      expect(result.status).to eq(0)
+      expect(result.stdout).to include('не разобрана', 'Не разобрано:', 'broken.yaml')
     end
   end
 

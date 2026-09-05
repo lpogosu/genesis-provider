@@ -36,7 +36,7 @@ module SpecGen
         content = render
         path = writer.write(file_name, content)
         Artifact.new(kind: self.class::KIND, file: file_name, path: path,
-                     lines: content.count("\n"))
+                     lines: content.count("\n"), metrics: metrics)
       end
 
       # @return [String] отрендеренный текст артефакта
@@ -45,7 +45,7 @@ module SpecGen
       def render
         erb = ERB.new(File.read(template_path, encoding: 'UTF-8'), trim_mode: '-')
         erb.filename = template_path
-        erb.result(view.template_binding)
+        erb.result(template_view.template_binding)
       rescue SpecGen::Error
         raise
       rescue StandardError, SyntaxError => e
@@ -56,6 +56,19 @@ module SpecGen
       private
 
       attr_reader :profile, :rules, :options, :naming, :writer, :artifacts
+
+      # Представление строится один раз: метрики артефакта считает тот же
+      # объект, который отрендерил шаблон, иначе числа в отчёте и числа в
+      # сводке могли бы разойтись.
+      def template_view
+        @template_view ||= view
+      end
+
+      # @return [Hash, nil] числа артефакта для тех, кто читает результат
+      #   прогона снаружи; по умолчанию их нет
+      def metrics
+        nil
+      end
 
       # @return [String] имя файла артефакта внутри каталога вывода
       def file_name
