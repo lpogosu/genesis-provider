@@ -1,0 +1,5 @@
+# Похоже на спецификацию, а не на overlay: ключа `overlay` нет.
+openapi: 3.0.3
+info:
+  title: Not an overlay
+paths: {}

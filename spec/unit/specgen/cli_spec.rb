@@ -6,6 +6,7 @@ RSpec.describe SpecGen::CLI do
   include CliRunner
 
   let(:novapay) { File.join(SpecGen::ROOT, 'spec', 'fixtures', 'specs', 'novapay.yaml') }
+  let(:overlay) { File.join(SpecGen::ROOT, 'spec', 'fixtures', 'overlays', 'novapay.yaml') }
 
   describe '--help' do
     it 'lists every command and exits with 0' do
@@ -130,12 +131,21 @@ RSpec.describe SpecGen::CLI do
       expect(result.stderr).to include('--overlya')
     end
 
-    it 'accepts every documented flag and says that the overlay is not applied yet' do
+    it 'accepts every documented flag and applies the overlay it was handed' do
       result = run_cli('generate', '--spec', novapay, '--provider', 'demo', '--lang', 'ruby',
-                       '--overlay', novapay, '--output', @out,
+                       '--overlay', overlay, '--output', @out,
                        '--with-mock', '--fix', '--strict')
       expect(result.stderr).not_to include('использование:')
-      expect(result.stdout).to include('overlay').and include('demo_service.rb')
+      expect(result.stdout).to include('Overlay').and include('demo_service.rb')
+    end
+
+    it 'refuses a specification handed in place of an overlay instead of ignoring the flag' do
+      result = run_cli('generate', '--spec', novapay, '--provider', 'demo', '--output', @out,
+                       '--overlay', novapay)
+
+      expect(result.status).to eq(described_class::EXIT_ERROR)
+      expect(result.stderr).to include('это не документ OpenAPI Overlay')
+      expect(result.stdout).to be_empty
     end
 
     it 'runs every specification of a directory and prints one summary table' do

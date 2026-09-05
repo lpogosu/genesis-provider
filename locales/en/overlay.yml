@@ -1,0 +1,45 @@
+# locales/en/overlay.yml — OverlayApplier stage texts: what a human
+# overrode and why an overlay file was refused.
+#
+# One file per pipeline stage so that two stages never edit one file.
+# Placeholders are %{name}; the key set must match locales/ru/overlay.yml,
+# which spec/unit/specgen/texts_spec.rb checks.
+#
+# Format keywords (overlay, actions, target, update, remove) and JSON type
+# names (object, array, string) are not translated: the user looks for them
+# in their own file exactly as spelled here.
+
+overlay:
+  target_missing: "overlay target %{target} was not found in the specification:
+    the action was skipped, the other actions of %{file} were applied — check
+    the path or take a fragment from the Ambiguities section of the report"
+  conflict: "overlay replaced the value that stood at this path: was
+    %{before}, now %{after} (%{file})"
+  removed: "overlay removed the node that stood at this path: was %{before}
+    (%{file})"
+  error:
+    not_overlay: "this is not an OpenAPI Overlay document: no `overlay` field
+      (top-level keys: %{keys})"
+    version_unsupported: "overlay version %{version} is not supported; 1.0.x
+      is (OpenAPI Overlay Specification 1.0.0)"
+    actions_absent: "no `actions` section, nothing to apply"
+    actions_type: "the `actions` section must be an array, not %{type}"
+    actions_empty: "the `actions` section is empty, nothing to apply"
+    action_type: "an action must be an object, not %{type}"
+    target_absent: "the action has no required `target` field"
+    target_type: "the `target` field must be a string, not %{type}"
+    target_syntax: "target %{target} uses JSONPath syntax we do not parse;
+      supported are a dotted name, a quoted key in brackets and an array
+      index — the way our report prints them: $.components.schemas.X,
+      $.components.schemas.X.properties.Y, $.paths['/payouts'].post,
+      $.paths['/payouts'].post.responses['409'], $.servers[0]"
+    remove_type: "the `remove` field must be a boolean, not %{value}"
+    update_type: "the `update` field must be an object, not %{type}"
+    action_both: "the action carries both `update` and `remove`: the Overlay
+      1.0.0 specification ignores `update` in that case, and we do not perform
+      half of an action — keep one of them"
+    action_empty: "the action asks for nothing: either `update` or `remove: true`"
+    remove_root: "the document root cannot be removed: `remove` takes a node
+      out of what contains it"
+    update_target_type: "the target points at %{type}: an `update` object can
+      be merged into an object or appended to an array"

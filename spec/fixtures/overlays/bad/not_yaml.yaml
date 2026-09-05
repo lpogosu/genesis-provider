@@ -1,0 +1,5 @@
+overlay: 1.0.0
+actions:
+  - target: "$.info"
+   update:
+     title: broken indentation

@@ -72,6 +72,22 @@ module SpecGen
           stats.artifact_rows(@artifacts)
         end
 
+        # @return [Overlay::Result, nil] раздел 1: что сделал файл --overlay;
+        #   nil, если переопределений не подключали
+        def overlay
+          @ctx.profile.overlay
+        end
+
+        # Переопределённое человеком обязано быть видно рядом с тем, из чего
+        # собран сервис: иначе читатель отчёта считает написанное свойством
+        # спецификации.
+        # @return [Array<Array(String, String, String)>] раздел 1, действия overlay
+        def overlay_rows
+          overlay.applied.map do |action|
+            [code(action.target), t("overlay_kind_#{action.kind}"), action.description]
+          end
+        end
+
         # @return [Coverage] раздел 2
         def coverage
           @coverage ||= Coverage.new(@ctx, @parts)

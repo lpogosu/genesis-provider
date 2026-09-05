@@ -12,6 +12,8 @@ cli:
   unsupported_lang: "--lang %{lang} не поддерживается (доступно: %{supported})"
   unsupported_locale: "--locale %{locale} не поддерживается (доступно: %{supported})"
   need_spec_or_all: "нужен --spec или --all"
+  overlay_with_all: "--overlay применяется к одной спецификации: укажите --spec"
+  overlay_applied: "Overlay %{file}: применено %{actions}; переопределений %{conflicts}, целей не найдено %{misses}"
   batch_empty: "в каталоге нет спецификаций (.yaml, .yml, .json)"
   batch_heading: "Пакетный прогон: %{dir}"
   batch_failed: "не разобрана"
@@ -118,6 +120,7 @@ plural:
   warning: { one: "предупреждение", few: "предупреждения", many: "предупреждений" }
   info: { one: "справка", few: "справки", many: "справок" }
   event: { one: "событие", few: "события", many: "событий" }
+  action: { one: "действие", few: "действия", many: "действий" }
   spec: { one: "спецификация", few: "спецификации", many: "спецификаций" }
 
 severity:

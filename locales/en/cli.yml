@@ -11,6 +11,8 @@ cli:
   not_implemented: "`%{command}` is not implemented yet (skeleton build %{version})"
   unsupported_lang: "--lang %{lang} is not supported (supported: %{supported})"
   unsupported_locale: "--locale %{locale} is not supported (supported: %{supported})"
+  overlay_with_all: "--overlay applies to a single specification: pass --spec"
+  overlay_applied: "Overlay %{file}: applied %{actions}; overrides %{conflicts}, targets not found %{misses}"
   need_spec_or_all: "either --spec or --all is required"
   batch_empty: "the directory holds no specifications (.yaml, .yml, .json)"
   batch_heading: "Batch run: %{dir}"
@@ -118,6 +120,7 @@ plural:
   warning: { one: "warning", other: "warnings" }
   info: { one: "info", other: "info" }
   event: { one: "event", other: "events" }
+  action: { one: "action", other: "actions" }
   spec: { one: "specification", other: "specifications" }
 
 severity:

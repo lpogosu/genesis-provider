@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'tmpdir'
+
 RSpec.describe SpecGen::IR::ProviderProfile do
   include IRBuilders
 
@@ -9,7 +11,8 @@ RSpec.describe SpecGen::IR::ProviderProfile do
     it 'starts with every collection empty and every optional part absent' do
       expect(profile.to_h).to eq(
         info: nil, servers: [], auth: nil, operations: [], schemas: {}, status_map: [],
-        error_map: [], webhooks: [], units: nil, idempotency: nil, conditions: [], warnings: []
+        error_map: [], webhooks: [], units: nil, idempotency: nil, conditions: [], warnings: [],
+        overlay: nil
       )
     end
 
@@ -108,6 +111,26 @@ RSpec.describe SpecGen::IR::ProviderProfile do
       expect(hash[:schemas].keys).to eq(%w[Alpha Zebra])
       expect(hash[:error_map].map { |rule| rule[:http_status] }).to eq([402, 500])
       expect(hash[:warnings].map { |warning| warning[:message] }).to eq(%w[first second])
+    end
+
+    # Происхождение прогона: чем документ отличается от того, что лежит на
+    # диске у провайдера. Дампится простыми данными, иначе профиль нельзя
+    # сериализовать для golden-тестов.
+    it 'carries the overlay log as plain data and keeps it out of the way when there is none' do
+      profile = described_class.new
+      expect(profile.to_h[:overlay]).to be_nil
+
+      Dir.mktmpdir('specgen-profile') do |dir|
+        path = File.join(dir, 'x.overlay.yaml')
+        File.binwrite(path, "overlay: 1.0.0\nactions:\n  - target: \"$.info\"\n    update:\n      x: 1\n")
+        SpecGen::Overlay.apply({ 'info' => { 'title' => 'a' } }, file: path).warn_into(profile)
+      end
+
+      dumped = profile.to_h[:overlay]
+      expect(dumped[:applied]).to eq([{ target: '$.info', kind: :update, description: nil }])
+      expect(dumped[:conflicts]).to be_empty
+      expect(dumped[:misses]).to be_empty
+      expect(plain?(profile.to_h)).to be(true)
     end
 
     it 'sorts the collections that can be filled from several places, whatever the order' do

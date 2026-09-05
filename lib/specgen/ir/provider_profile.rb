@@ -22,9 +22,14 @@ module SpecGen
     #   conditions   [Condition] — другие условия взаимодействия, в порядке
     #                спецификации
     #   warnings     [Warning]
+    #   overlay      Overlay::Result или nil — что сделал с документом файл
+    #                --overlay: применённые действия, переопределения и
+    #                ненайденные цели. Происхождение прогона, а не свойство
+    #                провайдера, но без него отчёт не может сказать, чем
+    #                значение отличается от написанного в спецификации
     ProviderProfile = Struct.new(:info, :servers, :auth, :operations, :schemas, :status_map,
                                  :error_map, :webhooks, :units, :idempotency, :conditions,
-                                 :warnings, keyword_init: true)
+                                 :warnings, :overlay, keyword_init: true)
 
     # Значения по умолчанию, сбор предупреждений и выборки ProviderProfile.
     class ProviderProfile
@@ -42,10 +47,12 @@ module SpecGen
       # @param idempotency [Idempotency, nil]
       # @param conditions [Array<Condition>]
       # @param warnings [Array<Warning>]
+      # @param overlay [#to_h, nil] лог стадии overlay; IR не знает его класса
+      #   и требует от него только простые данные в `to_h`
       # @raise [ArgumentError]
       def initialize(info: nil, servers: [], auth: nil, operations: [], schemas: {}, status_map: [],
                      error_map: [], webhooks: [], units: nil, idempotency: nil, conditions: [],
-                     warnings: [])
+                     warnings: [], overlay: nil)
         Node.assert_optional!(info, Info, 'info')
         Node.assert_optional!(auth, Auth, 'auth')
         Node.assert_optional!(units, Units, 'units')
@@ -130,7 +137,8 @@ module SpecGen
         super.merge(
           schemas: by_name.to_h { |name| [name, Node.dump(schemas[name])] },
           error_map: sorted_error_map.map(&:to_h),
-          warnings: sorted_warnings.map(&:to_h)
+          warnings: sorted_warnings.map(&:to_h),
+          overlay: overlay&.to_h
         )
       end
     end

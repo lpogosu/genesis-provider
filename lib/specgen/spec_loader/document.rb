@@ -18,6 +18,9 @@ module SpecGen
       attr_reader :data
       # @return [Array<String>] другие файлы, подтянутые через `$ref`
       attr_reader :external_files
+      # @return [Overlay::Result, nil] что сделал с документом файл overlay;
+      #   nil, если флаг --overlay не указывали
+      attr_reader :overlay
 
       # @param file [String]
       # @param version [String]
@@ -25,13 +28,15 @@ module SpecGen
       # @param raw [Hash]
       # @param data [Hash]
       # @param external_files [Array<String>]
-      def initialize(file:, version:, family:, raw:, data:, external_files: [])
+      # @param overlay [Overlay::Result, nil]
+      def initialize(file:, version:, family:, raw:, data:, external_files: [], overlay: nil)
         @file = file
         @version = version
         @family = family
         @raw = raw
         @data = data
         @external_files = external_files
+        @overlay = overlay
       end
 
       # @return [Hash] разрешённая секция `paths`

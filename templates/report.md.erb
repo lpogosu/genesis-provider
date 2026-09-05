@@ -21,6 +21,12 @@
 Сгенерированные артефакты:
 
 <%= table(['Файл', 'Что это', 'Строк'], artifact_rows).join("\n") %>
+<%- if overlay -%>
+
+<%= t('overlay_applied', file: overlay.file, title: overlay.title) %>
+
+<%= table([t('overlay_target'), t('overlay_action'), t('overlay_why')], overlay_rows).join("\n") %>
+<%- end -%>
 
 ## 2. Покрытие спецификации
 

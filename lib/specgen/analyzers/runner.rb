@@ -22,6 +22,11 @@ module SpecGen
       # @return [IR::ProviderProfile] заполненный всеми анализаторами из ORDER
       def self.call(document:, rules:, options: {})
         profile = IR::ProviderProfile.new
+        # Предупреждения стадии overlay кладёт она сама, а не анализатор:
+        # только она знает, что стояло в спецификации до слияния. Для
+        # анализаторов документ единый, и про overlay они не знают ничего —
+        # ровно поэтому его и применяют до них.
+        document.overlay&.warn_into(profile)
         ORDER.each do |analyzer|
           analyzer.call(document: document, profile: profile, rules: rules, options: options)
         end

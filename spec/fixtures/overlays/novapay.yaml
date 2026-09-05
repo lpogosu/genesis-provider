@@ -1,0 +1,21 @@
+# Пример переопределений для spec/fixtures/specs/novapay.yaml.
+#
+# Спецификация NovaPay говорит об условной обязательности только прозой:
+# «Обязательно при type=sbp» в описании поля. Инструмент читает эту прозу
+# эвристикой с уверенностью 0.50 и просит подтвердить решение. Действие ниже
+# говорит то же самое формально, ключевым словом JSON Schema
+# `dependentRequired`, и после него условие читается как факт (1.00), а два
+# предупреждения `conditional_required_hint` из раздела 3 отчёта исчезают.
+#
+#   ./integrate --spec spec/fixtures/specs/novapay.yaml \
+#     --overlay spec/fixtures/overlays/novapay.yaml
+overlay: 1.0.0
+info:
+  title: NovaPay disambiguation
+  version: 1.0.0
+actions:
+  - target: "$.components.schemas.Recipient"
+    description: Условная обязательность реквизитов, заявленная в описании полей
+    update:
+      dependentRequired:
+        type: [bank_code, card_number]

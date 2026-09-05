@@ -1,0 +1,8 @@
+overlay: 1.0.0
+info:
+  title: JSONPath beyond the supported subset
+  version: 1.0.0
+actions:
+  - target: "$.paths.*.get.parameters[?@.name=='sandbox']"
+    update:
+      deprecated: true

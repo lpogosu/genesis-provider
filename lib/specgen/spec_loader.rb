@@ -19,10 +19,13 @@ module SpecGen
   # не видит ни стектрейса, ни исключения из Psych или JSON.
   module SpecLoader
     # @param path [String] путь к файлу спецификации
+    # @param overlay [String, nil] путь к файлу OpenAPI Overlay 1.0.0;
+    #   применяется до разрешения `$ref`, поэтому дальше по конвейеру идёт
+    #   один документ, а не спецификация и поправки к ней
     # @return [Document]
-    # @raise [SpecLoadError, SpecParseError]
-    def self.load(path)
-      Loader.new(path).load
+    # @raise [SpecLoadError, SpecParseError, OverlayError]
+    def self.load(path, overlay: nil)
+      Loader.new(path, overlay: overlay).load
     end
   end
 end

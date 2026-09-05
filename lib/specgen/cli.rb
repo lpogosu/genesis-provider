@@ -82,13 +82,14 @@ module SpecGen
     method_option :spec, type: :string, aliases: '-s', required: true,
                          desc: Texts.t('cli.option.spec')
     method_option :provider, type: :string, aliases: '-p', desc: Texts.t('cli.option.provider')
+    method_option :overlay, type: :string, desc: Texts.t('cli.option.overlay')
     method_option :explain, type: :boolean, default: false, desc: Texts.t('cli.option.explain')
     def analyze
       apply_locale!
       raise SpecLoadError.new(Texts.t('cli.spec_not_found'), file: options[:spec]) if missing_spec?
 
       rules = Rules.load
-      document = SpecLoader.load(options[:spec])
+      document = load_spec
       profile = Analyzers::Runner.call(document: document, rules: rules, options: options)
       Reporter::Summary.new(profile, document, explain: options[:explain]).print_to($stdout)
     end
@@ -120,8 +121,7 @@ module SpecGen
 
     # @return [IR::ProviderProfile] профиль, по которому записаны артефакты
     def generate_artifacts(rules)
-      say Texts.t('generators.overlay_ignored', file: options[:overlay]) if options[:overlay]
-      document = SpecLoader.load(options[:spec])
+      document = load_spec
       profile = Analyzers::Runner.call(document: document, rules: rules, options: options)
       artifacts = Generators.call(profile: profile, rules: rules, options: options)
       artifacts.each { |artifact| say artifact_line(artifact) }
@@ -136,6 +136,23 @@ module SpecGen
       rows = Batch.new(dir: options[:specs], rules: rules, options: options).call
       Reporter::BatchLines.new(rows, dir: options[:specs]).print_to($stdout)
       strict_exit(nil) if options[:strict] && rows.any? { |row| !row.ok? }
+    end
+
+    # Загрузка спецификации вместе с переопределениями. Строка о том, что
+    # сделал overlay, печатается сразу: применённое человеком обязано быть
+    # видно и в консоли, а не только в отчёте.
+    # @return [SpecLoader::Document]
+    def load_spec
+      document = SpecLoader.load(options[:spec], overlay: options[:overlay])
+      say overlay_line(document.overlay) if document.overlay
+      document
+    end
+
+    def overlay_line(result)
+      Texts.t('cli.overlay_applied', file: result.file,
+                                     actions: Texts.plural(result.applied.size, 'action'),
+                                     conflicts: result.conflicts.size,
+                                     misses: result.misses.size)
     end
 
     def artifact_line(artifact)
@@ -161,7 +178,16 @@ module SpecGen
       raise Thor::Error, Texts.t('cli.need_spec_or_all') if no_target
       raise SpecLoadError.new(Texts.t('cli.spec_not_found'), file: options[:spec]) if missing_spec?
 
+      check_overlay!
       check_lang!
+    end
+
+    # Overlay пишется под одну спецификацию: его цели адресуют её схемы,
+    # поэтому с пакетным прогоном он несовместим.
+    def check_overlay!
+      return unless options[:overlay] && options[:spec].nil?
+
+      raise Thor::Error, Texts.t('cli.overlay_with_all')
     end
 
     def check_lang!

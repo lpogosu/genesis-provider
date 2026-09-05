@@ -1,0 +1,45 @@
+# locales/ru/overlay.yml — тексты стадии OverlayApplier: предупреждения о
+# том, что переопределил человек, и отказы по вине самого файла overlay.
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с
+# locales/en/overlay.yml, это проверяет spec/unit/specgen/texts_spec.rb.
+#
+# Ключевые слова формата (overlay, actions, target, update, remove) и
+# названия типов JSON (object, array, string) не переводятся: пользователь
+# ищет их в своём файле ровно в этом написании.
+
+overlay:
+  target_missing: "цель overlay %{target} не найдена в спецификации: действие
+    пропущено, остальные действия %{file} применены — проверьте путь или
+    возьмите фрагмент из раздела «Неоднозначности» отчёта"
+  conflict: "overlay заменил значение, стоявшее по этому пути: было
+    %{before}, стало %{after} (%{file})"
+  removed: "overlay удалил узел, стоявший по этому пути: было %{before}
+    (%{file})"
+  error:
+    not_overlay: "это не документ OpenAPI Overlay: нет поля `overlay` (ключи
+      верхнего уровня: %{keys})"
+    version_unsupported: "версия overlay %{version} не поддерживается;
+      поддерживается 1.0.x (OpenAPI Overlay Specification 1.0.0)"
+    actions_absent: "нет секции `actions`, применять нечего"
+    actions_type: "секция `actions` должна иметь тип array, а не %{type}"
+    actions_empty: "секция `actions` пуста, применять нечего"
+    action_type: "действие должно иметь тип object, а не %{type}"
+    target_absent: "у действия нет обязательного поля `target`"
+    target_type: "поле `target` должно иметь тип string, а не %{type}"
+    target_syntax: "цель %{target} написана синтаксисом JSONPath, который мы
+      не разбираем; поддерживаются имя через точку, ключ в скобках в кавычках
+      и индекс массива — как их печатает наш отчёт: $.components.schemas.X,
+      $.components.schemas.X.properties.Y, $.paths['/payouts'].post,
+      $.paths['/payouts'].post.responses['409'], $.servers[0]"
+    remove_type: "поле `remove` должно иметь тип boolean, а не %{value}"
+    update_type: "поле `update` должно иметь тип object, а не %{type}"
+    action_both: "у действия сразу `update` и `remove`: спецификация Overlay
+      1.0.0 в этом случае игнорирует `update`, а мы не выполняем половину
+      действия — оставьте что-то одно"
+    action_empty: "действие не просит ничего: нужен `update` либо `remove: true`"
+    remove_root: "корень документа нельзя удалить: `remove` убирает узел из
+      того, что его содержит"
+    update_target_type: "цель указывает на %{type}: слить объект `update`
+      можно с object, добавить — в array"

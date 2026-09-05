@@ -1,0 +1,10 @@
+overlay: 1.0.0
+info:
+  title: Both update and remove
+  version: 1.0.0
+actions:
+  - target: "$.components.schemas.Recipient"
+    remove: true
+    update:
+      dependentRequired:
+        type: [bank_code]

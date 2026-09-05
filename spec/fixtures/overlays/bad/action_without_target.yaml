@@ -1,0 +1,7 @@
+overlay: 1.0.0
+info:
+  title: Action without a target
+  version: 1.0.0
+actions:
+  - update:
+      description: где применять — не сказано
