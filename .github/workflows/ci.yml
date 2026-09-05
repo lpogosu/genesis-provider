@@ -28,3 +28,37 @@ jobs:
 
       - name: CLI smoke test
         run: ./integrate --help
+
+      # Пакетный прогон по всем спецификациям каталога: своим и чужим
+      # настоящим. Ни одна не имеет права остановить генерацию — это и есть
+      # проверка универсальности, а не отдельный ручной шаг перед защитой.
+      - name: Batch run over every specification
+        run: ./integrate --all --output tmp/ci
+
+      # Definition of done требует, чтобы сгенерированный код проходил ruby -c
+      # и RuboCop. На выданной спеке это выполнялось случайно, поэтому
+      # проверяем на всех сразу.
+      - name: Generated services are valid Ruby
+        run: for f in tmp/ci/*/*_service.rb; do ruby -c "$f"; done
+
+      - name: Generated services pass RuboCop
+        run: bundle exec rubocop --config config/rubocop_generated.yml tmp/ci/*/*_service.rb
+
+      - name: Generated fixtures are valid JSON
+        run: for f in tmp/ci/*/fixtures.json; do ruby -rjson -e 'JSON.parse(File.read(ARGV[0]))' "$f"; done
+
+      # Один и тот же вход обязан давать байт-в-байт один выход: на этом
+      # держатся golden-тесты. Прогон в другой каталог и diff доказывают это
+      # на всех спецификациях, а не только на выданной.
+      - name: Output is deterministic
+        run: |
+          ./integrate --all --output tmp/ci-again
+          diff -r tmp/ci tmp/ci-again
+
+      # Ядро не знает ни одного провайдера: всё провайдер-специфичное живёт в
+      # rules/. Инвариант из CLAUDE.md, проверяется машиной, а не глазами.
+      - name: Core stays provider-neutral
+        run: |
+          if grep -rinE 'novapay|\bsbp\b' lib/; then
+            echo "В lib/ появилась провайдер-специфичная строка"; exit 1
+          fi
