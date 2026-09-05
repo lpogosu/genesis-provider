@@ -99,12 +99,14 @@ roles:
     verbs: [create, disburse, execute, initiate, make, new, open, pay, register, send, start,
             submit, withdraw]
     nouns: [cashout, cashouts, disbursement, disbursements, payment, payments, payout,
-            payouts, transfer, transfers, withdrawal, withdrawals]
+            payouts, transaction, transactions, transfer, transfers, withdrawal, withdrawals]
     resources: [cashout, cashouts, disbursement, disbursements, payment, payments, payout,
-                payouts, transfer, transfers, withdrawal, withdrawals]
-    tail: [cashouts, disbursements, payments, payouts, transfers, withdrawals]
+                payouts, transaction, transactions, transfer, transfers, withdrawal,
+                withdrawals]
+    tail: [cashouts, disbursements, payments, payouts, transactions, transfers, withdrawals]
     http_methods: [post]
-    tags: [cashouts, disbursements, payment, payments, payout, payouts, transfer, transfers]
+    tags: [cashouts, disbursements, payment, payments, payout, payouts, transaction,
+           transactions, transfer, transfers]
     request_body: true
 
   create_deposit:

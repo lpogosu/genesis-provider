@@ -1,0 +1,896 @@
+# depositbank.yaml — альтернативная тестовая спецификация: ПРИЁМ депозитов.
+#
+# Зачем этот файл. Балл за универсальность нельзя получить, показав работу
+# на одной выданной спеке. Здесь у провайдера другое всё: направление денег,
+# версия OpenAPI, схема авторизации, единицы суммы, валюта, названия статусов,
+# структура плательщика, стиль путей и operationId. Ни одного имени поля из
+# novapay.yaml тут нет намеренно.
+#
+# Какие ветки кода задействует (то, чего у novapay.yaml нет):
+#
+#   1. OpenAPI 3.1.0 против 3.0.3. VersionDetector даёт семейство :oas31, и
+#      вместе с ним включаются ключевые слова JSON Schema 2020-12, которые
+#      3.0 запрещает: dependentRequired, if/then/else, const, объединение
+#      типов `type: [string, "null"]`, `examples` массивом на уровне схемы.
+#   2. Настоящая условная обязательность против прозы. У NovaPay «обязателен
+#      для type=sbp» написано словами и вычитывается шаблоном из
+#      rules/conditions.yml с уверенностью 0.5 и предупреждением. Здесь то же
+#      самое объявлено формально: if/then/else на settlement_type и
+#      dependentRequired на intermediary_swift. Ожидается origin :if_then и
+#      :dependent_required, уровень доверия 1 (структурный), без догадок и
+#      без предупреждения.
+#   3. OAuth2 client credentials против apiKey в заголовке. Запись
+#      oauth2_client_credentials из rules/auth.yml: tokenUrl обязателен,
+#      credential_keys — client_id и client_secret, в auth_headers идёт
+#      Bearer от access_token(...), а не готовый ключ из credentials.
+#      Плюс scopes на операциях (deposits:write против deposits:read).
+#   4. Депозиты вместо выплат: роль операции create_deposit, а не
+#      create_payout. Деньги идут в обратную сторону, лексика пути и
+#      operationId другая (collect/deposits против payouts).
+#   5. Мажорные единицы против минорных. deposit_amount объявлен
+#      `type: number` с дробным example — по порядку вывода из CLAUDE.md
+#      это major units и множитель 1. У NovaPay `type: integer` → minor и
+#      множитель 100.
+#   6. JPY с экспонентой 0 против RUB с 2. ISO 4217: у иены минорной единицы
+#      нет. Проверяет, что множитель берётся из таблицы rules/currencies.yml
+#      по коду валюты, а не из слова в description.
+#   7. Вебхуков нет вообще: ни операции с `security: []`, ни секции
+#      `webhooks` (3.1 её разрешает). Ожидается справка webhook_missing и
+#      честное «process_callback реализовать не из чего», а не пустой метод
+#      без объяснения. Статус узнаётся только опросом.
+#   8. Повтор по ключу идемпотентности отвечает 200 с тем же ресурсом, а не
+#      409: ветка :dedup не должна возникнуть. Заголовок называется
+#      Idempotence-Key (алиас из rules/idempotency.yml, написание без «y»)
+#      и объявлен required: true — у NovaPay он required: false.
+#   9. У createDeposit намеренно не объявлены 429 и 500, хотя у соседних
+#      операций они есть: генератор обязан достроить общее правило и сказать
+#      об этом справкой undeclared_status_code.
+#  10. GET /reference/banks — операция, роли которой нет ни одной: проверка,
+#      что инструмент не падает и честно помечает её как не отображённую на
+#      контракт. Рядом POST /deposits/{deposit_id}/confirm, у которого роль
+#      confirm в rules/operations.yml есть, но на контракт BaseService она
+#      тоже не отображается.
+#  11. Имена и значения, которых в справочниках нет намеренно:
+#      settlement_type, zengin_bank_code, account_holder_kana,
+#      client_reference, posted_at, статус under_review. Ожидается
+#      предупреждение с лучшим кандидатом, а не молчаливая подстановка.
+#  12. Код ошибки value_date_invalid встречается только в примере и
+#      отсутствует в enum (ожидается error_code_undeclared), а часть кодов
+#      enum не встречается ни в одном примере (ожидается error_code_unused).
+#
+# Спецификация ВАЛИДНА: намеренные нарушения собраны в broken.yaml, здесь их
+# нет. Проза английская — это чужой зарубежный провайдер, а не наш перевод.
+openapi: 3.1.0
+
+info:
+  title: DepositBank Collection API
+  summary: Incoming JPY collections to client settlement accounts.
+  description: |
+    DepositBank Collection API accepts incoming deposits (collections) credited
+    to a client settlement account held with DepositBank, Tokyo.
+
+    Amounts are expressed in major units. JPY has no minor unit (ISO 4217
+    exponent 0), therefore every amount is a whole number of yen and fractional
+    values are rejected by validation.
+
+    DepositBank does not send webhook notifications of any kind. There is no
+    callback URL to register, no notification payload and no signature header
+    to verify. Clients are required to poll GET /deposits/{deposit_id} to learn
+    the current status of a deposit.
+
+    A deposit is created in two phases: POST /deposits reserves the deposit and
+    validates the remitter, POST /deposits/{deposit_id}/confirm posts it to the
+    account. A deposit that is never confirmed expires after 24 hours.
+  version: 1.2.0
+  contact:
+    name: DepositBank API Support
+    email: api-support@depositbank.example
+    url: https://developers.depositbank.example
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://api-sandbox.depositbank.example/collect/v1
+    description: Sandbox. Deposits are simulated, no funds move.
+  - url: https://api.depositbank.example/collect/v1
+    description: Production.
+
+tags:
+  - name: Deposits
+    description: Creating, confirming and polling incoming deposits.
+  - name: Accounts
+    description: Settlement account balances.
+  - name: Reference
+    description: Static reference data of the Zengin clearing system.
+
+paths:
+  /deposits:
+    post:
+      tags: [Deposits]
+      summary: Create a deposit
+      description: |
+        Reserves an incoming deposit and validates the remitter details.
+        The deposit is not posted to the account until it is confirmed.
+
+        Repeating the request with the same Idempotence-Key returns 200 and the
+        deposit created by the original request. DepositBank never answers 409
+        for a repeated key: the repeated call is indistinguishable from a read
+        of the original resource.
+      operationId: createDeposit
+      security:
+        - oauth2ClientCredentials: [deposits:write]
+      parameters:
+        - $ref: '#/components/parameters/IdempotenceKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDepositRequest'
+            examples:
+              domestic_remitter:
+                summary: Domestic remitter routed through the Zengin system
+                value:
+                  deposit_amount: 125000.0
+                  currency_code: JPY
+                  client_reference: "ORD-2026-000417"
+                  purpose_code: trade_settlement
+                  value_date: "2026-09-14"
+                  remitter:
+                    settlement_type: domestic
+                    zengin_bank_code: "0005"
+                    branch_code: "123"
+                    account_number: "1234567"
+                    account_holder_kana: "ヤマダ タロウ"
+              international_remitter:
+                summary: Cross-border remitter identified by SWIFT BIC
+                value:
+                  deposit_amount: 980000.0
+                  currency_code: JPY
+                  client_reference: "INV-77120"
+                  purpose_code: services
+                  remitter:
+                    settlement_type: international
+                    swift_bic: "MHCBJPJT"
+                    intermediary_swift: "CHASUS33"
+                    account_holder_kana: "スズキ ハナコ"
+      responses:
+        '200':
+          description: |
+            The Idempotence-Key was seen before: this is the deposit created by
+            the original request, returned unchanged.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResource'
+              example:
+                deposit_id: "dep_01J8ZK4Q7M"
+                client_reference: "ORD-2026-000417"
+                deposit_status: initiated
+                deposit_amount: 125000.0
+                currency_code: JPY
+                created_at: "2026-09-14T03:58:11Z"
+                posted_at: null
+                bank_reference: null
+        '201':
+          description: Deposit reserved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResource'
+              example:
+                deposit_id: "dep_01J8ZK4Q7M"
+                client_reference: "ORD-2026-000417"
+                deposit_status: initiated
+                deposit_amount: 125000.0
+                currency_code: JPY
+                remitter:
+                  settlement_type: domestic
+                  zengin_bank_code: "0005"
+                  branch_code: "123"
+                  account_number: "1234567"
+                  account_holder_kana: "ヤマダ タロウ"
+                created_at: "2026-09-14T03:58:11Z"
+                posted_at: null
+                bank_reference: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: The request is well formed but cannot be accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+              example:
+                error_code: value_date_invalid
+                error_message: "value_date falls on a bank holiday"
+                error_details:
+                  - field: value_date
+                    issue: "2026-09-21 is Respect for the Aged Day"
+                trace_id: "0f6c2b1e-6c3a-4a51-9a1c-6f5f0f2a9c77"
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+    get:
+      tags: [Deposits]
+      summary: List deposits
+      description: |
+        Returns deposits in reverse chronological order. Use the cursor from
+        next_cursor to walk the pages; the cursor expires after one hour.
+      operationId: listDeposits
+      security:
+        - oauth2ClientCredentials: [deposits:read]
+      parameters:
+        - name: created_from
+          in: query
+          required: false
+          description: Earliest creation date, inclusive.
+          schema:
+            type: string
+            format: date
+          example: "2026-09-01"
+        - name: created_to
+          in: query
+          required: false
+          description: Latest creation date, inclusive.
+          schema:
+            type: string
+            format: date
+          example: "2026-09-14"
+        - name: status
+          in: query
+          required: false
+          description: Return only deposits in this status.
+          schema:
+            type: string
+            enum: [initiated, under_review, posted, returned, rejected]
+          example: posted
+        - name: limit
+          in: query
+          required: false
+          description: Page size.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          example: 50
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor returned as next_cursor by the previous page.
+          schema:
+            type: string
+          example: "eyJvIjoxMDB9"
+      responses:
+        '200':
+          description: One page of deposits.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositPage'
+              example:
+                items:
+                  - deposit_id: "dep_01J8ZK4Q7M"
+                    client_reference: "ORD-2026-000417"
+                    deposit_status: posted
+                    deposit_amount: 125000.0
+                    currency_code: JPY
+                    created_at: "2026-09-14T03:58:11Z"
+                    posted_at: "2026-09-14T04:12:30Z"
+                    bank_reference: "ZG20260914001"
+                  - deposit_id: "dep_01J8ZK51TT"
+                    client_reference: "INV-77120"
+                    deposit_status: returned
+                    deposit_amount: 980000.0
+                    currency_code: JPY
+                    rejection:
+                      rejection_code: name_mismatch
+                      rejection_reason: "Remitter name does not match the account holder record"
+                      rejected_at: "2026-09-14T05:02:44Z"
+                    created_at: "2026-09-14T04:40:02Z"
+                    posted_at: null
+                    bank_reference: null
+                next_cursor: "eyJvIjoyMDB9"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /deposits/{deposit_id}:
+    get:
+      tags: [Deposits]
+      summary: Read the status of a deposit
+      description: |
+        Returns the current state of a deposit.
+
+        DepositBank sends no notifications: polling this endpoint is the only
+        way to learn that a deposit has been posted or returned. Poll no more
+        often than once every 30 seconds per deposit; deposits that stay in
+        under_review are being checked manually by the compliance desk and can
+        remain in that status for up to one business day.
+      operationId: getDepositStatus
+      security:
+        - oauth2ClientCredentials: [deposits:read]
+      parameters:
+        - $ref: '#/components/parameters/DepositId'
+      responses:
+        '200':
+          description: Current state of the deposit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResource'
+              examples:
+                posted:
+                  summary: Funds credited to the settlement account
+                  value:
+                    deposit_id: "dep_01J8ZK4Q7M"
+                    client_reference: "ORD-2026-000417"
+                    deposit_status: posted
+                    deposit_amount: 125000.0
+                    currency_code: JPY
+                    created_at: "2026-09-14T03:58:11Z"
+                    posted_at: "2026-09-14T04:12:30Z"
+                    bank_reference: "ZG20260914001"
+                under_review:
+                  summary: Held by the compliance desk, no decision yet
+                  value:
+                    deposit_id: "dep_01J8ZK4Q7M"
+                    client_reference: "ORD-2026-000417"
+                    deposit_status: under_review
+                    deposit_amount: 125000.0
+                    currency_code: JPY
+                    created_at: "2026-09-14T03:58:11Z"
+                    posted_at: null
+                    bank_reference: null
+                returned:
+                  summary: Funds sent back to the remitter
+                  value:
+                    deposit_id: "dep_01J8ZK51TT"
+                    client_reference: "INV-77120"
+                    deposit_status: returned
+                    deposit_amount: 980000.0
+                    currency_code: JPY
+                    rejection:
+                      rejection_code: account_closed
+                      rejection_reason: "The remitter account has been closed"
+                      rejected_at: "2026-09-14T05:02:44Z"
+                    created_at: "2026-09-14T04:40:02Z"
+                    posted_at: null
+                    bank_reference: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /deposits/{deposit_id}/confirm:
+    post:
+      tags: [Deposits]
+      summary: Confirm a reserved deposit
+      description: |
+        Posts a reserved deposit to the settlement account. This is the second
+        phase of the two-phase flow: POST /deposits only reserves the deposit.
+
+        Confirmation is accepted only in status initiated or under_review; any
+        other status is answered with 409 and the deposit is left untouched.
+      operationId: confirmDeposit
+      security:
+        - oauth2ClientCredentials: [deposits:write]
+      parameters:
+        - $ref: '#/components/parameters/DepositId'
+      responses:
+        '200':
+          description: Deposit posted to the account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResource'
+              example:
+                deposit_id: "dep_01J8ZK4Q7M"
+                client_reference: "ORD-2026-000417"
+                deposit_status: posted
+                deposit_amount: 125000.0
+                currency_code: JPY
+                created_at: "2026-09-14T03:58:11Z"
+                posted_at: "2026-09-14T04:12:30Z"
+                bank_reference: "ZG20260914001"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The deposit is in a status that cannot be confirmed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+              example:
+                error_code: deposit_not_confirmable
+                error_message: "Deposit dep_01J8ZK51TT is in status returned"
+                trace_id: "3a1f9e77-2a0b-4a6d-8b3e-1c9a55b2d401"
+
+  /accounts/{account_id}/balance:
+    get:
+      tags: [Accounts]
+      summary: Read the balance of a settlement account
+      operationId: getAccountBalance
+      security:
+        - oauth2ClientCredentials: [deposits:read]
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          description: Settlement account identifier issued by DepositBank.
+          schema:
+            type: string
+          example: "acc_88120033"
+      responses:
+        '200':
+          description: Balance of the account at the moment of the call.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountBalance'
+              example:
+                account_id: "acc_88120033"
+                available_balance: 4820000.0
+                reserved_balance: 125000.0
+                currency_code: JPY
+                as_of: "2026-09-14T06:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /reference/banks:
+    get:
+      tags: [Reference]
+      summary: Search the Zengin bank directory
+      description: |
+        Static reference data. The directory is refreshed on the first business
+        day of every month and may be cached by the client for that long.
+      operationId: listBankCodes
+      security:
+        - oauth2ClientCredentials: [deposits:read]
+      parameters:
+        - name: query
+          in: query
+          required: false
+          description: Substring of the bank name in kanji, kana or latin script.
+          schema:
+            type: string
+            maxLength: 40
+          example: "みずほ"
+      responses:
+        '200':
+          description: Matching directory entries, at most 100.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankDirectoryEntry'
+              example:
+                - bank_code: "0005"
+                  bank_name: "Mizuho Bank, Ltd."
+                  bank_name_kana: "ミズホギンコウ"
+                - bank_code: "0009"
+                  bank_name: "Sumitomo Mitsui Banking Corporation"
+                  bank_name_kana: "ミツイスミトモギンコウ"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    oauth2ClientCredentials:
+      type: oauth2
+      description: |
+        Machine-to-machine access. Exchange the client credentials for an access
+        token at the token endpoint and send it as a bearer token. Tokens are
+        valid for 3600 seconds and may be reused until they expire.
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.depositbank.example/oauth2/token
+          scopes:
+            deposits:write: Create and confirm deposits.
+            deposits:read: Read deposits, balances and reference data.
+
+  parameters:
+    IdempotenceKey:
+      name: Idempotence-Key
+      in: header
+      required: true
+      description: |
+        Makes the creation of a deposit idempotent. Repeating a request with the
+        same key returns 200 together with the deposit created by the original
+        request; a key is remembered for 24 hours. Note the spelling: the header
+        is Idempotence-Key, without the letter "y".
+      schema:
+        type: string
+        format: uuid
+      example: "8f14e45f-ceea-467a-9a3d-2b8cd4f0c1aa"
+
+    DepositId:
+      name: deposit_id
+      in: path
+      required: true
+      description: Deposit identifier assigned by DepositBank.
+      schema:
+        type: string
+        maxLength: 32
+      example: "dep_01J8ZK4Q7M"
+
+  schemas:
+    CreateDepositRequest:
+      type: object
+      description: An incoming deposit to be reserved on a settlement account.
+      required: [deposit_amount, currency_code, client_reference, remitter]
+      properties:
+        deposit_amount:
+          type: number
+          format: double
+          minimum: 1000
+          description: >-
+            Deposit amount in major units. JPY has no minor unit (ISO 4217
+            exponent 0), so fractional values are rejected.
+          example: 125000.0
+        currency_code:
+          type: string
+          enum: [JPY]
+          description: ISO 4217 alphabetic code. This API settles JPY only.
+          example: JPY
+        client_reference:
+          type: string
+          maxLength: 36
+          description: >-
+            Reference assigned by the client system. Echoed back on every
+            response and printed on the bank statement.
+          examples:
+            - "ORD-2026-000417"
+            - "INV-77120"
+        remitter:
+          $ref: '#/components/schemas/Remitter'
+        purpose_code:
+          type: string
+          enum: [trade_settlement, services, salary, securities, other]
+          description: Purpose of the payment, reported for statistical returns.
+          example: trade_settlement
+        value_date:
+          type: string
+          format: date
+          description: >-
+            Requested value date. Defaults to the next business day when
+            omitted; bank holidays are rejected.
+          example: "2026-09-14"
+
+    Remitter:
+      type: object
+      description: >-
+        The party sending the funds. A domestic remitter is identified by its
+        Zengin bank, branch and account number; a cross-border remitter by the
+        BIC of the ordering institution.
+      required: [settlement_type, account_holder_kana]
+      properties:
+        settlement_type:
+          type: string
+          enum: [domestic, international]
+          description: Clearing route the funds arrive by.
+          example: domestic
+        zengin_bank_code:
+          type: string
+          pattern: '^\d{4}$'
+          description: Four-digit financial institution code of the Zengin system.
+          example: "0005"
+        branch_code:
+          type: string
+          pattern: '^\d{3}$'
+          description: Three-digit branch code within the institution.
+          example: "123"
+        account_number:
+          type: string
+          pattern: '^\d{7,8}$'
+          description: Ordinary or current account number at the branch.
+          example: "1234567"
+        account_holder_kana:
+          type: string
+          maxLength: 48
+          description: Account holder name in katakana, as registered with the bank.
+          example: "ヤマダ タロウ"
+        swift_bic:
+          type: string
+          pattern: '^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$'
+          description: BIC of the ordering institution (ISO 9362).
+          example: "MHCBJPJT"
+        intermediary_swift:
+          type: string
+          pattern: '^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$'
+          description: BIC of the correspondent bank, when one is involved.
+          example: "CHASUS33"
+      dependentRequired:
+        intermediary_swift: [swift_bic]
+      if:
+        properties:
+          settlement_type:
+            const: domestic
+      then:
+        required: [zengin_bank_code, branch_code, account_number]
+      else:
+        required: [swift_bic]
+
+    DepositResource:
+      type: object
+      description: A deposit as DepositBank knows it.
+      required:
+        - deposit_id
+        - client_reference
+        - deposit_status
+        - deposit_amount
+        - currency_code
+        - created_at
+      properties:
+        deposit_id:
+          type: string
+          maxLength: 32
+          description: Identifier assigned by DepositBank. Poll it to learn the status.
+          example: "dep_01J8ZK4Q7M"
+        client_reference:
+          type: string
+          maxLength: 36
+          description: The reference the client sent when creating the deposit.
+          example: "ORD-2026-000417"
+        deposit_status:
+          type: string
+          enum: [initiated, under_review, posted, returned, rejected]
+          description: >-
+            Lifecycle of the deposit. initiated is reserved but not posted,
+            under_review is held by the compliance desk, posted means the funds
+            are on the account, returned means they went back to the remitter,
+            rejected means the deposit was never accepted.
+          example: posted
+        deposit_amount:
+          type: number
+          format: double
+          minimum: 1000
+          description: Deposit amount in major units, as accepted by the bank.
+          example: 125000.0
+        currency_code:
+          type: string
+          enum: [JPY]
+          example: JPY
+        remitter:
+          $ref: '#/components/schemas/Remitter'
+        rejection:
+          $ref: '#/components/schemas/DepositRejection'
+        created_at:
+          type: string
+          format: date-time
+          description: When the deposit was reserved.
+          example: "2026-09-14T03:58:11Z"
+        posted_at:
+          type: [string, "null"]
+          format: date-time
+          description: >-
+            When the funds were credited to the settlement account. Null until
+            deposit_status becomes posted.
+          example: "2026-09-14T04:12:30Z"
+        bank_reference:
+          type: [string, "null"]
+          maxLength: 16
+          description: >-
+            Reference printed on the bank statement. Null until the deposit is
+            posted.
+          example: "ZG20260914001"
+
+    DepositRejection:
+      type: object
+      description: Why a deposit was returned or rejected. Absent otherwise.
+      required: [rejection_code, rejection_reason]
+      properties:
+        rejection_code:
+          type: string
+          enum:
+            - account_closed
+            - name_mismatch
+            - amount_limit_exceeded
+            - compliance_hold
+            - duplicate_reference
+            - bank_unavailable
+          example: name_mismatch
+        rejection_reason:
+          type: string
+          maxLength: 240
+          description: Human readable explanation in English.
+          example: "Remitter name does not match the account holder record"
+        rejected_at:
+          type: string
+          format: date-time
+          example: "2026-09-14T05:02:44Z"
+
+    ErrorBody:
+      type: object
+      description: Error envelope of the whole API. Flat, without a nested object.
+      required: [error_code, error_message]
+      properties:
+        error_code:
+          type: string
+          enum:
+            - invalid_request
+            - unauthorized
+            - deposit_not_found
+            - validation_failed
+            - deposit_not_confirmable
+            - service_unavailable
+          example: validation_failed
+        error_message:
+          type: string
+          description: Human readable explanation in English.
+          example: "deposit_amount must be a whole number of yen"
+        error_details:
+          type: array
+          description: Field level problems, when the error is a validation error.
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: deposit_amount
+              issue:
+                type: string
+                example: "must be a whole number of yen"
+        trace_id:
+          type: string
+          format: uuid
+          description: >-
+            Support reference for this response. It is not an idempotency key
+            and must not be reused on a retry.
+          example: "0f6c2b1e-6c3a-4a51-9a1c-6f5f0f2a9c77"
+
+    DepositPage:
+      type: object
+      description: One page of deposits.
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DepositResource'
+        next_cursor:
+          type: [string, "null"]
+          description: Cursor of the next page. Null on the last page.
+          example: "eyJvIjoyMDB9"
+
+    AccountBalance:
+      type: object
+      description: Balance of a settlement account in major units.
+      required: [account_id, available_balance, reserved_balance, currency_code, as_of]
+      properties:
+        account_id:
+          type: string
+          example: "acc_88120033"
+        available_balance:
+          type: number
+          format: double
+          description: Funds available for withdrawal, in major units.
+          example: 4820000.0
+        reserved_balance:
+          type: number
+          format: double
+          description: Funds of deposits that are reserved but not yet posted.
+          example: 125000.0
+        currency_code:
+          type: string
+          const: JPY
+          example: JPY
+        as_of:
+          type: string
+          format: date-time
+          description: Moment the balance was calculated.
+          example: "2026-09-14T06:00:00Z"
+
+    BankDirectoryEntry:
+      type: object
+      description: One financial institution of the Zengin clearing system.
+      required: [bank_code, bank_name]
+      properties:
+        bank_code:
+          type: string
+          pattern: '^\d{4}$'
+          example: "0005"
+        bank_name:
+          type: string
+          example: "Mizuho Bank, Ltd."
+        bank_name_kana:
+          type: string
+          description: Institution name in katakana, as published by the clearing house.
+          example: "ミズホギンコウ"
+
+  responses:
+    BadRequest:
+      description: The request could not be parsed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            error_code: invalid_request
+            error_message: "limit must be an integer between 1 and 200"
+            trace_id: "b1c8d3f0-8a41-4f2c-9d55-7e2a4c0b1f93"
+
+    Unauthorized:
+      description: The access token is missing, expired or lacks the required scope.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            error_code: unauthorized
+            error_message: "Access token expired"
+            trace_id: "5d2e7a10-3f44-4c8b-9b0e-2a7c6d5e4f31"
+
+    NotFound:
+      description: No deposit or account with this identifier.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            error_code: deposit_not_found
+            error_message: "Deposit dep_01J8ZK4Q7M not found"
+            trace_id: "9c0b6a52-1d77-4e39-8f2a-0b4d3c1e6a58"
+
+    TooManyRequests:
+      description: Too many calls from this client.
+      headers:
+        Retry-After:
+          description: Seconds to wait before the next call.
+          schema:
+            type: integer
+          example: 30
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            error_code: invalid_request
+            error_message: "Rate limit of 60 requests per minute exceeded"
+            trace_id: "6e3d9f21-7b02-4a1d-8c34-5f9e2b7a0d16"
+
+    InternalError:
+      description: Unexpected condition inside DepositBank.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            error_code: service_unavailable
+            error_message: "Core banking system did not answer in time"
+            trace_id: "2f7a1c93-4d60-4b8e-9a12-3c5d7e0f6b24"
+
+    ServiceUnavailable:
+      description: The core banking system is closed for the daily settlement window.
+      headers:
+        Retry-After:
+          description: Seconds to wait before the next call.
+          schema:
+            type: integer
+          example: 900
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            error_code: service_unavailable
+            error_message: "Settlement window in progress, retry after 15 minutes"
+            trace_id: "c4b8e2d7-0a35-4f61-9d28-8e1a7b3c5f40"

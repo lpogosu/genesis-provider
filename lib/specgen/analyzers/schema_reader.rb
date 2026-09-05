@@ -118,10 +118,23 @@ module SpecGen
         @notes.concat(RoleSubjects.assign(@assigner, fields, subjects))
       end
 
+      # Образец значения свойства. В OpenAPI 3.0 это `example`; в 3.1, где
+      # схема — это JSON Schema 2020-12, законен ещё и `examples` МАССИВОМ
+      # (не карту именованных примеров: та живёт на уровне media type, и её
+      # читает ExampleReader). Без второй ветки обязательное поле, у которого
+      # провайдер написал образец по правилам 3.1, уходило в payload как nil,
+      # хотя значение в спецификации есть.
+      def example_of(merged)
+        return merged['example'] if merged.key?('example')
+
+        list = merged['examples']
+        list.is_a?(Array) ? list.first : nil
+      end
+
       def build(name, merged, required, conditions, path)
         type, nullable = type_and_nullability(merged, name, path)
         IR::Field.new(name: name, role: pending_role, type: type, format: merged['format'],
-                      required: required.include?(name), example: merged['example'],
+                      required: required.include?(name), example: example_of(merged),
                       required_when: conditions.for(name, merged), json_path: path,
                       constraints: ConstraintReader.call(merged, nullable: nullable),
                       description: text(merged['description']),

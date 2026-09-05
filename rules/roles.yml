@@ -291,6 +291,7 @@ roles:
       - executed_at
       - finished_at
       - paid_at
+      - posted_at
       - processed_at
       - settled_at
       - time_completed
@@ -360,6 +361,7 @@ roles:
       - failure_message
       - failure_reason
       - message
+      - reason_text
       - rejection_reason
     tokens: [msg]
     types: [string]
@@ -369,6 +371,7 @@ roles:
     # НАШ идентификатор операции у провайдера (см. шапку файла).
     names:
       - client_order_id
+      - client_reference
       - client_transaction_id
       - external_id
       - external_operation_id
@@ -476,6 +479,7 @@ roles:
       - payment_method
       - payout_method
       - recipient_type
+      - settlement_type
       - transfer_method
       - transfer_type
       - type

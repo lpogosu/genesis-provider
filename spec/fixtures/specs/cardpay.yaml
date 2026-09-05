@@ -1,0 +1,932 @@
+# CardPay Global — альтернативная тестовая спецификация.
+#
+# Зачем этот файл. Балл за универсальность нельзя получить, показав работу на
+# одной выданной спеке. NovaPay здесь одновременно образец уровня детализации
+# и АНТИ-образец по содержанию: ни одно решение выданной спеки не повторено.
+#
+# Что проверяет файл и какие ветки кода задействует:
+#
+#   1. Авторизация. `http` + `scheme: bearer` + `bearerFormat: JWT` вместо
+#      `apiKey` в заголовке — схема `bearer` из rules/auth.yml и ветка
+#      `Authorization: Bearer`. Требование объявлено ОДИН раз в корне
+#      документа (`security`), а не у каждой операции: у NovaPay наоборот,
+#      значит работает наследование корневого `security` в
+#      SecurityRequirements.
+#   2. Идемпотентность. Заголовок X-Request-Id (алиас из
+#      rules/idempotency.yml) вместо Idempotency-Key, и он `required: true` —
+#      у NovaPay `required: false`. Ответ 409 на создание перевода
+#      возвращает СХЕМУ УСПЕХА (TransferResource): по
+#      draft-ietf-httpapi-idempotency-key-header это «уже создано, вот
+#      результат», а не ошибка, и сервис обязан подхватить существующий
+#      перевод.
+#   3. Единицы суммы. Центы и USD вместо копеек и RUB: поле `amount_minor`,
+#      `type: integer`, экспонента USD по ISO 4217 равна 2 → множитель 100.
+#      Английские слова единиц («cents», «minor units») проверяют unit_words
+#      в rules/currencies.yml, а `minimum: 500` при описании «5.00 USD»
+#      проверяет сверку на согласованность.
+#   4. Подпись вебхука. Standard Webhooks (три заголовка webhook-id /
+#      webhook-timestamp / webhook-signature, подписываемая строка
+#      {id}.{timestamp}.{body}, HMAC-SHA256, base64, префикс «v1,», допуск
+#      300 секунд) вместо кастомного X-NovaPay-Signature с hex. Профиль
+#      standard_webhooks из rules/signatures.yml должен опознаться по имени
+#      заголовка, а описание — подтвердить алгоритм.
+#   5. Получатель. Выплата на карту (push-to-card) вместо СБП: объект
+#      называется `destination`, а не `recipient`, и состоит из `method`,
+#      `pan`, `expiry_month`, `expiry_year`, `holder_name`,
+#      `issuer_country`, `wallet_id`. Роль recipient_type выводится не по
+#      имени поля (`method` — слово из generic_tokens), а по значениям enum
+#      и родителю; роль card_number — по токену `pan` и шаблону.
+#   6. Статусы. `queued` / `sending` / `succeeded` / `declined` / `returned`
+#      в поле `state`, а не `status`. Слова `sending` в rules/statuses.yml
+#      НЕТ намеренно: инструмент обязан честно сказать об этом
+#      предупреждением status_unmapped и предложить фрагмент overlay, а не
+#      подставить in_progress молча.
+#   7. Условная обязательность выражена ТОЛЬКО прозой. OpenAPI 3.0 запрещает
+#      dependentRequired, поэтому «Required when method is card» читается из
+#      description по шаблонам rules/conditions.yml с низкой уверенностью
+#      (origin :description_hint) и попадает в отчёт вместе с готовым
+#      фрагментом Overlay (x-jsonschema-if / x-jsonschema-then для 3.0).
+#   8. Операции вне контракта Provider::BaseService. POST /v2/refunds (роль
+#      refund) и GET /v2/accounts/balance (роль balance) обязаны стать
+#      отдельными публичными методами и строкой «не отображено на контракт»
+#      в report.md.
+#   9. Противоречия спецификации. Код `account_closed` есть в примере
+#      уведомления, но его нет в enum `reason_code`; коды `expired_card`,
+#      `issuer_unavailable` и `limit_exceeded` есть в enum, но не
+#      встречаются ни в одном примере. Карта ошибок обязана быть
+#      объединением enum и примеров, а расхождение — попасть в отчёт.
+#  10. Другой стиль путей и имён. Версия API вынесена в путь (`/v2/...`), а
+#      не в URL сервера; operationId — createTransfer / getTransfer /
+#      cancelTransfer / createRefund / getAccountBalance /
+#      transferEventCallback. Хвост пути вебхука — `transfer-events`, то
+#      есть роль операции опознаётся по токену, а не по целому сегменту.
+#  11. Незакрытые HTTP-коды. У GET /v2/transfers/{transfer_id}, отмены,
+#      возврата и баланса не объявлены 429 и 500 — генератор обязан
+#      достроить обработку по умолчанию, а не упасть.
+#
+# Проза спецификации английская намеренно: это чужой зарубежный провайдер, и
+# на нём проверяется английская лексика справочников (unit_words,
+# algorithm_words, шаблоны conditions.yml).
+#
+# Секретов и правдоподобных ключей в файле нет: номер карты только тестовый
+# (4111111111111111), значение подписи — очевидная заглушка.
+#
+# Полей, у которых роли заведомо не будет, здесь тоже намеренно много
+# (holder_name, issuer_country, statement_descriptor, network_reference,
+# reason_text, event_id, occurred_at, available_minor): по доктрине трёх
+# уровней доверия они обязаны попасть в report.md, а не в молчаливую
+# догадку.
+
+openapi: 3.0.3
+
+info:
+  title: CardPay Global Payouts API
+  description: |
+    CardPay Global moves funds from a merchant settlement balance to a
+    cardholder using push-to-card (Original Credit Transaction) or to a
+    supported wallet account.
+
+    All amounts are submitted and returned in minor units. Transfers are
+    asynchronous: the create call reserves the funds and returns immediately,
+    the final outcome arrives either through a transfer event or through
+    polling the transfer resource.
+  version: 2.4.0
+  contact:
+    name: CardPay Global Merchant Integrations
+    email: integrations@cardpay.example
+    url: https://developer.cardpay.example/docs
+
+servers:
+  - url: https://api.sandbox.cardpay.example
+    description: Sandbox. Test card numbers only, no real money movement.
+  - url: https://api.cardpay.example
+    description: Production.
+
+tags:
+  - name: Transfers
+    description: Push-to-card and wallet payouts.
+  - name: Refunds
+    description: Returning a settled transfer back to the merchant balance.
+  - name: Accounts
+    description: Merchant funding account, balance and reserved funds.
+  - name: Events
+    description: Outbound notifications delivered to the merchant endpoint.
+
+# Требование авторизации объявлено один раз для всего документа; операция
+# вебхука переопределяет его пустым списком.
+security:
+  - bearerAuth: []
+
+paths:
+  /v2/transfers:
+    post:
+      tags: [Transfers]
+      summary: Create a transfer
+      description: |
+        Creates a push-to-card transfer from the merchant settlement balance
+        to the cardholder described by `destination`.
+
+        The amount is submitted in minor units. The minimum transfer is
+        500 cents, that is 5.00 USD.
+
+        Repeating a request with the same X-Request-Id returns the transfer
+        created by the original request with HTTP 409 and the transfer
+        resource in the body, instead of creating a second transfer.
+      operationId: createTransfer
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransferRequest'
+            examples:
+              card_transfer:
+                summary: Payout to a card
+                value:
+                  amount_minor: 12750
+                  currency: USD
+                  merchant_reference: "po-2026-08-18-000417"
+                  statement_descriptor: "CARDPAY PAYOUT"
+                  destination:
+                    method: card
+                    pan: "4111111111111111"
+                    expiry_month: 11
+                    expiry_year: 2029
+                    holder_name: "JOHN A SMITH"
+                    issuer_country: "US"
+              wallet_transfer:
+                summary: Payout to a wallet account
+                value:
+                  amount_minor: 500
+                  currency: USD
+                  merchant_reference: "po-2026-08-18-000418"
+                  destination:
+                    method: wallet
+                    wallet_id: "wlt_5KD2H8ZQ"
+                  metadata:
+                    campaign: "summer-payouts"
+                    operator: "ops-14"
+      responses:
+        '201':
+          description: Transfer accepted for processing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResource'
+              example:
+                transfer_id: "tr_9Q4ZK2M7XD1B"
+                merchant_reference: "po-2026-08-18-000417"
+                state: queued
+                amount_minor: 12750
+                currency: USD
+                destination:
+                  method: card
+                  masked_pan: "411111******1111"
+                  holder_name: "JOHN A SMITH"
+                  issuer_country: "US"
+                created_at: "2026-08-18T09:12:41Z"
+        '400':
+          description: The request body is malformed or a field failed a format check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  code: invalid_card_number
+                  message: "destination.pan failed the Luhn check"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: |
+            A transfer with this X-Request-Id already exists. The body is the
+            transfer created by the original request, not an error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResource'
+              example:
+                transfer_id: "tr_9Q4ZK2M7XD1B"
+                merchant_reference: "po-2026-08-18-000417"
+                state: queued
+                amount_minor: 12750
+                currency: USD
+                created_at: "2026-08-18T09:12:41Z"
+        '422':
+          description: The request is well formed but cannot be executed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  code: insufficient_funds
+                  message: "Merchant settlement balance is below the requested amount"
+                  field_errors:
+                    - field: amount_minor
+                      message: "available balance is 9000"
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v2/transfers/{transfer_id}:
+    get:
+      tags: [Transfers]
+      summary: Retrieve a transfer
+      description: |
+        Returns the current state of a single transfer. Poll this endpoint
+        when transfer events are not enabled for the merchant account.
+      operationId: getTransfer
+      parameters:
+        - name: transfer_id
+          in: path
+          required: true
+          description: Identifier assigned by CardPay Global when the transfer was created.
+          schema:
+            type: string
+            maxLength: 32
+          example: "tr_9Q4ZK2M7XD1B"
+      responses:
+        '200':
+          description: The transfer as CardPay Global currently sees it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResource'
+              example:
+                transfer_id: "tr_9Q4ZK2M7XD1B"
+                merchant_reference: "po-2026-08-18-000417"
+                state: succeeded
+                amount_minor: 12750
+                currency: USD
+                destination:
+                  method: card
+                  masked_pan: "411111******1111"
+                  holder_name: "JOHN A SMITH"
+                  issuer_country: "US"
+                network_reference: "ACQ-4471203"
+                created_at: "2026-08-18T09:12:41Z"
+                settled_at: "2026-08-18T09:14:03Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v2/transfers/{transfer_id}/cancel:
+    post:
+      tags: [Transfers]
+      summary: Cancel a transfer
+      description: |
+        Stops a transfer that has not been handed to the card network yet.
+        A transfer can be cancelled only while the state is queued; once it
+        has moved to sending the call is rejected with 409.
+      operationId: cancelTransfer
+      parameters:
+        - name: transfer_id
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 32
+          example: "tr_9Q4ZK2M7XD1B"
+      responses:
+        '200':
+          description: The transfer was cancelled and the funds were released.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResource'
+              example:
+                transfer_id: "tr_9Q4ZK2M7XD1B"
+                merchant_reference: "po-2026-08-18-000417"
+                state: declined
+                amount_minor: 12750
+                currency: USD
+                created_at: "2026-08-18T09:12:41Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The transfer is no longer cancellable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  code: transfer_not_cancelable
+                  message: "Transfer tr_9Q4ZK2M7XD1B is already in state sending"
+
+  /v2/refunds:
+    post:
+      tags: [Refunds]
+      summary: Refund a settled transfer
+      description: |
+        Returns a settled transfer to the merchant settlement balance.
+        Pass `amount_minor` for a partial refund; omit it to return the full
+        transfer amount. A refund has its own identifier and its own
+        lifecycle, it does not change the state of the original transfer.
+      operationId: createRefund
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+            examples:
+              full_refund:
+                summary: Full refund
+                value:
+                  transfer_id: "tr_9Q4ZK2M7XD1B"
+                  merchant_reference: "rf-2026-08-19-000032"
+              partial_refund:
+                summary: Partial refund
+                value:
+                  transfer_id: "tr_9Q4ZK2M7XD1B"
+                  merchant_reference: "rf-2026-08-19-000033"
+                  amount_minor: 5000
+      responses:
+        '201':
+          description: Refund accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundResource'
+              example:
+                refund_id: "rf_3B8WQ1LT6NPZ"
+                transfer_id: "tr_9Q4ZK2M7XD1B"
+                merchant_reference: "rf-2026-08-19-000032"
+                state: queued
+                amount_minor: 12750
+                currency: USD
+                created_at: "2026-08-19T07:41:12Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: The transfer cannot be refunded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  code: duplicate_request
+                  message: "A refund for transfer tr_9Q4ZK2M7XD1B already exists"
+
+  /v2/accounts/balance:
+    get:
+      tags: [Accounts]
+      summary: Merchant funding account balance
+      description: |
+        Returns the balance of the merchant settlement account in minor
+        units. `pending_minor` is the part reserved by transfers that have
+        not settled yet.
+      operationId: getAccountBalance
+      responses:
+        '200':
+          description: Current balance.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountBalance'
+              example:
+                available_minor: 4820000
+                pending_minor: 137500
+                currency: USD
+                updated_at: "2026-08-19T07:40:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /webhooks/transfer-events:
+    post:
+      tags: [Events]
+      summary: Transfer event delivered by CardPay Global
+      description: |
+        CardPay Global delivers transfer events to the endpoint registered
+        for the merchant. Delivery follows the Standard Webhooks
+        specification: the payload is signed with HMAC-SHA256 over
+        "{id}.{timestamp}.{body}", the signature is base64 encoded and sent
+        in webhook-signature with the "v1," prefix.
+
+        Deliveries whose webhook-timestamp is more than 300 seconds old must
+        be rejected as replays. Answer with 200 or 202 within five seconds;
+        any other outcome is retried with exponential backoff for 24 hours.
+      operationId: transferEventCallback
+      security: []
+      parameters:
+        - name: webhook-id
+          in: header
+          required: true
+          description: >-
+            Identifier of this event. Stays the same across delivery retries,
+            so it can be used to discard duplicates.
+          schema:
+            type: string
+            maxLength: 64
+          example: "msg_2f9c1e4a7b3d"
+        - name: webhook-timestamp
+          in: header
+          required: true
+          description: >-
+            Unix timestamp in seconds at which the delivery was signed.
+          schema:
+            type: string
+          example: "1787044443"
+        - name: webhook-signature
+          in: header
+          required: true
+          description: >-
+            HMAC-SHA256 over "{id}.{timestamp}.{body}", base64 encoded and
+            prefixed with "v1,". Several space separated values may be
+            present while the signing secret is being rotated.
+          schema:
+            type: string
+          example: "v1,Zm9vYmFyc2lnbmF0dXJlZXhhbXBsZQ=="
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferEvent'
+            examples:
+              succeeded:
+                summary: Funds reached the card
+                value:
+                  event_type: transfer.succeeded
+                  event_id: "evt_7C1F5A9E42"
+                  transfer_id: "tr_9Q4ZK2M7XD1B"
+                  merchant_reference: "po-2026-08-18-000417"
+                  state: succeeded
+                  occurred_at: "2026-08-18T09:14:03Z"
+              declined:
+                summary: Issuer declined the transfer
+                value:
+                  event_type: transfer.declined
+                  event_id: "evt_7C1F5A9E43"
+                  transfer_id: "tr_5H2XN8VC0PQR"
+                  merchant_reference: "po-2026-08-18-000419"
+                  state: declined
+                  occurred_at: "2026-08-18T09:15:22Z"
+                  failure:
+                    reason_code: card_declined
+                    reason_text: "Issuer declined the original credit transaction"
+              returned:
+                summary: Funds came back after settlement
+                value:
+                  event_type: transfer.returned
+                  event_id: "evt_7C1F5A9E44"
+                  transfer_id: "tr_1M6PJ4RB9TSD"
+                  merchant_reference: "po-2026-08-17-000388"
+                  state: returned
+                  occurred_at: "2026-08-19T04:02:57Z"
+                  failure:
+                    reason_code: account_closed
+                    reason_text: "Cardholder account is closed"
+      responses:
+        '200':
+          description: Event accepted and processed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                    example: true
+        '202':
+          description: Event accepted and queued for processing.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        Bearer token issued to the merchant in the CardPay Global dashboard.
+        Send it as `Authorization: Bearer <token>` on every call except the
+        outbound transfer event callback.
+
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: true
+      description: >-
+        Idempotency key of the call. Two requests carrying the same value are
+        the same request: the second one returns the result of the first with
+        HTTP 409. Generate one value per business operation and reuse it on
+        every retry.
+      schema:
+        type: string
+        format: uuid
+      example: "3f1a9c6e-9d21-4b7c-8f10-2c5d47a0b913"
+
+  schemas:
+    CreateTransferRequest:
+      type: object
+      required: [amount_minor, currency, merchant_reference, destination]
+      properties:
+        amount_minor:
+          type: integer
+          format: int64
+          description: >-
+            Transfer amount in cents (minor units). The minimum accepted
+            value is 500 cents, that is 5.00 USD; the per-transfer ceiling
+            set by the card networks is 5000000 cents, that is 50000.00 USD.
+          minimum: 500
+          maximum: 5000000
+          example: 12750
+        currency:
+          type: string
+          description: ISO 4217 alphabetic code. Only USD is settled by this API version.
+          enum: [USD]
+          example: USD
+        merchant_reference:
+          type: string
+          description: >-
+            Identifier of the payout on the merchant side. Returned in every
+            response and in every transfer event.
+          maxLength: 40
+          example: "po-2026-08-18-000417"
+        destination:
+          $ref: '#/components/schemas/Destination'
+        statement_descriptor:
+          type: string
+          description: >-
+            Text shown on the cardholder statement. Trimmed by the issuer to
+            the length it supports.
+          maxLength: 22
+          pattern: '^[A-Za-z0-9 .\-]{1,22}$'
+          example: "CARDPAY PAYOUT"
+        metadata:
+          type: object
+          description: Free form string pairs stored with the transfer and echoed back.
+          additionalProperties:
+            type: string
+          maxProperties: 10
+          example:
+            campaign: "summer-payouts"
+            operator: "ops-14"
+
+    Destination:
+      type: object
+      description: >-
+        Where the money goes. OpenAPI 3.0 has no dependentRequired, so the
+        conditional fields are described in prose on each property.
+      required: [method]
+      properties:
+        method:
+          type: string
+          description: How the funds reach the beneficiary.
+          enum: [card, wallet]
+          example: card
+        pan:
+          type: string
+          description: >-
+            Primary account number of the beneficiary card, digits only.
+            Required when method is card.
+          pattern: '^\d{13,19}$'
+          example: "4111111111111111"
+        expiry_month:
+          type: integer
+          description: Card expiry month, 1 to 12. Required when method is card.
+          minimum: 1
+          maximum: 12
+          example: 11
+        expiry_year:
+          type: integer
+          description: Card expiry year, four digits. Required when method is card.
+          minimum: 2026
+          maximum: 2050
+          example: 2029
+        holder_name:
+          type: string
+          description: >-
+            Cardholder name as embossed, Latin letters and spaces. Trimmed to
+            26 characters by most issuers.
+          maxLength: 26
+          example: "JOHN A SMITH"
+        issuer_country:
+          type: string
+          description: ISO 3166-1 alpha-2 country of the issuing bank.
+          pattern: '^[A-Z]{2}$'
+          example: "US"
+        wallet_id:
+          type: string
+          description: >-
+            Identifier of the beneficiary wallet account. Required when
+            method is wallet.
+          maxLength: 32
+          example: "wlt_5KD2H8ZQ"
+
+    MaskedDestination:
+      type: object
+      description: The destination as it is returned in responses and events.
+      properties:
+        method:
+          type: string
+          enum: [card, wallet]
+          example: card
+        masked_pan:
+          type: string
+          description: First six and last four digits of the card, the rest masked.
+          pattern: '^\d{6}\*{6}\d{4}$'
+          example: "411111******1111"
+        holder_name:
+          type: string
+          maxLength: 26
+          example: "JOHN A SMITH"
+        issuer_country:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          example: "US"
+        wallet_id:
+          type: string
+          maxLength: 32
+          example: "wlt_5KD2H8ZQ"
+
+    TransferResource:
+      type: object
+      required: [transfer_id, state, amount_minor, currency]
+      properties:
+        transfer_id:
+          type: string
+          description: Identifier assigned by CardPay Global.
+          maxLength: 32
+          example: "tr_9Q4ZK2M7XD1B"
+        merchant_reference:
+          type: string
+          maxLength: 40
+          example: "po-2026-08-18-000417"
+        state:
+          type: string
+          description: >-
+            Lifecycle state of the transfer. Terminal states are succeeded,
+            declined and returned.
+          enum: [queued, sending, succeeded, declined, returned]
+          example: queued
+        amount_minor:
+          type: integer
+          format: int64
+          description: Transfer amount in cents (minor units).
+          example: 12750
+        currency:
+          type: string
+          enum: [USD]
+          example: USD
+        destination:
+          $ref: '#/components/schemas/MaskedDestination'
+        failure:
+          $ref: '#/components/schemas/TransferFailure'
+        network_reference:
+          type: string
+          description: >-
+            Acquirer reference number of the original credit transaction.
+            Present once the card network has accepted the transfer.
+          maxLength: 24
+          example: "ACQ-4471203"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-08-18T09:12:41Z"
+        settled_at:
+          type: string
+          format: date-time
+          description: When the transfer reached a terminal state.
+          example: "2026-08-18T09:14:03Z"
+
+    TransferFailure:
+      type: object
+      description: Why a transfer did not reach the beneficiary.
+      properties:
+        reason_code:
+          type: string
+          description: Machine readable failure reason.
+          enum:
+            - card_declined
+            - expired_card
+            - invalid_card_number
+            - issuer_unavailable
+            - limit_exceeded
+            - insufficient_funds
+            - duplicate_request
+            - internal_error
+          example: card_declined
+        reason_text:
+          type: string
+          description: Human readable explanation, English, not localized.
+          maxLength: 200
+          example: "Issuer declined the original credit transaction"
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: >-
+                Machine readable error code. Shares the vocabulary of
+                TransferFailure.reason_code and adds API level codes.
+              maxLength: 64
+              example: invalid_card_number
+            message:
+              type: string
+              maxLength: 200
+              example: "destination.pan failed the Luhn check"
+            field_errors:
+              type: array
+              description: Present when a specific request field was rejected.
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    example: amount_minor
+                  message:
+                    type: string
+                    example: "minimum is 500"
+
+    RefundRequest:
+      type: object
+      required: [transfer_id]
+      properties:
+        transfer_id:
+          type: string
+          description: The settled transfer to return.
+          maxLength: 32
+          example: "tr_9Q4ZK2M7XD1B"
+        merchant_reference:
+          type: string
+          description: Identifier of the refund on the merchant side.
+          maxLength: 40
+          example: "rf-2026-08-19-000032"
+        amount_minor:
+          type: integer
+          format: int64
+          description: >-
+            Partial refund amount in cents (minor units). Omit the field to
+            return the full transfer amount.
+          example: 5000
+
+    RefundResource:
+      type: object
+      required: [refund_id, transfer_id, state]
+      properties:
+        refund_id:
+          type: string
+          maxLength: 32
+          example: "rf_3B8WQ1LT6NPZ"
+        transfer_id:
+          type: string
+          maxLength: 32
+          example: "tr_9Q4ZK2M7XD1B"
+        merchant_reference:
+          type: string
+          maxLength: 40
+          example: "rf-2026-08-19-000032"
+        state:
+          type: string
+          description: Refund lifecycle state.
+          enum: [queued, sending, succeeded, declined]
+          example: queued
+        amount_minor:
+          type: integer
+          format: int64
+          description: Refunded amount in cents (minor units).
+          example: 12750
+        currency:
+          type: string
+          enum: [USD]
+          example: USD
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-08-19T07:41:12Z"
+
+    AccountBalance:
+      type: object
+      properties:
+        available_minor:
+          type: integer
+          format: int64
+          description: Funds available for new transfers, in cents (minor units).
+          example: 4820000
+        pending_minor:
+          type: integer
+          format: int64
+          description: Funds reserved by transfers that have not settled yet, in cents.
+          example: 137500
+        currency:
+          type: string
+          enum: [USD]
+          example: USD
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-08-19T07:40:00Z"
+
+    TransferEvent:
+      type: object
+      required: [event_type, event_id, transfer_id, state, occurred_at]
+      properties:
+        event_type:
+          type: string
+          description: What happened to the transfer.
+          enum:
+            - transfer.succeeded
+            - transfer.declined
+            - transfer.returned
+            - transfer.queued
+          example: transfer.succeeded
+        event_id:
+          type: string
+          description: Identifier of the event, equal to the webhook-id header.
+          maxLength: 64
+          example: "evt_7C1F5A9E42"
+        transfer_id:
+          type: string
+          maxLength: 32
+          example: "tr_9Q4ZK2M7XD1B"
+        merchant_reference:
+          type: string
+          maxLength: 40
+          example: "po-2026-08-18-000417"
+        state:
+          type: string
+          description: State of the transfer at the moment the event was produced.
+          enum: [queued, sending, succeeded, declined, returned]
+          example: succeeded
+        occurred_at:
+          type: string
+          format: date-time
+          description: When the state change happened on the CardPay Global side.
+          example: "2026-08-18T09:14:03Z"
+        failure:
+          $ref: '#/components/schemas/TransferFailure'
+
+  responses:
+    BadRequest:
+      description: The request body is malformed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    Unauthorized:
+      description: The bearer token is missing, malformed or expired.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            error:
+              code: unauthorized
+              message: "Bearer token is not valid for this merchant"
+
+    NotFound:
+      description: No such transfer for this merchant.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            error:
+              code: transfer_not_found
+              message: "Transfer tr_9Q4ZK2M7XD1B does not exist"
+
+    RateLimited:
+      description: Too many requests.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema:
+            type: integer
+          example: 30
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            error:
+              code: rate_limited
+              message: "Rate limit of 50 requests per second exceeded"
+
+    InternalError:
+      description: Unexpected error on the CardPay Global side.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            error:
+              code: internal_error
+              message: "Unexpected error, the transfer state is unknown"

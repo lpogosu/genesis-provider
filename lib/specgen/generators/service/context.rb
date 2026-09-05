@@ -164,18 +164,21 @@ module SpecGen
           nested_path(schema, role, visited + [schema_name])
         end
 
-        # Путь к коду ошибки в теле ответа: по любому ответу любой операции.
-        # По нему provider_failure читает код, а INTEGRATION.md знает, какой
-        # ключ локализации получит отказ.
+        # Путь к коду ошибки в теле ответа. По нему provider_failure читает
+        # код, а INTEGRATION.md знает, какой ключ локализации получит отказ.
+        #
+        # Ответы вне 2xx смотрим первыми, и это не оптимизация, а
+        # правильность: код ошибки читается из тела ОТКАЗА. У провайдера,
+        # где схема успеха несёт собственное поле с ролью error_code
+        # (`rejection.rejection_code` в ресурсе депозита), обход подряд
+        # возвращал путь внутрь схемы успеха, и сгенерированный
+        # provider_failure искал бы ключ, которого в теле ошибки нет. Схемы
+        # успеха остаются запасным вариантом: у провайдера, который вообще
+        # не объявил тел отказа, лучше путь из схемы успеха, чем ничего.
         # @return [Array<String>, nil]
         def error_code_path
-          profile.operations.each do |operation|
-            operation.responses.each do |response|
-              path = role_path(response.schema, :error_code)
-              return path if path
-            end
-          end
-          nil
+          error_code_path_in(profile.operations.flat_map(&:responses).reject(&:success?)) ||
+            error_code_path_in(profile.operations.flat_map(&:responses).select(&:success?))
         end
 
         # @param variable [String] имя переменной с разобранным телом
@@ -194,6 +197,16 @@ module SpecGen
         end
 
         private
+
+        # @param responses [Array<IR::Response>]
+        # @return [Array<String>, nil] первый путь к роли error_code
+        def error_code_path_in(responses)
+          responses.each do |response|
+            path = role_path(response.schema, :error_code)
+            return path if path
+          end
+          nil
+        end
 
         def auth_entries
           book = rules.auth

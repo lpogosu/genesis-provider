@@ -118,6 +118,11 @@ codes:
   - name: limits
     pattern: 'limit_exceeded|quota'
     action: escalate
+  # Ручная проверка: комплаенс, санкционные списки, KYC. Повтор не поможет и
+  # отказом это ещё не является — решение принимает человек, как и с лимитами.
+  - name: review
+    pattern: 'compliance|kyc|aml|sanction|manual_review|under_review|verification_required'
+    action: escalate
   - name: rejected
-    pattern: 'not_found|invalid|validation|malformed|duplicate|unsupported|not_allowed|expired|declined|blocked|cancel'
+    pattern: 'not_found|invalid|validation|malformed|duplicate|unsupported|not_allowed|expired|declined|blocked|cancel|closed|mismatch'
     action: reject

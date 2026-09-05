@@ -1,0 +1,348 @@
+# spec/fixtures/specs/broken.yaml — намеренно дырявая тестовая спецификация.
+#
+# Зачем этот файл. Остальные спеки в каталоге показывают, что генератор
+# работает. Этот показывает другое и более важное: что генератор делает,
+# когда спецификация неполна, невнятна и противоречит сама себе. Это норма
+# жизни — так выглядит документация маленького провайдера, которую писали
+# в последний день. Ожидаемый результат прогона: генерация НЕ блокируется,
+# все четыре артефакта записаны, а каждая дыра ниже получила строку в
+# report.md с объяснением и предложением, что сделать руками.
+#
+# Файл обязан оставаться валидным YAML и структурно валидным OpenAPI:
+# загрузчик должен его открыть. Дыры здесь смысловые (неполнота, невнятные
+# имена, противоречия между разделами), а не синтаксические. Спека
+# правдоподобна: схемы связные, все $ref разрешаются, пути осмысленные.
+#
+# ЦИКЛИЧЕСКОГО $ref ЗДЕСЬ НЕТ — НАМЕРЕННО. Схема, ссылающаяся на саму себя,
+# отвергается загрузчиком целиком (так он ведёт себя на спецификации Stripe),
+# и файл не дошёл бы до генерации: вместо десятка осмысленных строк отчёта мы
+# получили бы одну строку об ошибке загрузки. Отказ загружать цикл — отдельное
+# поведение, оно проверяется в spec/unit/specgen/spec_loader/, а не здесь.
+#
+# ---------------------------------------------------------------------------
+# ДЫРЫ И ОЖИДАЕМАЯ РЕАКЦИЯ ИНСТРУМЕНТА
+# ---------------------------------------------------------------------------
+#
+#  1. Нет operationId ни у одной из шести операций. Роль эндпоинта обязана
+#     выводиться без самого сильного признака — по HTTP-методу, хвосту пути,
+#     словам ресурса в пути и наличию тела. Ожидается: справка о каждом
+#     пропущенном operationId и роль, выведенная по остальным сигналам с
+#     честной (низкой) уверенностью.
+#
+#  2. Почти нет примеров. Ни у одного тела запроса и ни у одного успешного
+#     ответа нет ни example, ни examples. Ожидается: фикстуры синтезируются
+#     из схемы и помечаются source = schema_example либо synthesized, каждая
+#     с пояснением _todo. Исключение — три примера, добавленные только ради
+#     дыр 4 и 8; ничего другого в файле примерами не описано.
+#
+#  3. Обязательное поле с неопознаваемым именем: `xref_tag_9` в теле
+#     создания (string, maxLength 32, без description). Ни один матчер не
+#     должен его узнать. Ожидается: поле всё равно попадает в payload (с
+#     лучшим кандидатом или как nil), рядом TODO со списком кандидатов,
+#     строка в отчёте. Парное необязательное поле — `aux_flag_b` (boolean):
+#     оно обязано дать одну строку отчёта и НЕ попасть в payload.
+#
+#  4. Противоречие между enum статусов и примерами. Поле состояния названо
+#     `st`, enum верхним регистром и нестандартными словами:
+#     [WAITING, DONE, NOTOK]. В двух примерах уведомления значение `st` равно
+#     "IN_REVIEW" и "PART_DONE" — этих значений в enum нет. Ожидается: карта
+#     статусов строится объединением enum и примеров, каждое расхождение —
+#     отдельная строка отчёта; NOTOK, IN_REVIEW и PART_DONE не читаются ни
+#     каноном, ни синонимами rules/statuses.yml, поэтому по каждому нужен
+#     слот overlay x-specgen-status-map.
+#
+#  5. Ответ без объявленной схемы, обе ветки:
+#     5a. POST /transactions/{ref}/void — успешный ответ только с description,
+#         без content вообще;
+#     5b. GET /reports/daily — content: application/json с пустым телом, без
+#         schema.
+#     Ожидается: обе ветки замечены, фикстура ответа не выдумывается, строка
+#     в отчёте о том, что тело ответа не описано.
+#
+#  6. Сумма без единиц. Поле `amt` (integer) без description, без minimum,
+#     без example. Валюта в теле есть, но свободной строкой `cur` (string,
+#     без enum, без pattern, без example). Экспоненту ISO 4217 взять не из
+#     чего. Ожидается: «единицы не выведены», слот overlay на валюту
+#     (x-specgen-currency) и/или на единицы, и всё равно рабочая генерация.
+#
+#  7. Необъявленные HTTP-коды. У операции создания объявлены только 200 и
+#     400: ни 401, ни 409, ни 422, ни 429, ни 500. У операции чтения — только
+#     200. Ожидается: дефолтная обработка достроена по rules/errors.yml,
+#     справка о каждом пробеле, генерация не падает.
+#
+#  8. Коды ошибок расходятся с примерами в обе стороны. enum поля `err` —
+#     [E100, E200, E300, E999]; единственный пример ошибки несёт код E777,
+#     которого в enum нет, а ни один код из enum не встречается ни в одном
+#     примере. Ожидается: карта ошибок как объединение enum и примеров плюс
+#     строки о расхождении в обе стороны.
+#
+#  9. Вебхук без опознавательных знаков. POST /notify: без operationId, с
+#     security: [], тело с полями `st` и `ref`. Заголовка подписи нет вообще,
+#     в описании о подписи ни слова. Ожидается: вебхук опознан структурно (по
+#     security: []), но профиль подписи честно назван невыведенным —
+#     verify_signature! собрать не из чего, нужен слот overlay
+#     x-specgen-signature.
+#
+# 10. Идентификатор с двусмысленным именем: `ref` — кандидат сразу на
+#     external_id (наш идентификатор) и на provider_operation_id (его). В пути
+#     он же служит ключом чтения. Ожидается: матчеры выбирают лучшего
+#     кандидата сами, отрыв кандидатов виден в отчёте, роль закрепляется
+#     фрагментом overlay.
+#
+# 11. Смешанная лексика без словаря: `dt_cr` (string, date-time) и `ttl_amt`
+#     (integer) рядом с `amt` в одной схеме. Часть таких имён матчеры узнают
+#     по формату и токенам, часть — нет; допустимо и то и другое, лишь бы
+#     решение было видно в отчёте. Две суммы в одной схеме — конфликт роли,
+#     о котором тоже нужно сообщить.
+#
+# Побочные дыры, оставленные намеренно и тоже ожидающие строки в отчёте:
+#   - тегов нет ни у одной операции: тег не должен помогать выводить роль;
+#   - нет ни contact, ни license, описание info бесполезно, version = 0.1;
+#   - один сервер без description: окружение (песочница или продакшен) не
+#     выводится;
+#   - ни одна операция не объявляет заголовок идемпотентности (ни одного
+#     алиаса из rules/idempotency.yml) — повтор после сетевого сбоя создаст
+#     вторую операцию;
+#   - имена схем и полей коротки и невнятны (`st`, `err`, `nm`, `acct`,
+#     `cur`, `d`) — это и есть типичный вход, на котором словарь синонимов
+#     обязан работать вместе с эвристиками, а не вместо них.
+#
+# Секретов в файле нет и быть не может: значения в примерах — заглушки.
+# ---------------------------------------------------------------------------
+
+openapi: 3.0.3
+
+info:
+  title: Payment Gateway
+  description: Payments API.
+  version: '0.1'
+
+servers:
+  - url: https://api.gateway.example/v1
+
+security:
+  - ApiKey: []
+
+paths:
+  # Дыра 1 (нет operationId), 2 (нет примера у тела и у успешного ответа),
+  # 3 (xref_tag_9 / aux_flag_b), 6 (amt + cur), 7 (объявлены только 200
+  # и 400), 8 (пример с кодом E777).
+  /transactions:
+    post:
+      summary: Create transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TxnCreate'
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Txn'
+        '400':
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Err'
+              example:
+                err: E777
+                txt: bad request
+
+  # Дыра 1, 2, 7 (объявлен только 200), 10 (`ref` в пути).
+  /transactions/{ref}:
+    get:
+      summary: Read transaction
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Txn'
+
+  # Дыра 5a: успешный ответ объявлен одним description, без content.
+  /transactions/{ref}/void:
+    post:
+      summary: Void transaction
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Voided
+
+  # Дыра 5b: content объявлен, media type пуст, schema отсутствует.
+  # Параметр `d` без description и без формата.
+  /reports/daily:
+    get:
+      summary: Daily report
+      parameters:
+        - name: d
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report
+          content:
+            application/json: {}
+
+  # Дыра 9: вебхук опознаётся только по security: []. Ни заголовка подписи,
+  # ни слова о подписи в описании. Здесь же два примера из дыры 4.
+  /notify:
+    post:
+      summary: Status notification
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notice'
+            examples:
+              first:
+                value:
+                  st: IN_REVIEW
+                  ref: tx_0001
+                  ts: 1767225600
+              second:
+                value:
+                  st: PART_DONE
+                  ref: tx_0002
+                  ts: 1767225900
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  # Роль balance должна либо найтись по хвосту пути, либо честно не найтись.
+  /limits:
+    get:
+      summary: Limits
+      responses:
+        '200':
+          description: Limits
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Limits'
+
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-Key
+
+  schemas:
+    # Дыра 3: xref_tag_9 обязателен и неопознаваем, aux_flag_b необязателен и
+    # неопознаваем. Дыра 6: amt без единиц, cur свободной строкой.
+    TxnCreate:
+      type: object
+      required: [amt, cur, xref_tag_9, party]
+      properties:
+        amt:
+          type: integer
+        cur:
+          type: string
+        xref_tag_9:
+          type: string
+          maxLength: 32
+        aux_flag_b:
+          type: boolean
+        party:
+          $ref: '#/components/schemas/Party'
+
+    # Получатель. `kind` перечисляет способы зачисления словами провайдера,
+    # `acct` — счёт или номер карты, `nm` — имя. Ни одно из имён не является
+    # синонимом роли.
+    Party:
+      type: object
+      required: [kind, acct]
+      properties:
+        kind:
+          type: string
+          enum: [P2P, CARD, ACC]
+        acct:
+          type: string
+          maxLength: 34
+        nm:
+          type: string
+
+    # Дыра 4 (`st` с нестандартным enum), 10 (`ref`), 11 (`dt_cr` и вторая
+    # сумма `ttl_amt` рядом с `amt`).
+    Txn:
+      type: object
+      properties:
+        ref:
+          type: string
+        st:
+          type: string
+          enum: [WAITING, DONE, NOTOK]
+        amt:
+          type: integer
+        cur:
+          type: string
+        dt_cr:
+          type: string
+          format: date-time
+        ttl_amt:
+          type: integer
+        err_info:
+          $ref: '#/components/schemas/Err'
+
+    # Дыра 8: ни один код из enum не встречается в примерах, а пример несёт
+    # код E777, которого в enum нет.
+    Err:
+      type: object
+      properties:
+        err:
+          type: string
+          enum: [E100, E200, E300, E999]
+        txt:
+          type: string
+
+    # Тело вебхука. Ни поля события, ни подписи, ни идентификатора
+    # уведомления — только состояние и ссылка на операцию.
+    Notice:
+      type: object
+      required: [st, ref]
+      properties:
+        st:
+          type: string
+          enum: [WAITING, DONE, NOTOK]
+        ref:
+          type: string
+        ts:
+          type: integer
+
+    Limits:
+      type: object
+      properties:
+        min_amt:
+          type: integer
+        max_amt:
+          type: integer
+        cur:
+          type: string
