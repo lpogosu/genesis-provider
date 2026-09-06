@@ -45,6 +45,13 @@ module SpecGen
     rescue SpecGen::Error => e
       shell.error("#{Texts.t('cli.error_prefix')}: #{e.message}")
       exit(EXIT_ERROR)
+    rescue NoMemoryError
+      # Спецификация, у которой развёрнутый документ не помещается в память:
+      # у Stripe 6,4 МБ исходника и тысячи повторных `$ref` на крупные схемы.
+      # Это тоже пользовательский ввод, и он обязан получить внятный ответ, а
+      # не умолчание интерпретатора.
+      shell.error("#{Texts.t('cli.error_prefix')}: #{Texts.t('cli.out_of_memory')}")
+      exit(EXIT_ERROR)
     end
 
     desc 'generate --spec FILE [options]', Texts.t('cli.desc.generate')

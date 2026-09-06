@@ -6,6 +6,7 @@
 
 cli:
   error_prefix: "error"
+  out_of_memory: "the specification does not fit in memory once `$ref` is expanded: the resolved document is many times larger than the source file. Split it into parts (a file per group of paths) or drop repeated references to large schemas"
   usage_prefix: "usage"
   spec_not_found: "spec file not found"
   not_implemented: "`%{command}` is not implemented yet (skeleton build %{version})"
