@@ -21,6 +21,9 @@ module SpecGen
       # @return [Overlay::Result, nil] что сделал с документом файл overlay;
       #   nil, если флаг --overlay не указывали
       attr_reader :overlay
+      # @return [Hash{String => String}] разомкнутые циклы `$ref`: цепочка
+      #   ссылок → JSONPath того `$ref`, на котором она замкнулась
+      attr_reader :cycles
 
       # @param file [String]
       # @param version [String]
@@ -29,7 +32,9 @@ module SpecGen
       # @param data [Hash]
       # @param external_files [Array<String>]
       # @param overlay [Overlay::Result, nil]
-      def initialize(file:, version:, family:, raw:, data:, external_files: [], overlay: nil)
+      # @param cycles [Hash{String => String}]
+      def initialize(file:, version:, family:, raw:, data:, external_files: [], overlay: nil,
+                     cycles: {})
         @file = file
         @version = version
         @family = family
@@ -37,6 +42,7 @@ module SpecGen
         @data = data
         @external_files = external_files
         @overlay = overlay
+        @cycles = cycles
       end
 
       # @return [Hash] разрешённая секция `paths`

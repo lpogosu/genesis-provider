@@ -52,12 +52,22 @@ RSpec.describe SpecGen::SpecLoader::RefResolver do
     expect { resolve(data) }.to raise_error(SpecGen::SpecParseError, %r{должен быть JSON Pointer и начинаться с '/'})
   end
 
-  it 'reports a self-referencing schema as a cycle' do
-    data = { 'm' => { 'type' => 'object', 'properties' => { 'child' => { '$ref' => '#/m' } } } }
-    expect { resolve(data) }.to raise_error(SpecGen::SpecParseError) do |error|
-      expect(error.message).to include('#/m -> #/m')
-      expect(error.path).to eq("$.m.properties.child['$ref']")
-    end
+  # Рекурсивная схема — норма: у Airwallex категория отрасли содержит список
+  # таких же категорий, у Stripe так устроена половина API. Отвергать из-за
+  # этого весь документ значило бы не уметь его читать.
+  it 'cuts a self-referencing schema instead of rejecting the document' do
+    data = { 'm' => { 'type' => 'object',
+                      'properties' => { 'name' => { 'type' => 'string' },
+                                        'child' => { '$ref' => '#/m' } } } }
+    resolver = described_class.new(data, file: 'spec.yaml')
+    child = resolver.resolve['m']['properties']['child']
+
+    # Первое вхождение разворачивается целиком, второе — заглушка с именем
+    # схемы и без полей: рекурсия обрывается на известной глубине.
+    expect(child['properties'].keys).to eq(%w[name child])
+    expect(child['properties']['child']).to eq('x-specgen-ref' => '#/m', 'type' => 'object',
+                                               'x-specgen-cycle' => '#/m -> #/m')
+    expect(resolver.cycles).to eq('#/m -> #/m' => "$.m.properties.child['$ref']")
   end
 
   it 'loads external files through the reader, relative to the referencing file' do

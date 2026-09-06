@@ -22,11 +22,16 @@ Metrics/ClassLength:
 # build_payload — таблица «поле → выражение», process_callback и
 # verify_signature! — линейные протоколы. Разбивать их на хелперы значило бы
 # спрятать таблицу, которую сверяют со спецификацией.
+# Длина build_<операция>_payload — это размер тела запроса у провайдера, а
+# не наше решение: у Airwallex одна операция создания карты несёт семьдесят
+# полей. Разбивать такую таблицу на хелперы значило бы спрятать её от того,
+# кто сверяет её со спецификацией.
 Metrics/MethodLength:
   Max: 30
   AllowedMethods:
-    - build_payload
     - check_conditions
+  AllowedPatterns:
+    - '\Abuild_\w*payload\z'
 Metrics/AbcSize:
   Max: 40
 Metrics/CyclomaticComplexity:

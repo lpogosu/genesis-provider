@@ -40,10 +40,21 @@ module SpecGen
         component_schemas.each { |name, node, at| register(name, node, at) }
         body_schemas.each { |name, node, at| register(name, node, at) }
         check_links
+        report_cycles
         profile
       end
 
       private
+
+      # Рекурсивная схема не отвергает документ: загрузчик размыкает цикл
+      # заглушкой без полей. Но заглушка — это поля, которых в коде не
+      # будет, поэтому о каждом разомкнутом цикле отчёт говорит отдельно.
+      def report_cycles
+        document.cycles.each do |chain, at|
+          profile.warn(:schema_unresolved,
+                       Texts.t('analyzers.schema.ref_cycle', chain: chain), json_path: at)
+        end
+      end
 
       # @return [Array<Array(String, Object, String)>] имя, узел, JSONPath
       def component_schemas

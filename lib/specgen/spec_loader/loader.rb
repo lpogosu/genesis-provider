@@ -32,7 +32,7 @@ module SpecGen
         data = resolver.resolve
         Document.new(file: @path, version: version.version, family: version.family,
                      raw: raw, data: data, external_files: resolver.external_files,
-                     overlay: applied)
+                     overlay: applied, cycles: resolver.cycles)
       end
     end
   end

@@ -6,13 +6,17 @@ module SpecGen
     # Понимает локальные JSON Pointer (#/components/schemas/X), ссылки в
     # другие файлы относительно ссылающегося документа и ссылки внутри этих
     # файлов. Каждый развёрнутый объект помечается ключом `x-specgen-ref`,
-    # чтобы дальние стадии всё ещё знали имя схемы. Циклы и ссылки в пустоту
-    # сообщаются вместе с JSONPath виноватого `$ref`; глубина вложенности
-    # ограничена, поэтому патологический ввод падает с сообщением, а не с
-    # переполнением стека.
+    # чтобы дальние стадии всё ещё знали имя схемы. Цикл не отвергает
+    # документ: рекурсивная схема — норма, поэтому на втором вхождении
+    # остаётся заглушка, а цепочка ссылок попадает в `cycles` и оттуда в
+    # отчёт. Ссылки в пустоту сообщаются вместе с JSONPath виноватого
+    # `$ref`; глубина вложенности ограничена, поэтому патологический ввод
+    # падает с сообщением, а не с переполнением стека.
     class RefResolver
       REF = '$ref'
       MARKER = 'x-specgen-ref'
+      # Метка разомкнутого цикла на месте второго вхождения схемы.
+      CYCLE = 'x-specgen-cycle'
       MAX_DEPTH = 256
       MISSING = JsonPointer::MISSING
       REMOTE = %r{\A[a-z][a-z0-9+.-]*://}i
@@ -31,7 +35,14 @@ module SpecGen
         @reader = reader
         @stack = []
         @memo = {}
+        @cycles = {}
       end
+
+      # Разомкнутые циклы: цепочка ссылок → JSONPath того `$ref`, на котором
+      # она замкнулась. Загрузчик кладёт их в Document, анализ превращает в
+      # предупреждения.
+      # @return [Hash{String => String}]
+      attr_reader :cycles
 
       # @return [Hash] разрешённая глубокая копия; вход остаётся нетронутым
       # @raise [SpecParseError, SpecLoadError]
@@ -72,8 +83,7 @@ module SpecGen
 
         target_file, pointer = split(site)
         id = "#{target_file}##{pointer}"
-        detect_cycle(id, site)
-        resolved = cached(id) || expand(id, target_file, pointer, site, depth)
+        resolved = cut(id, site) || cached(id) || expand(id, target_file, pointer, site, depth)
         merge_siblings(resolved, node, ref)
       end
 
@@ -109,12 +119,22 @@ module SpecGen
         [location.to_s.empty? ? site.file : File.expand_path(location, base), pointer]
       end
 
-      def detect_cycle(id, site)
+      # Рекурсивная схема — норма, а не патология: у Airwallex категория
+      # отрасли содержит список таких же категорий, у Stripe так устроена
+      # половина API. Отказываться от всей спецификации из-за этого значит
+      # не уметь читать её вовсе, поэтому цикл размыкается: на втором
+      # вхождении вместо развёрнутой копии остаётся заглушка с именем схемы
+      # и без полей. Дальние стадии видят объект, о котором известно только
+      # имя, — и говорят об этом в отчёте.
+      #
+      # @return [Hash, nil] заглушка; nil, если цикла нет
+      def cut(id, site)
         start = @stack.index(id)
-        return unless start
+        return nil unless start
 
         chain = (@stack[start..] + [id]).map { |entry| display(entry) }.join(' -> ')
-        fail_parse(Texts.t('spec_loader.ref.cycle', chain: chain), site)
+        @cycles[chain] ||= JsonPath.build(site.keys)
+        { MARKER => site.ref, 'type' => 'object', CYCLE => chain }
       end
 
       def document(target_file, site)

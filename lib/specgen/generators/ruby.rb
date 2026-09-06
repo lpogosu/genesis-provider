@@ -146,12 +146,26 @@ module SpecGen
       # @param width [Integer]
       # @return [Array<String>]
       def wrap(text, width)
-        text.split(/\s+/).each_with_object(['']) do |word, lines|
+        text.split(/\s+/).flat_map { |word| split_long(word, width) }
+            .each_with_object(['']) do |word, lines|
           if lines.last.empty? then lines[-1] = word
           elsif lines.last.size + 1 + word.size <= width then lines[-1] = "#{lines.last} #{word}"
           else lines << word
           end
         end
+      end
+
+      # Слово шире строки переносить некуда, и оно вылезало за WIDTH прямо в
+      # комментарии сгенерированного файла: у Airwallex это `pattern` из
+      # шести альтернатив, у Stripe — JSONPath на сто тридцать знаков.
+      # Режем такое слово по живому: обрывок в комментарии читается, а
+      # Layout/LineLength не должен ругаться на файл, который мы же и
+      # написали.
+      # @return [Array<String>]
+      def split_long(word, width)
+        return [word] if word.size <= width || width < 1
+
+        word.scan(/.{1,#{width}}/m)
       end
 
       # Guard-строка: `return X if cond` в одну строку, если влезает, иначе

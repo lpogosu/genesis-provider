@@ -36,10 +36,14 @@ RSpec.describe SpecGen::SpecLoader do
                      path: /\A(строка \d+, столбец \d+)?\z/, message: /ошибка синтаксиса JSON/)
     end
 
-    it 'cyclic $ref → SpecParseError showing the cycle' do
-      expect_failure(bad_fixture('cyclic_ref.yaml'), SpecGen::SpecParseError,
-                     path: /\A\$\.components\.schemas\.B\['\$ref'\]\z/,
-                     message: %r{циклический .\$ref.: #/components/schemas/A -> #/components/schemas/B -> #/components/schemas/A})
+    # Циклическая ссылка документ не отвергает: цикл размыкается, а цепочка
+    # доезжает до отчёта. См. ref_resolver_spec.
+    it 'cyclic $ref → the document loads with the cycle cut and recorded' do
+      document = described_class.load(bad_fixture('cyclic_ref.yaml'))
+
+      expect(document.cycles.keys)
+        .to eq(['#/components/schemas/A -> #/components/schemas/B -> #/components/schemas/A'])
+      expect(document.cycles.values.first).to eq("$.components.schemas.B['$ref']")
     end
 
     it 'dangling $ref → SpecParseError at the $ref that points nowhere' do

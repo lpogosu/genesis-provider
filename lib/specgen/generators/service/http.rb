@@ -54,8 +54,14 @@ module SpecGen
           chunks.each_with_index.map do |chunk, index|
             prefix = index.zero? ? 'url = ' : ' ' * ASSIGN
             suffix = index == last ? '' : ' \\'
-            "#{prefix}\"#{chunk}\"#{suffix}"
+            "#{prefix}#{quoted(chunk)}#{suffix}"
           end
+        end
+
+        # Кусок без подстановки — обычная строка, и Style/StringLiterals
+        # требует у неё одинарных кавычек.
+        def quoted(chunk)
+          chunk.include?('#{') ? "\"#{chunk}\"" : Ruby.str(chunk)
         end
 
         # Границы разреза: конец каждого сегмента пути, но никогда внутри
