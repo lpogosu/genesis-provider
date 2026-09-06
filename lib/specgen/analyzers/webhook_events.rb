@@ -94,7 +94,7 @@ module SpecGen
         properties.filter_map do |name, body|
           next unless body.is_a?(Hash)
 
-          merged, = SchemaFlattener.call(body)
+          merged = SchemaNormalizer.call(body).node
           type, = ConstraintReader.type_of(merged)
           values = merged['enum']
           next unless (type.nil? || type == STRING) && values.is_a?(Array) && !values.empty?
@@ -104,8 +104,7 @@ module SpecGen
       end
 
       def property(name)
-        merged, = SchemaFlattener.call(@node['properties'][name])
-        merged
+        SchemaNormalizer.call(@node['properties'][name]).node
       end
 
       # Внутренний статус события не может быть увереннее роли поля, из

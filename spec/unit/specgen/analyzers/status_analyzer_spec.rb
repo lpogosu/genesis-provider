@@ -163,10 +163,11 @@ RSpec.describe SpecGen::Analyzers::StatusAnalyzer do
       expect(profile.warnings.map(&:code)).to include(:spec_element_unsupported)
     end
 
-    it 'skips enum entries that are not strings' do
-      profile = with_status('type' => 'string', 'enum' => [1, nil, 'pending'])
+    it 'reads a numbered enum as text and skips entries with no reading' do
+      profile = with_status('type' => 'string', 'enum' => [1, nil, { 'a' => 1 }, 'pending'])
 
-      expect(profile.status_map.map(&:provider_status)).to eq(['pending'])
+      expect(profile.status_map.map(&:provider_status)).to eq(%w[1 pending])
+      expect(profile.warnings.map(&:code)).to include(:status_unmapped)
     end
   end
 

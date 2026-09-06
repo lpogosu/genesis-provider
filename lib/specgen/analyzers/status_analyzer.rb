@@ -52,7 +52,8 @@ module SpecGen
 
         reader = StatusReader.new(book: rules.statuses, overrides: node[EXTENSION])
         enum.each_with_index do |value, index|
-          add(value, reader, "#{path}.enum[#{index}]", path, name) if value.is_a?(String)
+          text = ConstraintReader.enum_text(value)
+          add(text, reader, "#{path}.enum[#{index}]", path, name) if text
         end
       end
 

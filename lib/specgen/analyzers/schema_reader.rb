@@ -44,8 +44,10 @@ module SpecGen
         @nested = []
         @notes = []
         @nodes = {}
-        @node, composition = SchemaFlattener.call(node)
-        composition.each { |code, message| add_note(code, message, @at) }
+        @sources = {}
+        @composition = SchemaNormalizer.call(node)
+        @node = @composition.node
+        remark(@composition, @at)
       end
 
       # @return [Result]
@@ -83,7 +85,8 @@ module SpecGen
         return no_properties unless properties.is_a?(Hash) && !properties.empty?
 
         conditions = ConditionReader.new(parent: node, properties: properties.keys, book: @book,
-                                         schema_path: at, oas31: @oas31)
+                                         schema_path: at, oas31: @oas31,
+                                         formal: @composition.conditions)
         list = properties.filter_map { |name, body| field(name.to_s, body, required, conditions) }
         @notes.concat(conditions.notes)
         list
@@ -99,14 +102,25 @@ module SpecGen
         []
       end
 
+      # О композиции свойства говорит та схема, в которую свойство
+      # превратилось: у поля-объекта это его собственная схема со своими
+      # вариантами. Иначе замечание печаталось бы дважды по одному адресу.
       def field(name, body, required, conditions)
         path = "#{at}.properties#{SpecLoader::JsonPath.segment(name)}"
         return skip_property(name, path) unless body.is_a?(Hash)
 
-        merged, composition = SchemaFlattener.call(body)
-        composition.each { |code, message| add_note(code, message, path) }
-        @nodes[name] = merged
-        build(name, merged, required, conditions, path)
+        composition = SchemaNormalizer.call(body)
+        @nodes[name] = composition.node
+        @sources[name] = body
+        built = build(name, composition.node, required, conditions, path)
+        remark(composition, path) if built.schema.nil?
+        built
+      end
+
+      # Замечания нормализации становятся заметками анализатора: место
+      # знает только тот, кто читает схему, а вид и текст — нормализация.
+      def remark(composition, path)
+        composition.remarks.each { |r| add_note(r.code, r.message, path, severity: r.severity) }
       end
 
       # Роли — всем полям схемы разом: так виден конфликт одной роли у двух
@@ -138,6 +152,7 @@ module SpecGen
                       required_when: conditions.for(name, merged), json_path: path,
                       constraints: ConstraintReader.call(merged, nullable: nullable),
                       description: text(merged['description']),
+                      variant: @composition.variants[name],
                       schema: nested_schema(name, merged, path))
       end
 
@@ -158,6 +173,7 @@ module SpecGen
       def implied_type(merged)
         return OBJECT if merged['properties'].is_a?(Hash)
         return ARRAY if merged.key?('items')
+        return OBJECT if SchemaNormalizer.free_form?(merged)
 
         nil
       end
@@ -166,9 +182,23 @@ module SpecGen
       def nested_schema(name, merged, path)
         return items_schema(name, merged, path) if type_of(merged) == ARRAY
 
-        register(merged, [@name, 'properties', name], path)
+        found = register(merged, [@name, 'properties', name], path,
+                         source: @sources.fetch(name, merged))
+        free_form(name, merged, path) if found.nil?
+        found
       end
 
+      # Объект, ключи которого спецификация не перечисляет, — это хеш, а не
+      # скаляр: одной строкой значение такого поля не будет никогда.
+      def free_form(name, merged, path)
+        return unless SchemaNormalizer.free_form?(merged)
+
+        add_note(:spec_element_unsupported,
+                 Texts.t('analyzers.schema.free_form_object', name: name), path, severity: :info)
+      end
+
+      # Элемент массива нормализуется отдельно: без этого `items: {allOf:
+      # […]}` не приносит ни одного свойства и схема элемента не заводится.
       def items_schema(name, merged, path)
         items = merged['items']
         unless items.is_a?(Hash)
@@ -177,7 +207,8 @@ module SpecGen
           return nil
         end
 
-        register(items, [@name, 'properties', name, 'items'], "#{path}.items")
+        register(SchemaNormalizer.call(items).node, [@name, 'properties', name, 'items'],
+                 "#{path}.items", source: items)
       end
 
       # Компонентная схема сохраняет своё имя и свой JSONPath, через какое
@@ -185,12 +216,17 @@ module SpecGen
       # обязаны указывать на компонент, а не на копию, которую оставил здесь
       # резолвер. Инлайновый объект называется по месту, где стоит, — по тому
       # же правилу, по которому SchemaNaming называет операции.
-      def register(body, context, path)
+      #
+      # Имя решается по нормализованному узлу (иначе объект за `oneOf` не
+      # показывает свойств и схемы не получает), а дальше идёт исходный:
+      # композицию разберёт собственный читатель этой схемы, только он
+      # увидит её варианты и дискриминатор.
+      def register(body, context, path, source: body)
         component = SchemaNaming.component_of(body)
         name = component || (SchemaNaming.synthetic(context) if body['properties'].is_a?(Hash))
         return nil if name.nil?
 
-        @nested << [name, body, component ? SchemaNaming.component_path(component) : path]
+        @nested << [name, source, component ? SchemaNaming.component_path(component) : path]
         name
       end
 

@@ -65,7 +65,8 @@ module SpecGen
           @field_path ||= path
           @overrides = node[EXTENSION].merge(@overrides) if node[EXTENSION].is_a?(Hash)
           enum.each_with_index do |value, index|
-            record(value, :enum, "#{path}.enum[#{index}]") if value.is_a?(String)
+            text = ConstraintReader.enum_text(value)
+            record(text, :enum, "#{path}.enum[#{index}]") if text
           end
         end
       end

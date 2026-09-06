@@ -40,12 +40,15 @@ module SpecGen
       # @param book [Rules::ConditionsBook] шаблоны для прозы
       # @param schema_path [String] JSONPath схемы, нужен для overlay
       # @param oas31 [Boolean] можно ли писать if/then нативно
-      def initialize(parent:, properties:, book:, schema_path:, oas31: false)
+      # @param formal [Hash{String => IR::RequiredWhen}] условия, прочитанные
+      #   нормализацией из `discriminator` объединения
+      def initialize(parent:, properties:, book:, schema_path:, oas31: false, formal: {})
         @parent = parent
         @properties = properties
         @book = book
         @schema_path = schema_path
         @oas31 = oas31
+        @formal = formal
         @notes = []
       end
 
@@ -53,7 +56,7 @@ module SpecGen
       # @param node [Hash] схема этого поля
       # @return [IR::RequiredWhen, nil]
       def for(name, node)
-        dependent_required(name) || conditional(name) || hint(name, node)
+        @formal[name] || dependent_required(name) || conditional(name) || hint(name, node)
       end
 
       private

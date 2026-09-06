@@ -39,6 +39,7 @@ module SpecGen
         @entries = []
         @by_name = {}
         @requested = {}
+        @fields = {}.compare_by_identity
         collect
       end
 
@@ -70,18 +71,16 @@ module SpecGen
       end
 
       # Поля схемы с их свёрнутыми узлами и JSONPath.
+      #
+      # Ответ запоминается: одну и ту же схему спрашивают и обход `add`, и
+      # пометка тел запросов, и каждый анализатор, который ищет поле по
+      # роли, а нормализация композиций на спецификации в мегабайты стоит
+      # дороже, чем хранение готового ответа на время жизни индекса.
+      #
       # @param entry [Entry]
       # @return [Array<Array(String, Hash, String)>] имя, узел, JSONPath
       def fields(entry)
-        properties = entry.node['properties']
-        return [] unless properties.is_a?(Hash)
-
-        properties.filter_map do |name, body|
-          next unless body.is_a?(Hash)
-
-          merged, = SchemaFlattener.call(body)
-          [name.to_s, merged, "#{entry.json_path}.properties#{SpecLoader::JsonPath.segment(name)}"]
-        end
+        @fields[entry] ||= read_fields(entry)
       end
 
       # @yieldparam entry [Entry]
@@ -108,6 +107,18 @@ module SpecGen
       end
 
       private
+
+      def read_fields(entry)
+        properties = entry.node['properties']
+        return [] unless properties.is_a?(Hash)
+
+        properties.filter_map do |name, body|
+          next unless body.is_a?(Hash)
+
+          merged = SchemaNormalizer.call(body).node
+          [name.to_s, merged, "#{entry.json_path}.properties#{SpecLoader::JsonPath.segment(name)}"]
+        end
+      end
 
       def collect
         components.each { |name, node, path| add(name, node, path, [:component, nil]) }
@@ -184,7 +195,7 @@ module SpecGen
       def add(name, node, path, source, depth = 0)
         return if name.nil? || @by_name.key?(name) || depth > MAX_DEPTH
 
-        merged, = SchemaFlattener.call(node)
+        merged = SchemaNormalizer.call(node).node
         entry = Entry.new(name: name, node: merged, json_path: path, origin: source.first,
                           operation: source.last)
         @by_name[name] = entry
@@ -209,10 +220,13 @@ module SpecGen
         [SchemaNaming.synthetic(context), target, at]
       end
 
+      # Элемент массива нормализуется до того, как его назовут схемой:
+      # `items: {allOf: […]}` без этого не приносит ни одного свойства.
       def target_of(entry, field, body, field_path)
         type, = ConstraintReader.type_of(body)
         if type == ARRAY || body.key?('items')
-          [body['items'], [entry.name, 'properties', field, 'items'], "#{field_path}.items"]
+          items = body['items'].is_a?(Hash) ? SchemaNormalizer.call(body['items']).node : nil
+          [items, [entry.name, 'properties', field, 'items'], "#{field_path}.items"]
         else
           [body, [entry.name, 'properties', field], field_path]
         end

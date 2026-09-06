@@ -36,6 +36,24 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
     profile.warnings.map(&:code)
   end
 
+  # A discriminated union the way a spec writes it: the branches are `$ref`,
+  # and the resolver left each of them the marker the mapping is matched by.
+  def variant(component, properties, required)
+    object(properties, required: required)
+      .merge('x-specgen-ref' => "#/components/schemas/#{component}")
+  end
+
+  def discriminated
+    kind = { 'type' => 'string' }
+    { 'discriminator' => { 'propertyName' => 'kind',
+                           'mapping' => { 'sbp' => '#/components/schemas/Sbp',
+                                          'card' => '#/components/schemas/Card' } },
+      'oneOf' => [variant('Sbp', { 'kind' => kind, 'phone' => { 'type' => 'string' } },
+                          %w[kind phone]),
+                  variant('Card', { 'kind' => kind, 'pan' => { 'type' => 'string' } },
+                          %w[kind pan])] }
+  end
+
   describe 'which schemas end up in the profile' do
     it 'keeps every component, in spec order, referenced or not' do
       profile = with_components({ 'Used' => object({ 'a' => { 'type' => 'string' } }),
@@ -374,14 +392,72 @@ RSpec.describe SpecGen::Analyzers::SchemaAnalyzer do
         .to include('ветки allOf расходятся в типе `a` (string и integer)')
     end
 
-    it 'says plainly that oneOf variants are not decomposed' do
-      node = { 'oneOf' => [object({ 'a' => { 'type' => 'string' } }),
-                           object({ 'b' => { 'type' => 'string' } })] }
-      profile = with_components({ 'Thing' => node })
+    it 'keeps the fields of every oneOf variant and marks which variant they came from' do
+      node = { 'oneOf' => [object({ 'a' => { 'type' => 'string' } }, required: %w[a]),
+                           object({ 'b' => { 'type' => 'string' } }, required: %w[b])] }
+      schema = schema_for(node)
 
-      expect(codes(profile)).to include(:spec_element_unsupported)
-      expect(profile.warnings.map(&:message).join)
-        .to include('`oneOf` не раскладывается на варианты (их 2)')
+      expect(schema.fields.map(&:name)).to eq(%w[a b])
+      expect(schema.fields.map(&:variant)).to eq(['oneOf[0]', 'oneOf[1]'])
+      expect(schema.fields.map(&:required?)).to eq([false, false])
+      expect(with_components({ 'Thing' => node }).warnings.map(&:message).join)
+        .to include('`oneOf` из 2 вариантов')
+    end
+
+    it 'keeps a property required when every variant requires it' do
+      node = { 'oneOf' => [object({ 'a' => { 'type' => 'string' } }, required: %w[a]),
+                           object({ 'a' => { 'type' => 'string' },
+                                    'b' => { 'type' => 'string' } }, required: %w[a b])] }
+      schema = schema_for(node)
+
+      expect(schema.required).to eq(%w[a])
+      expect(schema.field('b').required?).to be(false)
+    end
+
+    it 'drops the null branch of oneOf and becomes the branch that is left' do
+      node = { 'oneOf' => [object({ 'a' => { 'type' => 'string' } }, required: %w[a]),
+                           { 'type' => 'null' }] }
+      schema = schema_for(node)
+
+      expect(schema.fields.map(&:name)).to eq(%w[a])
+      expect(schema.field('a').required?).to be(true)
+      expect(schema.field('a').variant).to be_nil
+    end
+
+    it 'unfolds allOf nested inside a branch of allOf' do
+      inner = { 'allOf' => [object({ 'b' => { 'type' => 'string' } }, required: %w[b])] }
+      schema = schema_for({ 'allOf' => [object({ 'a' => { 'type' => 'string' } }), inner] })
+
+      expect(schema.fields.map(&:name)).to eq(%w[a b])
+      expect(schema.required).to eq(%w[b])
+    end
+
+    it 'unfolds allOf inside items so the element schema has fields' do
+      element = { 'allOf' => [object({ 'a' => { 'type' => 'string' } })] }
+      profile = with_components({ 'Thing' => object({ 'list' => { 'type' => 'array',
+                                                                  'items' => element } }) })
+
+      expect(profile.schema('Thing').field('list').schema).to eq('Thing.properties.list.items')
+      expect(profile.schema('Thing.properties.list.items').fields.map(&:name)).to eq(%w[a])
+    end
+
+    it 'reads discriminator as a condition of level one' do
+      profile = with_components({ 'Thing' => discriminated })
+      thing = profile.schema('Thing')
+
+      expect(thing.field('phone').required?).to be(false)
+      expect(thing.field('phone').required_when)
+        .to have_attributes(field: 'kind', equals: 'sbp', origin: :discriminator, confidence: 1.0)
+      expect(thing.field('kind').enum).to eq(%w[sbp card])
+      expect(thing.field('kind').required?).to be(true)
+    end
+
+    it 'reports a free-form map instead of turning it into a scalar' do
+      free = { 'type' => 'object', 'additionalProperties' => { 'type' => 'string' } }
+      profile = with_components({ 'Thing' => object({ 'metadata' => free }) })
+
+      expect(profile.schema('Thing').field('metadata').type).to eq('object')
+      expect(profile.warnings.map(&:message).join).to include('свободная карта')
     end
   end
 

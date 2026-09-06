@@ -16,9 +16,14 @@ module SpecGen
     #   example        дословно
     #   schema         имя вложенной схемы для объектов или схемы элемента
     #                  для массивов; nil для скаляров
+    #   variant        имя варианта `oneOf`/`anyOf`, из которого пришло поле;
+    #                  nil у поля, объявленного самой схемой. Поля разных
+    #                  вариантов провайдер вместе не принимает, поэтому
+    #                  собирающий запрос обязан различать их, а не считать
+    #                  соседями по одному объекту
     #   json_path      "$.components.schemas.X.properties.y"
     Field = Struct.new(:name, :role, :type, :format, :required, :required_when, :constraints,
-                       :description, :example, :schema, :json_path, keyword_init: true)
+                       :description, :example, :schema, :variant, :json_path, keyword_init: true)
 
     # Словарь значений и проверки Field.
     class Field
@@ -41,10 +46,12 @@ module SpecGen
       # @param description [String, nil]
       # @param example [Object, nil]
       # @param schema [String, nil]
+      # @param variant [String, nil]
       # @param json_path [String, nil]
       # @raise [ArgumentError]
       def initialize(name:, role:, type: nil, format: nil, required: false, required_when: nil,
-                     constraints: {}, description: nil, example: nil, schema: nil, json_path: nil)
+                     constraints: {}, description: nil, example: nil, schema: nil, variant: nil,
+                     json_path: nil)
         Node.assert_text!(name, 'имя поля')
         Node.assert_derived!(role, 'роль поля', allowed: Roles::FIELD)
         Node.assert_optional!(required_when, RequiredWhen, 'required_when')
@@ -60,6 +67,12 @@ module SpecGen
       # @return [Boolean] обязательное при условии RequiredWhen
       def conditionally_required?
         !required_when.nil?
+      end
+
+      # @return [Boolean] поле пришло из ветки `oneOf`/`anyOf`, а не
+      #   объявлено самой схемой
+      def variant?
+        !variant.nil?
       end
 
       # @return [Array, nil] значения enum, если поле ими ограничено

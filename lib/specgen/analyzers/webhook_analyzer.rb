@@ -105,7 +105,7 @@ module SpecGen
       end
 
       def events_of(found, schema_node, media, content)
-        merged, = SchemaFlattener.call(schema_node)
+        merged = SchemaNormalizer.call(schema_node).node
         examples = []
         ExampleReader.each_example(content, "#{found.at}.requestBody",
                                    [found.key, 'requestBody']) { |*item| examples << item.take(3) }
