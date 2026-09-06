@@ -28,7 +28,7 @@ module SpecGen
 
       # @return [Array<String>] строки вывода без завершающих переводов строк
       def lines
-        [Texts.t('cli.batch_heading', dir: @dir), *table, total, *errors]
+        [Texts.t('cli.batch_heading', dir: @dir), *table, total, *median_line, *errors]
       end
 
       # @param io [IO]
@@ -59,6 +59,22 @@ module SpecGen
       def total
         Texts.t('cli.batch_total', specs: Texts.plural(@rows.size, 'spec'),
                                    ok: @rows.count(&:ok?), total: @rows.size)
+      end
+
+      # Медиана колонки «В контракте» одной строкой. Читатель сводки видит
+      # разброс первой колонки (23 % у Adyen Payout, 75 % у NovaPay) и делает
+      # из него вывод об инструменте, хотя разброс описывает спецификации:
+      # чем больше в файле посторонних ресурсов, тем ниже первая цифра.
+      # Медиана второй колонки отвечает на этот вопрос до того, как он задан.
+      # Медиана, а не среднее: одна спецификация с сотней чужих операций не
+      # должна двигать итог прогона.
+      def median_line
+        values = @rows.select(&:ok?).filter_map(&:contract).sort
+        return [] if values.empty?
+
+        middle = values.size / 2
+        value = values.size.odd? ? values[middle] : ((values[middle - 1] + values[middle]) / 2.0)
+        [Texts.t('cli.batch_median', value: format('%g', value.round(1)))]
       end
 
       def errors

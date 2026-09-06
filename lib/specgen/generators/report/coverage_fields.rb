@@ -45,11 +45,6 @@ module SpecGen
 
         private
 
-        def build(key, total, gaps, out_of_scope: 0)
-          Dimension.new(key: key, total: total, covered: total - gaps.size, gaps: gaps,
-                        out_of_scope: out_of_scope)
-        end
-
         # Необязательное поле без роли в payload не идёт намеренно (CLAUDE.md,
         # «Что генерируем при неполной спеке»), поэтому пробелом интеграции
         # оно не является. Обязательное без роли остаётся в знаменателе: оно
@@ -101,17 +96,24 @@ module SpecGen
         end
 
         def request_gap(operation, entry)
-          ["#{operation.key}: #{entry.path}", request_reason(operation, entry.field)]
+          key, params = request_reason(operation, entry.field)
+          Gap.new(element: "#{operation.key}: #{entry.path}", reason_key: key, params: params,
+                  foreign: !scope.operation?(operation))
         end
 
+        # @return [Array(Symbol, Hash)] ключ причины и её подстановки
         def request_reason(operation, field)
           unless builds_payload?(operation)
-            return t('gap_field_other_operation', key: operation.key)
+            return [:gap_field_other_operation, { key: operation.key }]
           end
-          return t('gap_field_no_accessor', role: field.role.value) if field.role.known?
-          return t('gap_field_required_todo') if field.required? || field.conditionally_required?
+          return [:gap_field_no_accessor, { role: field.role.value }] if field.role.known?
+          return [:gap_field_required_todo, {}] if required?(field)
 
-          t('gap_field_optional_skipped')
+          [:gap_field_optional_skipped, {}]
+        end
+
+        def required?(field)
+          field.required? || field.conditionally_required?
         end
 
         # Входящие тела: ответы всех операций плюс тело уведомления, которое
@@ -143,14 +145,17 @@ module SpecGen
         end
 
         def response_gap(name, entry)
-          ["#{name}.#{entry.path}", response_reason(entry.field)]
+          key, params = response_reason(entry.field)
+          Gap.new(element: "#{name}.#{entry.path}", reason_key: key, params: params,
+                  foreign: !scope.schema?(name))
         end
 
+        # @return [Array(Symbol, Hash)] ключ причины и её подстановки
         def response_reason(field)
-          return t('gap_response_role_unknown') unless field.role.known?
+          roles = { base: code(ctx.contract.base_class), roles: codes(READ_ROLES) }
+          return [:gap_response_role_unknown, roles] unless field.role.known?
 
-          t('gap_response_role_unused', role: code(field.role.value),
-                                        base: code(ctx.contract.base_class))
+          [:gap_response_role_unused, roles.merge(role: code(field.role.value))]
         end
       end
     end

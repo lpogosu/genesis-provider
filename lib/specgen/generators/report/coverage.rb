@@ -37,6 +37,7 @@ module SpecGen
         def initialize(ctx, parts)
           super
           @fields = CoverageFields.new(ctx, parts)
+          @codes = CoverageCodes.new(ctx, parts)
         end
 
         # @return [Array<Dimension>] в порядке разделов отчёта
@@ -84,17 +85,19 @@ module SpecGen
           dimensions.reject { |dimension| dimension.excluded.zero? }
         end
 
-        # @return [Array<Array(String, String)>] всё непокрытое с причиной
+        # @return [Array<Gap>] всё непокрытое с причиной и корзиной
         def gaps
           dimensions.flat_map(&:gaps)
         end
 
-        private
-
-        def build(key, total, gaps, out_of_scope: 0)
-          Dimension.new(key: key, total: total, covered: total - gaps.size, gaps: gaps,
-                        out_of_scope: out_of_scope)
+        # Непокрытое по корзинам: ответ на вопрос «что из этих процентов моя
+        # работа», которого одна цифра покрытия не даёт.
+        # @return [Buckets]
+        def buckets
+          @buckets ||= Buckets.new(dimensions)
         end
+
+        private
 
         # Операция покрыта, если у неё есть метод сервиса: метод контракта
         # либо отдельный публичный метод. Роль :unmapped покрытием не
@@ -106,7 +109,11 @@ module SpecGen
         # нулевым — это проверка, а не скидка.
         def operations
           unmapped = profile.operations.select(&:unmapped?)
-          gaps = unmapped.map { |operation| [operation.key, t('gap_operation_unmapped')] }
+          gaps = unmapped.map do |operation|
+            # Операция без роли лежит вне границы контракта по определению:
+            # ни один его метод её не вызывает.
+            Gap.new(element: operation.key, reason_key: :gap_operation_unmapped, foreign: true)
+          end
           build('operations', profile.operations.size, gaps,
                 out_of_scope: unmapped.count { |operation| !own_method?(operation) })
         end
@@ -115,65 +122,30 @@ module SpecGen
           parts[:extras].entries.any? { |extra, _method| extra.equal?(operation) }
         end
 
-        # Ответы входящего вебхука не считаются: их пишем мы, а не провайдер.
         def response_codes
-          entries = code_entries
-          gaps = entries.reject { |operation, response| code_covered?(operation, response) }
-                        .map { |operation, response| code_gap(operation, response) }
-          build('response_codes', entries.size, gaps)
-        end
-
-        def code_entries
-          profile.operations.reject { |operation| operation.role.value == :webhook }
-                 .flat_map { |operation| operation.responses.map { |r| [operation, r] } }
-        end
-
-        def code_covered?(operation, response)
-          status = response.code
-          return true if response.success?
-          return false if status.nil?
-
-          status == dedup_status || http_statuses.include?(status) ||
-            specific_statuses(operation).include?(status)
-        end
-
-        def dedup_status
-          idempotency = profile.idempotency
-          idempotency&.dedup? ? idempotency.conflict_status.value : nil
-        end
-
-        def http_statuses
-          @http_statuses ||= tables.http_rules.map(&:http_status)
-        end
-
-        def specific_statuses(operation)
-          tables.specific_rules.select { |rule| rule.operation == operation.key }
-                .map(&:http_status)
-        end
-
-        def code_gap(operation, response)
-          element = "#{operation.key} #{response.status}"
-          reason = response.code.nil? ? t('gap_code_range') : t('gap_code_default')
-          [element, reason]
+          @codes.dimension
         end
 
         def statuses
           mappings = tables.status_mappings
           gaps = mappings.reject { |mapping| mapping.internal.known? }
-                         .map { |mapping| [mapping.provider_status, t('gap_status')] }
+                         .map do |mapping|
+                           Gap.new(element: mapping.provider_status, reason_key: :gap_status)
+                         end
           build('statuses', mappings.size, gaps)
         end
 
         def events
           all = tables.events
-          gaps = all.reject(&:mapped?).map { |event| [event.name, t('gap_event')] }
+          gaps = all.reject(&:mapped?)
+                    .map { |event| Gap.new(element: event.name, reason_key: :gap_event) }
           build('events', all.size, gaps)
         end
 
         def conditions
           all = profile.conditions
           gaps = all.reject { |condition| condition_covered?(condition) }
-                    .map { |condition| [condition_label(condition), condition_reason(condition)] }
+                    .map { |condition| condition_gap(condition) }
           build('conditions', all.size, gaps)
         end
 
@@ -223,16 +195,22 @@ module SpecGen
           [condition.kind, condition.field || condition.operation].compact.join(' ')
         end
 
+        def condition_gap(condition)
+          key, params = condition_reason(condition)
+          Gap.new(element: condition_label(condition), reason_key: key, params: params)
+        end
+
+        # @return [Array(Symbol, Hash)] ключ причины и её подстановки
         def condition_reason(condition)
           unless Service::Precheck::CHECKED.include?(condition.kind)
-            return t("gap_condition_#{condition.kind}")
+            return [:"gap_condition_#{condition.kind}", {}]
           end
           if parts[:precheck].in_requisites?(condition)
-            return t('gap_condition_in_requisites', field: condition.field,
-                                                    method: parts[:requisites].method_name)
+            return [:gap_condition_in_requisites,
+                    { field: condition.field, method: parts[:requisites].method_name }]
           end
 
-          t('gap_condition_no_check', field: condition.field)
+          [:gap_condition_no_check, { field: condition.field }]
         end
       end
     end

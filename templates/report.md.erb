@@ -81,7 +81,11 @@
 Непокрытых элементов нет: каждый элемент спецификации задействован в
 сгенерированной интеграции.
 <%- else -%>
-<%= coverage_gap_blocks %>
+<%= coverage_buckets_line %>
+
+<%= coverage_manual_blocks %>
+
+<%= coverage_folded_blocks %>
 <%- end -%>
 
 ## 3. Неоднозначности

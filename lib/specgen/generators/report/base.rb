@@ -41,6 +41,23 @@ module SpecGen
           parts[:tables]
         end
 
+        # Граница контракта в ресурсах спецификации: её спрашивают оба
+        # презентера покрытия, чтобы отличить непокрытое своё от чужого.
+        # @return [ContractScope]
+        def scope
+          @scope ||= ContractScope.new(ctx)
+        end
+
+        # @param key [String] ключ измерения
+        # @param total [Integer] элементов найдено
+        # @param gaps [Array<Gap>] непокрытое поимённо
+        # @param out_of_scope [Integer] вычтено из знаменателя второй цифры
+        # @return [Dimension]
+        def build(key, total, gaps, out_of_scope: 0)
+          Dimension.new(key: key, total: total, covered: total - gaps.size, gaps: gaps,
+                        out_of_scope: out_of_scope)
+        end
+
         # @param derived [IR::Derived]
         # @return [String] "эвристика 0.54"
         def label(derived)

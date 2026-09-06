@@ -41,6 +41,11 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
     coverage_line(text).scan(/\((\d+) из (\d+)/).flatten.map(&:to_i)
   end
 
+  # Подраздел «Что не покрыто и почему» раздела 2.
+  def gaps_section(text)
+    text.split('### Что не покрыто и почему').last.split('## 3.').first
+  end
+
   # Фрагменты overlay из раздела 3 склеиваются в один документ ровно так, как
   # велит сам отчёт: под ключ actions, без правки отступов.
   def overlay_document(text)
@@ -149,6 +154,40 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
       expect(section).to match(/Итого: \d+ пункт/)
     end
 
+    # Одна цифра покрытия отвечает на вопрос, которого никто не задавал:
+    # непокрытое надо разложить на «чужое», «устройство метрики» и «моя
+    # работа», иначе читатель принимает всё непокрытое за провал разбора.
+    it 'splits what is not covered into three named buckets' do
+      line = gaps_section(@text)[/Непокрыто[^*]+/].gsub(/\s+/, ' ')
+      expect(line).to match(/Непокрыто \d+: вне контракта \d+, структурных исключений \d+/)
+      expect(line).to match(/требует ручной работы \d+/)
+      counts = line.scan(/(\d+)/).flatten.map(&:to_i)
+      expect(counts.first).to eq(counts[1..3].sum)
+    end
+
+    # Корзина ручной работы — единственная, адресованная человеку, поэтому
+    # она идёт первой и целиком: оборванный список не отвечает на вопрос
+    # «что мне доделать руками».
+    it 'lists the manual bucket first and in full' do
+      section = gaps_section(@text)
+      manual = section.index('**Требует ручной работы')
+      expect(manual).to be < section.index('**Вне контракта')
+      expect(manual).to be < section.index('**Структурные исключения метрики')
+      declared = section[/Требует ручной работы — (\d+)\./, 1].to_i
+      listed = section[manual...section.index('**Вне контракта')].scan(/^- `/).size
+      expect(listed).to eq(declared)
+    end
+
+    # Остальные две корзины сворачиваются: число, измерения и по нескольку
+    # примеров. Свёртка ничего не прячет — корзина каждого элемента
+    # вычислена из его причины.
+    it 'folds the other two buckets into counts with examples' do
+      section = gaps_section(@text)
+      expect(section).to match(/\*\*Вне контракта — \d+\.\*\* Ресурсы спецификации/)
+      expect(section).to match(/\*\*Поля тел ответов и уведомлений\*\* — \d+[:,]/)
+      expect(section.scan(/^- \*\*[^*]+\*\* — \d+, например: /).size).to be >= 1
+    end
+
     def warnings_of_novapay
       rules = SpecGen::Rules.load
       document = SpecGen::SpecLoader.load(File.join(Fixtures::ROOT, 'specs', 'novapay.yaml'))
@@ -241,6 +280,44 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
     it 'says there is nothing to cover instead of claiming 100 % in an empty dimension' do
       expect(text).not_to match(/\| 0 \| 0 \| 100 % \|/)
       expect(text.scan('| 0 | 0 | нечего покрывать |').size).to eq(7)
+    end
+  end
+
+  describe SpecGen::Generators::Report::Gap do
+    # Корзина вычисляется из причины таблицей, а не назначается на месте:
+    # причина без строки в таблице означала бы пропуск, увиденный только
+    # глазами читателя отчёта.
+    it 'has a bucket for every reason the locale can print' do
+      keys = YAML.load_file('locales/ru/generators.yml')['generators']['report'].keys
+      reasons = keys.select { |key| key.start_with?('gap_') }.map(&:to_sym)
+      expect(reasons).not_to be_empty
+      expect(reasons - described_class::BUCKETS.keys).to be_empty
+    end
+
+    it 'knows only the three buckets of the report' do
+      expect(described_class::BUCKETS.values.uniq.sort).to eq(described_class::ORDER.sort)
+      expect(described_class::ORDER).to include(described_class::MAIN)
+      expect(described_class::FOLDED).not_to include(described_class::MAIN)
+    end
+
+    # Элемент чужого ресурса не становится пробелом интеграции от того, что
+    # причина у него та же: контракт до этого ресурса не доходит вовсе.
+    it 'sends anything outside the contract to its own bucket whatever the reason' do
+      gap = described_class.new(element: 'x', reason_key: :gap_field_required_todo, foreign: true)
+      expect(gap.bucket).to eq(:out_of_contract)
+      expect(gap).not_to be_manual
+    end
+
+    it 'keeps the same reason inside the contract as manual work' do
+      gap = described_class.new(element: 'x', reason_key: :gap_field_required_todo)
+      expect(gap.bucket).to eq(:manual)
+      expect(gap).to be_manual
+    end
+
+    # Новый вид пропуска лучше показать человеку лишний раз, чем спрятать в
+    # корзину «это не ваша забота».
+    it 'treats a reason absent from the table as manual work' do
+      expect(described_class.new(element: 'x', reason_key: :gap_brand_new).bucket).to eq(:manual)
     end
   end
 

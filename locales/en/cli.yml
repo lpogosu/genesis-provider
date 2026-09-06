@@ -20,6 +20,7 @@ cli:
   batch_failed: "not parsed"
   batch_errors: "Not parsed:"
   batch_total: "Total: %{specs}, generated %{ok} of %{total}"
+  batch_median: "Median of the \"In contract\" column: %{value} %% — half of the specifications are parsed above this figure within the contract"
   batch_column:
     spec: "Specification"
     provider: "Provider"

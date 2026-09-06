@@ -132,7 +132,17 @@ module SpecGen
 
         # @return [String] раздел 2: что в знаменателе осталось и где сверить
         def coverage_scope_rest
-          paragraph(t('coverage_scope_rest', limit: Dimension::MAX_GAPS))
+          paragraph(t('coverage_scope_rest'))
+        end
+
+        # Сводная строка о непокрытом: сколько его и как оно делится на три
+        # корзины. Без неё читатель принимает всё непокрытое за провал
+        # разбора, хотя работы человека в нём — восьмая часть.
+        # @return [String] раздел 2
+        def coverage_buckets_line
+          counts = coverage.buckets.counts
+          parts = counts.map { |bucket, count| t("bucket_count_#{bucket}", count: count) }
+          paragraph(t('coverage_buckets', total: coverage.buckets.total, parts: parts.join(', ')))
         end
 
         # @param dimension [Dimension]
@@ -141,12 +151,26 @@ module SpecGen
           Texts.t("generators.report.dim_#{dimension.key}")
         end
 
-        # Непокрытое по абзацу на измерение: заголовок, список первых
-        # элементов с причиной и число оставшихся.
-        # @return [String]
-        def coverage_gap_blocks
-          blocks = coverage.dimensions.reject { |dimension| dimension.gaps.empty? }
-          blocks.map { |dimension| gap_block(dimension).join("\n") }.join("\n\n")
+        # Корзина, адресованная человеку: перечисляется поимённо и целиком,
+        # по абзацу на измерение. Полностью — потому что это и есть ответ на
+        # вопрос «что мне доделать руками», и оборванный на пятнадцатом
+        # элементе список этого ответа не даёт.
+        # @return [String] раздел 2
+        def coverage_manual_blocks
+          found = coverage.buckets.of(Gap::MAIN)
+          return paragraph(t('bucket_manual_none')) if found.empty?
+
+          blocks = found.map { |dimension, gaps| manual_block(dimension, gaps).join("\n") }
+          [bucket_title(Gap::MAIN), *blocks].join("\n\n")
+        end
+
+        # Корзины, в которых человеку делать нечего: число и примеры. Каждый
+        # их элемент назван причиной, а причину раскладывает по корзинам
+        # таблица Gap::BUCKETS, поэтому свёртка ничего не прячет.
+        # @return [String] раздел 2
+        def coverage_folded_blocks
+          Gap::FOLDED.reject { |bucket| coverage.buckets.of(bucket).empty? }
+                     .map { |bucket| folded_block(bucket) }.join("\n\n")
         end
 
         # @return [Warnings] разделы 3, 5 и 6
@@ -182,13 +206,25 @@ module SpecGen
 
         private
 
-        def gap_block(dimension)
-          heading = t('gaps_heading', count: dimension.uncovered)
-          lines = ["**#{dimension_name(dimension)}** — #{heading}", '']
-          lines += list(dimension.shown_gaps.map { |element, reason| "`#{element}` — #{reason}" })
-          return lines if dimension.hidden_gaps.zero?
+        # Заголовок корзины с её числом и объяснением, что она значит.
+        def bucket_title(bucket)
+          count = coverage.buckets.counts[bucket]
+          paragraph("**#{t("bucket_title_#{bucket}")} — #{count}.** #{t("bucket_note_#{bucket}")}")
+        end
 
-          lines + ["- #{t('gaps_more', count: dimension.hidden_gaps)}"]
+        def manual_block(dimension, gaps)
+          heading = t('gaps_heading', count: gaps.size)
+          ["**#{dimension_name(dimension)}** — #{heading}", '',
+           *list(gaps.map { |gap| "`#{gap.element}` — #{gap.reason}" })]
+        end
+
+        def folded_block(bucket)
+          rows = coverage.buckets.of(bucket).map do |dimension, gaps|
+            key = gaps.size > Gap::EXAMPLES ? 'bucket_dimension_folded' : 'bucket_dimension_all'
+            t(key, dimension: dimension_name(dimension), count: gaps.size,
+                   items: codes(gaps.take(Gap::EXAMPLES).map(&:element)))
+          end
+          [bucket_title(bucket), list(rows).join("\n")].join("\n\n")
         end
 
         def stats
