@@ -58,6 +58,8 @@ generators:
     condition:
       min_amount: "minimum: %{value} in provider units = %{major} in major units (%{source})"
       max_amount: "maximum: %{value} in provider units = %{major} in major units (%{source})"
+      min_amount_raw: "minimum: %{value} in provider units; the multiplier is not derived — to_provider_units does the conversion (%{source})"
+      max_amount_raw: "maximum: %{value} in provider units; the multiplier is not derived — to_provider_units does the conversion (%{source})"
       field_max_length: "%{field}: maxLength %{value} (%{source})"
       field_pattern: "%{field}: pattern %{value} (%{source})"
       field_enum: "%{field}: allowed values %{value} (%{source})"

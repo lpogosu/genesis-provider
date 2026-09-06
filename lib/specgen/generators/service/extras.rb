@@ -113,9 +113,38 @@ module SpecGen
           role = operation.role.value
           base = role == :unmapped ? Ruby.snake(operation.key) : role.to_s
           base = base.sub(GETTER, '') if params.empty? && base.match?(GETTER)
-          name = @taken.include?(base) || base.empty? ? "#{base}_request" : base
+          name = unique(base, key_name(operation, params))
           @taken << name
           name
+        end
+
+        # Ключ операции как имя метода: Naming/AccessorMethodName запрещает
+        # get_* без аргументов, поэтому приставку снимаем там же, где её
+        # снимает роль.
+        def key_name(operation, params)
+          key = Ruby.snake(operation.key)
+          params.empty? ? key.sub(GETTER, '') : key
+        end
+
+        # Имя роли не уникально. У Paystack восемь операций про счета
+        # получили роль balance, и все восемь назывались balance_request:
+        # Ruby оставил бы последнюю, а семь методов исчезли бы из сервиса
+        # молча — ровно та потеря, ради недопущения которой операции вне
+        # контракта вообще получают свой метод.
+        #
+        # Различает их ключ операции, а не порядковый номер: читателю нужно
+        # понять, какая операция стоит за методом. Номер остаётся крайним
+        # средством на случай, когда и ключи совпали.
+        def unique(base, key)
+          [base, key, "#{base}_request", "#{base}_#{key}"]
+            .reject { |name| name.nil? || name.empty? || name.start_with?('_') }
+            .find { |name| !@taken.include?(name) } || numbered(base.empty? ? key : base)
+        end
+
+        def numbered(base)
+          index = 2
+          index += 1 while @taken.include?("#{base}_#{index}")
+          "#{base}_#{index}"
         end
 
         def params(operation)

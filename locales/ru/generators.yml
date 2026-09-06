@@ -59,6 +59,8 @@ generators:
     condition:
       min_amount: "minimum: %{value} в единицах провайдера = %{major} в мажорных (%{source})"
       max_amount: "maximum: %{value} в единицах провайдера = %{major} в мажорных (%{source})"
+      min_amount_raw: "minimum: %{value} в единицах провайдера; множитель не выведен — пересчёт делает to_provider_units (%{source})"
+      max_amount_raw: "maximum: %{value} в единицах провайдера; множитель не выведен — пересчёт делает to_provider_units (%{source})"
       field_max_length: "%{field}: maxLength %{value} (%{source})"
       field_pattern: "%{field}: pattern %{value} (%{source})"
       field_enum: "%{field}: допустимые значения %{value} (%{source})"

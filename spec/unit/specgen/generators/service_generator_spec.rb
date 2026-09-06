@@ -184,6 +184,51 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
     end
   end
 
+  # Обе беды нашлись прогоном на чужих спеках и обе видит RuboCop по
+  # сгенерированному коду: у Paystack восемь операций с ролью balance
+  # назывались balance_request и семь методов исчезали (Lint/DuplicateMethods),
+  # у GOV.UK Pay граница 10000000 пенсов шла в код без разделителей.
+  describe 'a specification with several operations of one role and a limit in minor units' do
+    it 'gives every operation its own method and separates the digits of the limit' do
+      Dir.mktmpdir('specgen-extras') do |dir|
+        spec = File.join(dir, 'extras.yaml')
+        File.binwrite(spec, <<~YAML)
+          openapi: 3.0.3
+          info: { title: Many Balances API, version: '0.1' }
+          paths:
+            /balance:
+              get: { operationId: getBalance, responses: { '200': { description: ok } } }
+            /balance/ledger:
+              get: { operationId: getBalanceLedger, responses: { '200': { description: ok } } }
+            /balance/history:
+              get: { operationId: getBalanceHistory, responses: { '200': { description: ok } } }
+            /payouts:
+              post:
+                operationId: createPayout
+                requestBody:
+                  required: true
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        required: [amount]
+                        properties:
+                          amount: { type: integer, maximum: 10000000 }
+                responses:
+                  '201': { description: ok }
+        YAML
+        artifact, = generate(spec, dir)
+        source = File.read(artifact.path, encoding: 'UTF-8')
+        names = source.scan(/^\s+def ([a-z_0-9]+)/).flatten
+
+        expect(syntax_ok?(artifact.path)).to be(true)
+        expect(names).to eq(names.uniq)
+        expect(names).to include('balance', 'balance_ledger', 'balance_history')
+        expect(source).to include('to_provider_units(10_000_000)')
+      end
+    end
+  end
+
   # Провайдер с несколькими валютами одной экспоненты (Paystack: NGN, GHS,
   # ZAR, USD) даёт известный множитель без единственной валюты. Подстановка
   # пустого кода оставляла в сгенерированном файле висящее «, валюта )».

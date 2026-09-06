@@ -72,9 +72,19 @@ module SpecGen
         # @return [String]
         def description(condition)
           derived = condition.value
-          @ctx.t("condition.#{condition.kind}",
+          major = major_text(condition)
+          @ctx.t("condition.#{kind_of(condition, major)}",
                  field: condition.field, value: Reporter::Format.constraint(derived.value),
-                 major: major_text(condition), source: @ctx.source_label(derived))
+                 major: major, source: @ctx.source_label(derived))
+        end
+
+        # Без множителя границы в мажорных единицах нет, и фраза
+        # «= в мажорных» с пустым местом обещает пересчёт, которого не было.
+        def kind_of(condition, major)
+          kind = condition.kind
+          return kind unless major.empty? && AMOUNT_KINDS.include?(kind)
+
+          :"#{kind}_raw"
         end
 
         # "1000.00 RUB" для границ суммы; пустая строка для остальных.
@@ -97,10 +107,17 @@ module SpecGen
         # @return [String] литерал Ruby
         def amount(raw)
           multiplier = @ctx.profile.units&.multiplier
-          return "to_provider_units(#{raw})" if multiplier.nil? || !raw.is_a?(Numeric)
+          # Разделители разрядов нужны и здесь: Style/NumericLiterals читает
+          # и аргумент пересчёта (у GOV.UK Pay maximum — 10000000 пенсов).
+          return "to_provider_units(#{literal(raw)})" if multiplier.nil? || !raw.is_a?(Numeric)
 
           major = Rational(raw, multiplier)
           Ruby.number(major.denominator == 1 ? major.to_i : major.to_f)
+        end
+
+        # @return [String] литерал Ruby для сырого значения спецификации
+        def literal(raw)
+          raw.is_a?(Numeric) ? Ruby.number(raw) : raw.to_s
         end
 
         # Роль поля условия: по схеме тела запроса операции создания, иначе по
