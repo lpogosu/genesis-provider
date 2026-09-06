@@ -60,6 +60,11 @@ cli:
     explain: "Print the evidence behind every derived value"
     locale: "Language of messages and reports: ru or en (default ru, or SPECGEN_LOCALE)"
 
+  parse:
+    endpoints_more: "and %{count} more"
+    webhook_signed: "Webhook: %{path}, signature %{header} (%{algorithm})"
+    webhook_unsigned: "Webhook: %{path}, no signature declared"
+
 summary:
   header: "Parsing spec... %{file}: OpenAPI %{version}, %{counts}"
   provider: "Provider: %{value}"

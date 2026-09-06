@@ -123,6 +123,10 @@ module SpecGen
     def generate_artifacts(rules)
       document = load_spec
       profile = Analyzers::Runner.call(document: document, rules: rules, options: options)
+      # Сначала — что понято, потом — что записано. Так показывает ожидаемый
+      # вывод описание кейса, и так человек видит, разобрал ли инструмент
+      # пять операций или одну, ещё до строк об артефактах.
+      $stdout.write(Reporter::ParseLines.new(profile, document).render)
       artifacts = Generators.call(profile: profile, rules: rules, document: document,
                                   options: options)
       artifacts.each { |artifact| say artifact_line(artifact) }

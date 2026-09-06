@@ -93,6 +93,21 @@ RSpec.describe SpecGen::CLI do
       expect(File.file?(File.join(@out, 'novapay_service.rb'))).to be(true)
     end
 
+    # Форма вывода взята из описания кейса: сначала «Parsing spec... Found N
+    # endpoints», авторизация и подпись вебхука, и только потом строки о
+    # записанных файлах. Без преамбулы человек видит четыре «ok» и не знает,
+    # разобрал инструмент пять операций или одну.
+    it 'says what it understood in the spec before it says what it wrote' do
+      result = run_cli('--spec', novapay, '--provider', 'novapay', '--output', @out)
+      lines = result.stdout.lines.map(&:chomp)
+
+      expect(lines[0]).to include('novapay.yaml').and include('OpenAPI 3.0.3').and include('5 операций')
+      expect(lines[1]).to include('POST /payouts').and include('GET /balance')
+      expect(lines[2]).to include('Авторизация').and include('X-API-Key')
+      expect(lines[3]).to include('X-NovaPay-Signature')
+      expect(lines[4]).to start_with('Генерация сервиса')
+    end
+
     it 'with --strict writes the files first and only then exits with 1 because of warnings' do
       result = run_cli('generate', '--spec', novapay, '--provider', 'novapay', '--output', @out, '--strict')
       expect(result.status).to eq(described_class::EXIT_ERROR)
