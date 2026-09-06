@@ -141,10 +141,17 @@ export async function loadSpecs(): Promise<Loaded<SpecsResponse>> {
   }
 }
 
+/**
+ * Настройки прогона: сервер принимает их и при генерации из каталога, и при
+ * загрузке файла, и при вставке текста (SpecGen::Web::Params). `provider` —
+ * имя провайдера (иначе выводится из `info.title`), `locale` — язык
+ * сгенерированных документов и предупреждений, `overlay` — текст OpenAPI
+ * Overlay 1.0.0.
+ */
+export type RunOptions = { provider?: string; locale?: 'ru' | 'en'; overlay?: string }
+
 /** Тело POST /api/generate: либо спецификация из каталога, либо загруженный текст. */
-export type GenerateBody =
-  | { spec_id: string }
-  | { filename: string; content: string; provider?: string; overlay?: string }
+export type GenerateBody = RunOptions & ({ spec_id: string } | { filename: string; content: string })
 
 /**
  * Генерация артефактов. Сохранённые ответы есть только для двух

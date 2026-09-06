@@ -32,6 +32,34 @@ export type Artifact = {
 }
 
 /**
+ * Уровни доверия из IR (SpecGen::Web::Summary#confidence): сколько
+ * выведенных значений профиля взято на каждом уровне архитектуры и сколько
+ * не вывелось вовсе. `heuristic_low` и `threshold` — подмножество и порог
+ * матчеров, уже посчитанные сервером; фронт их не пересчитывает.
+ */
+export type Confidence = {
+  structural: number
+  overlay: number
+  registry: number
+  heuristic: number
+  unknown: number
+  heuristic_low: number
+  threshold: number
+}
+
+/**
+ * Допущения прогона (SpecGen::Web::Summary#assumptions), те же строки, что
+ * печатает раздел 9 INTEGRATION.md. Строки могут содержать обратные кавычки
+ * Markdown — рендерить их, а не вырезать разметку.
+ */
+export type Assumptions = {
+  contract: string
+  project: string[]
+  platform: string
+  run: string[]
+}
+
+/**
  * Сводка анализа. Поля `auth`, `units` и `base_url` — готовые строки для
  * человека: их печатают как есть, разбирать их на фронте нельзя.
  */
@@ -50,6 +78,8 @@ export type Summary = {
   events: { total: number; mapped: number }
   webhook: { present: boolean; path: string | null; signature_header: string | null }
   idempotency_header: string | null
+  confidence: Confidence
+  assumptions: Assumptions
 }
 
 export type AnalyzeResponse = {

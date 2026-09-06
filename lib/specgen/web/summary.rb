@@ -46,7 +46,61 @@ module SpecGen
 
       def facts
         { statuses: statuses, events: events, webhook: webhook,
-          idempotency_header: profile.idempotency&.header&.value }
+          idempotency_header: profile.idempotency&.header&.value,
+          confidence: confidence, assumptions: assumptions }
+      end
+
+      # Три уровня доверия в числах: сколько выведенных значений профиля
+      # взято из структуры спецификации, из overlay, из справочников и
+      # эвристикой, сколько не вывелось и сколько эвристик легло ниже порога
+      # матчеров. Считается по сериализованному профилю: каждый Derived
+      # превращается в хеш с ключами source, confidence и evidence, а других
+      # хешей такой формы в IR нет.
+      # @return [Hash{Symbol => Integer, Float}]
+      def confidence
+        counts = Hash.new(0)
+        each_derived(profile.to_h) do |node|
+          counts[node[:source]] += 1
+          low = node[:source] == :heuristic && node[:confidence] < threshold
+          counts[:heuristic_low] += 1 if low
+        end
+        IR::Roles::SOURCE.to_h { |source| [source, counts[source]] }
+                         .merge(heuristic_low: counts[:heuristic_low], threshold: threshold)
+      end
+
+      def each_derived(node, &block)
+        case node
+        when Hash
+          return yield(node) if derived_hash?(node)
+
+          node.each_value { |value| each_derived(value, &block) }
+        when Array
+          node.each { |value| each_derived(value, &block) }
+        end
+      end
+
+      def derived_hash?(hash)
+        %i[source confidence evidence].all? { |key| hash.key?(key) } &&
+          IR::Roles::SOURCE.include?(hash[:source])
+      end
+
+      def threshold
+        rules.roles.scoring(:threshold)
+      end
+
+      # Те же допущения, что печатает раздел 9 INTEGRATION.md, теми же
+      # презентерами: контракт, допущения проекта, выражения платформы и
+      # допущения этого прогона.
+      # @return [Hash{Symbol => String, Array<String>}]
+      def assumptions
+        section = integration.assumptions
+        { contract: section.contract_line, project: section.project_lines,
+          platform: section.platform_line, run: integration.run_assumptions }
+      end
+
+      def integration
+        @integration ||= Generators::Integration::View.new(profile: profile, rules: rules,
+                                                           naming: naming)
       end
 
       # Столько же полей, сколько считает шапка экрана `analyze`.

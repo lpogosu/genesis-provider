@@ -124,6 +124,27 @@ RSpec.describe SpecGen::Web::App do
       expect(summary['idempotency_header']).to eq('Idempotency-Key')
     end
 
+    it 'reports the three trust levels in numbers' do
+      confidence = json(post('/api/analyze', spec_id: 'novapay'))['summary']['confidence']
+
+      expect(confidence.keys).to include('structural', 'registry', 'heuristic', 'unknown',
+                                         'heuristic_low', 'threshold')
+      expect(confidence['structural']).to be > confidence['heuristic']
+      expect(confidence['heuristic_low']).to be <= confidence['heuristic']
+      expect(confidence['threshold']).to eq(0.6)
+    end
+
+    it 'reports the same assumptions that INTEGRATION.md prints' do
+      body = json(post('/api/generate', spec_id: 'novapay'))
+      assumptions = body['summary']['assumptions']
+      integration = body['artifacts'].find { |artifact| artifact['kind'] == 'integration' }
+
+      expect(assumptions['contract']).not_to be_empty
+      expect(assumptions['project']).to all(be_a(String))
+      expect(assumptions['run']).not_to be_empty
+      expect(integration['content']).to include(assumptions['run'].first)
+    end
+
     it 'writes nothing into the output directory of the command line' do
       before = Dir.glob(File.join(SpecGen::ROOT, 'output', '*'))
       post('/api/generate', spec_id: 'novapay')
