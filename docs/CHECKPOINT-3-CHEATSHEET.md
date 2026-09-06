@@ -199,6 +199,130 @@ docker compose run --rm api ./integrate --all
 
 ---
 
+## Те же пять экранов без Докера
+
+Если Докер не поднялся или его решили не трогать. Ruby на машине уже стоит,
+ставить ничего не нужно.
+
+### Одно предупреждение, из-за которого показ ломается
+
+В **PowerShell** (синее окно, приглашение `PS E:\hackgenesis>`) команда
+`./integrate` **не работает** — падает с «Cannot run a document in the middle
+of a pipeline». Писать надо `ruby integrate`. Проверено.
+
+В **Git Bash** (чёрное окно, приглашение `alexey@… MINGW64`) работает
+`./integrate`, но нужна строка с `export PATH` — иначе Ruby не найдётся.
+
+Дальше даны оба варианта. Достаточно одного — того окна, которое открыто.
+
+### Первая команда в новом окне терминала
+
+Выполняется **один раз** за сеанс, дальше не повторять.
+
+PowerShell:
+
+```powershell
+$env:PATH = "C:\Ruby34-x64\bin;$env:PATH"
+```
+
+Git Bash:
+
+```sh
+export PATH="/c/Ruby34-x64/bin:$PATH"
+```
+
+### Экран 1. Одна команда — четыре файла
+
+PowerShell:
+
+```powershell
+ruby integrate --spec provider_api.yaml --provider novapay --lang ruby
+```
+
+Git Bash:
+
+```sh
+./integrate --spec provider_api.yaml --provider novapay --lang ruby
+```
+
+### Экран 4. Чужая спека
+
+Хвост `--output output/adyen` обязателен: без него файлы Adyen лягут поверх
+файлов novapay, и второй экран будет нечего показывать.
+
+PowerShell:
+
+```powershell
+ruby integrate --spec spec/fixtures/specs/real/adyen_transfers_v4.yaml --provider adyen --output output/adyen
+```
+
+Git Bash:
+
+```sh
+./integrate --spec spec/fixtures/specs/real/adyen_transfers_v4.yaml --provider adyen --output output/adyen
+```
+
+### Экран 5. После правки строки в `rules/statuses.yml`
+
+PowerShell:
+
+```powershell
+ruby integrate --spec spec/fixtures/specs/broken.yaml --provider broken --output output/broken
+```
+
+Git Bash:
+
+```sh
+./integrate --spec spec/fixtures/specs/broken.yaml --provider broken --output output/broken
+```
+
+### Если попросят пакетный прогон
+
+PowerShell:
+
+```powershell
+ruby integrate --all
+```
+
+Git Bash:
+
+```sh
+./integrate --all
+```
+
+Идёт около полутора минут — вживую лучше не запускать, только если попросят
+прямо.
+
+### Веб-интерфейс без Докера
+
+**Сначала остановить контейнер**, иначе порт 9292 занят и сервер не
+поднимется:
+
+```powershell
+docker compose down
+```
+
+Потом, в **отдельном окне** терминала (это окно останется занятым, пока
+работает сервер):
+
+PowerShell:
+
+```powershell
+$env:PATH = "C:\Ruby34-x64\bin;$env:PATH"
+ruby bin/serve --port 9292
+```
+
+Git Bash:
+
+```sh
+export PATH="/c/Ruby34-x64/bin:$PATH"
+ruby bin/serve --port 9292
+```
+
+Открыть <http://localhost:9292>. Остановить — `Ctrl+C` в том же окне.
+
+---
+
 ## Чего не делать
 
 - Не читать код вслух построчно — называть, что он делает.
