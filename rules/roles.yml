@@ -350,7 +350,14 @@ roles:
       - response_code
     tokens: [code]
     types: [integer, string]
-    parents: [decline, error, errors, failure, fault, problem, rejection]
+    # bad, duplicate, invalid — схема, названная самой ошибкой, а не словом
+    # «ошибка»: BadRequestSchema, DuplicateResourceSchema,
+    # InvalidResourceStateSchema у Dwolla. Слова выбраны такие, каких не
+    # бывает в имени схемы успеха; подсказка родителя всё равно только
+    # подтверждает кандидата, которого открыл слабый токен `code`, поэтому
+    # шире поля с именем «код» она ничего не задевает.
+    parents: [bad, decline, duplicate, error, errors, failure, fault, invalid, problem,
+              rejection]
 
   error_message:
     names:
@@ -461,6 +468,8 @@ roles:
       - phone_number
       - recipient_phone
       - telefon
+      - telephone
+      - telephone_number
     types: [string]
     # Первый шаблон — E.164, второй — российский номер как в спеке NovaPay.
     patterns:

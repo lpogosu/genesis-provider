@@ -76,6 +76,49 @@
 #     операция была успешной, деньги вернулись позже.
 #   confirmed → ambiguous. Подтверждение приёма запроса или подтверждение
 #     зачисления — зависит от провайдера.
+#   open, opened → in_progress. «Открыт» значит «ещё не закрыт»: у Mollie
+#     это расчёт, который ещё не сформирован («The settlement has not been
+#     closed yet»), у ЮKassa — сделка в работе. Терминальным это состояние
+#     не бывает ни у одного из них.
+#   requested → in_progress. Запрос подан и ждёт исполнения; у Mollie
+#     перевод в статусе requested ждёт подтверждения SCA. Обратное слово
+#     unrequested статусом операции не является и в словарь не входит.
+#   processed, paidout, paid_out → approved. Причастие прошедшего времени:
+#     «обработан», «выплачен» (Mollie: «The transfer has been successfully
+#     processed and the funds have been sent», «The settlement has been paid
+#     out»). Соседний processing отличается одной буквой и значит обратное,
+#     поэтому пара выписана явно: processing — канон in_progress, processed
+#     — завершение. Имена полей мы уже читаем так же: processed_at и
+#     time_processed лежат в completed_at (rules/roles.yml).
+#   awaiting, awaiting_review → in_progress. «Ожидает» — то же, что waiting,
+#     который в словаре уже был; у Revolut awaiting стоит в одном enum с
+#     created, failed, expired и cancelled, то есть терминальным не бывает.
+#   reverted → ambiguous. У одних провайдеров это reversed (операция была
+#     успешной и развёрнута), у других — «возвращено на доработку», то есть
+#     ещё в работе. Различить по имени нечем.
+#   incomplete → ambiguous. «Незавершённое» читается и как «ещё идёт», и как
+#     «брошено клиентом»; у Klarna это состояние сессии, которая может и
+#     завершиться, и не завершиться никогда.
+#   pending_execution, pending_reimbursement, pending_review,
+#     processing_at_bank, waiting_for_capture → in_progress. Составные
+#     имена, у которых смысл задаёт ГОЛОВА, а не хвост: «ждёт исполнения»,
+#     «ждёт проверки», «ждёт списания». Анализатор читает составное имя с
+#     хвоста (см. tail_confidence) и на таком имени сказал бы либо ничего,
+#     либо не то, поэтому они перечислены целиком. Сюда не попали имена, у
+#     которых ожидание относится не к операции, а к другой сущности
+#     (pending_boarding и pending_external у Mollie — это подключение
+#     способа оплаты, а не движение денег).
+#   reviewable → in_progress, рядом с under_review. У Moov это значение
+#     стоит в одном enum с pending, canceled, failed и processed: «перевод
+#     требует проверки», то есть проверка ещё не пройдена. То же
+#     отказоустойчивое направление, что у under_review.
+#   unclaimed → in_progress. Выплата ждёт, пока получатель её заберёт: у
+#     PayPal невостребованная выплата возвращается отправителю только через
+#     30 дней, до этого операция не терминальна.
+#   onhold → ambiguous, ровно как on_hold: то же слово без разделителя,
+#     PayPal пишет его слитно (ONHOLD).
+#   undefined → ambiguous, ровно как unknown: провайдер не называет
+#     состояние (Adyen Transfers объявляет такое значение в enum статуса).
 #
 # Порядок: canonical идёт в порядке жизненного цикла операции, как в описании
 # кейса, — так его проще сверять с первоисточником. Остальные списки
@@ -140,7 +183,10 @@ synonyms:
     - fulfilled
     - ok
     - paid
+    - paid_out
+    - paidout
     - posted
+    - processed
     - settled
     - succeeded
     - success
@@ -148,21 +194,33 @@ synonyms:
   in_progress:
     - accepted
     - approval_pending
+    - awaiting
+    - awaiting_review
     - created
     - in_flight
     - in_progress
     - initiated
     - new
+    - open
+    - opened
     - pending_approval
+    - pending_execution
+    - pending_reimbursement
+    - pending_review
+    - processing_at_bank
     - queued
     - received
+    - requested
+    - reviewable
     - scheduled
     - sending
     - sent
     - started
     - submitted
+    - unclaimed
     - under_review
     - waiting
+    - waiting_for_capture
   rejected:
     - canceled
     - declined
@@ -189,9 +247,13 @@ ambiguous:
   blocked: "блокировка комплаенсом бывает и временной, и окончательной"
   confirmed: "подтверждение приёма запроса или подтверждение зачисления — зависит от провайдера"
   hold: "то же, что on_hold, короткая форма"
+  incomplete: "незавершённое: и «ещё идёт», и «брошено клиентом»"
   on_hold: "может значить и заморозку средств, и ручную проверку"
+  onhold: "то же, что on_hold, слитное написание"
   partially_completed: "часть суммы проведена: платформа не умеет выражать частичный результат"
   refunded: "успешная операция, деньги затем возвращены"
   reversed: "успешная операция, затем развёрнута провайдером"
+  reverted: "и «развёрнута», как reversed, и «возвращена на доработку»"
   suspended: "приостановлено: может возобновиться, а может завершиться отказом"
+  undefined: "то же, что unknown: состояние не названо"
   unknown: "провайдер сам не знает состояние операции"
