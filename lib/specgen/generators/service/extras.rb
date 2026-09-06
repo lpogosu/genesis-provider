@@ -74,7 +74,35 @@ module SpecGen
         # @return [Array<IR::Operation>]
         def operations
           @operations ||= @ctx.profile.operations
-                              .select { |op| EXTRA_ROLES.include?(op.role.value) }
+                              .select { |op| EXTRA_ROLES.include?(op.role.value) || spare?(op) }
+        end
+
+        # Роль контрактная, а метод контракта уже занят другой операцией.
+        #
+        # Контракт даёт один метод создания и один опрос статуса. Вторая
+        # операция создания снаружи контракта ровно так же, как отмена, и
+        # без своего метода её тело и параметры не попадают в код вообще: у
+        # Paystack на этом терялось 233 поля тел запросов из 242. Вебхук
+        # исключён — его читает process_callback, а не отдельный метод.
+        #
+        # @param operation [IR::Operation]
+        # @return [Boolean]
+        def spare?(operation)
+          role = operation.role.value
+          return false if role == :webhook || !IR::Roles::CONTRACT.include?(role)
+
+          bound.none? { |op| op.equal?(operation) }
+        end
+
+        # @return [Array<IR::Operation>] операции, занявшие методы контракта
+        def bound
+          @bound ||= [@ctx.create_operation, @ctx.status_operation].compact
+        end
+
+        # @return [String] ключ операции, которая заняла метод контракта
+        def taken_by(operation)
+          same = bound.find { |op| op.role.value == operation.role.value }
+          (same || bound.first)&.key.to_s
         end
 
         # Имена методов считаются одним проходом и до тел: тело операции
@@ -111,7 +139,10 @@ module SpecGen
 
         def method_name(operation, params)
           role = operation.role.value
-          base = role == :unmapped ? Ruby.snake(operation.key) : role.to_s
+          # Имя по роли обещает контрактный смысл, которого у запасной
+          # операции нет: вторая операция создания называется своим ключом.
+          named_by_key = role == :unmapped || spare?(operation)
+          base = named_by_key ? Ruby.snake(operation.key) : role.to_s
           base = base.sub(GETTER, '') if params.empty? && base.match?(GETTER)
           name = unique(base, key_name(operation, params))
           @taken << name
@@ -154,19 +185,29 @@ module SpecGen
 
         def doc(operation, params)
           role = operation.role
-          lines = comment(@ctx.t('extra_doc', key: operation.key, role: role.value,
-                                              confidence: @ctx.source_label(role)), 4)
+          head = comment(@ctx.t('extra_doc', key: operation.key, role: role.value,
+                                             confidence: @ctx.source_label(role)), 4)
+          head + todo(operation) + params.map { |p| "# @param #{p[:name]} [Object]" } +
+            ['# @return [Object]']
+        end
+
+        # Почему операция снаружи контракта: роль не распознана — или
+        # распознана, но метод контракта уже занят.
+        def todo(operation)
           if operation.unmapped?
-            lines.concat(comment(@ctx.t('unmapped_doc', evidence: role.evidence), 4, '# TODO: '))
+            comment(@ctx.t('unmapped_doc', evidence: operation.role.evidence), 4, '# TODO: ')
+          elsif spare?(operation)
+            comment(@ctx.t('spare_doc', taken: taken_by(operation)), 4, '# TODO: ')
+          else
+            []
           end
-          lines + params.map { |p| "# @param #{p[:name]} [Object]" } + ['# @return [Object]']
         end
 
         def body(operation)
           url, todos = @http.url(operation)
           request = @http.request(operation, payload: operation.request_schema ? 'payload' : nil)
-          lines = restriction_lines(operation) + todos + payload_lines(operation) +
-                  [url, request, 'body = parse_json(response.body)']
+          lines = restriction_lines(operation) + todos + payload_lines(operation) + url +
+                  [request, 'body = parse_json(response.body)']
           lines.concat(Ruby.guard('provider_failure(response, body)',
                                   @http.success_check(operation), indent: INDENT, negate: true))
           accepting = ACCEPTING_ROLES.include?(operation.role.value)

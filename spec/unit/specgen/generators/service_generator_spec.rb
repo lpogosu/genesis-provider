@@ -229,6 +229,63 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
     end
   end
 
+  # Контракт даёт один метод создания. Вторая операция создания снаружи
+  # контракта ровно так же, как отмена, и без своего метода её тело в код не
+  # попадает вовсе: у Paystack на этом терялось 233 поля из 242.
+  describe 'a specification with two creating operations and a long path' do
+    it 'gives the spare operation its own method and folds a path that does not fit' do
+      Dir.mktmpdir('specgen-spare') do |dir|
+        spec = File.join(dir, 'spare.yaml')
+        File.binwrite(spec, <<~YAML)
+          openapi: 3.0.3
+          info: { title: Two Creates API, version: '0.1' }
+          paths:
+            /payouts:
+              post:
+                operationId: createPayout
+                requestBody:
+                  required: true
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        required: [amount]
+                        properties: { amount: { type: integer } }
+                responses: { '201': { description: ok } }
+            /transactions/initialize:
+              post:
+                operationId: transactionInitialize
+                requestBody:
+                  required: true
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        required: [amount, recipient_email]
+                        properties:
+                          amount: { type: integer }
+                          recipient_email: { type: string }
+                responses: { '201': { description: ok } }
+            /v1/payments/{payment_id}/refunds/{refund_id}/attachments:
+              get:
+                operationId: getPaymentRefundAttachment
+                parameters:
+                  - { name: payment_id, in: path, required: true, schema: { type: string } }
+                  - { name: refund_id, in: path, required: true, schema: { type: string } }
+                responses: { '200': { description: ok } }
+        YAML
+        artifact, = generate(spec, dir)
+        source = File.read(artifact.path, encoding: 'UTF-8')
+
+        expect(syntax_ok?(artifact.path)).to be(true)
+        expect(source).to include('def transaction_initialize(operation)',
+                                  'build_transaction_initialize_payload',
+                                  'метод контракта уже занят операцией createPayout')
+        expect(source.lines.map(&:chomp).map(&:length).max).to be <= 100
+      end
+    end
+  end
+
   # Провайдер с несколькими валютами одной экспоненты (Paystack: NGN, GHS,
   # ZAR, USD) даёт известный множитель без единственной валюты. Подстановка
   # пустого кода оставляла в сгенерированном файле висящее «, валюта )».

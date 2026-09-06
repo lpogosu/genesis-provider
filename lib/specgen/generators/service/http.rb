@@ -14,6 +14,10 @@ module SpecGen
         # HTTP-методы, у которых есть тело запроса.
         WITH_BODY = %i[post put patch].freeze
         PATH_PARAM = /\{([^}]+)\}/
+        # Отступ тела метода и ширина `url = ` — по ним выравнивается
+        # продолжение длинной строки.
+        INDENT = 6
+        ASSIGN = 6
         DEFAULT_SUCCESS = [200].freeze
 
         # @param ctx [Context]
@@ -22,15 +26,57 @@ module SpecGen
         end
 
         # @param operation [IR::Operation]
-        # @return [Array(String, Array<String>)] строка `url = "..."` и
-        #   комментарии TODO о параметрах пути без роли
+        # @return [Array(Array<String>, Array<String>)] строки `url = "..."`
+        #   и комментарии TODO о параметрах пути без роли
         def url(operation)
           todos = []
           path = operation.path.gsub(PATH_PARAM) do
             "\#{#{path_param(operation, Regexp.last_match(1), todos)}}"
           end
           path = "#{path}?\#{URI.encode_www_form(auth_query)}" if query_auth?
-          ["url = \"\#{BASE_URL}#{path}\"", todos]
+          [wrap("\#{BASE_URL}#{path}"), todos]
+        end
+
+        # Путь с несколькими подстановками в строку не влезает: у GOV.UK Pay
+        # /v1/payments/{paymentId}/refunds/{refundId} даёт 117 знаков, и
+        # Layout/LineLength видит это в сгенерированном коде. Режем по
+        # границе сегмента пути и сцепляем соседние литералы обратным
+        # слэшем, выравнивая продолжение по открывающей кавычке.
+        #
+        # @param inner [String] содержимое строкового литерала
+        # @return [Array<String>] строки присваивания url
+        def wrap(inner)
+          head = "url = \"#{inner}\""
+          return [head] if INDENT + head.length <= Ruby::WIDTH
+
+          chunks = fold(segments(inner))
+          last = chunks.size - 1
+          chunks.each_with_index.map do |chunk, index|
+            prefix = index.zero? ? 'url = ' : ' ' * ASSIGN
+            suffix = index == last ? '' : ' \\'
+            "#{prefix}\"#{chunk}\"#{suffix}"
+          end
+        end
+
+        # Границы разреза: конец каждого сегмента пути, но никогда внутри
+        # подстановки — иначе получится не строка, а синтаксическая ошибка.
+        # @return [Array<String>]
+        def segments(inner)
+          inner.scan(/\#\{[^}]*\}|[^#]+|#/).flat_map do |part|
+            part.start_with?('#{') ? [part] : part.split(%r{(?<=/)})
+          end.reject(&:empty?)
+        end
+
+        # @return [Array<String>] сегменты, собранные в строки по ширине
+        def fold(parts)
+          room = Ruby::WIDTH - INDENT - ASSIGN - 4
+          parts.each_with_object([]) do |part, lines|
+            if lines.empty? || lines.last.length + part.length > room
+              lines << part
+            else
+              lines[-1] += part
+            end
+          end
         end
 
         # @param operation [IR::Operation]

@@ -68,8 +68,8 @@ module SpecGen
           url, todos = @http.url(@operation)
           request = @http.request(@operation, payload: 'payload', headers: headers)
           args = @requisites.branching? ? 'operation, request_method' : 'operation'
-          lines = todos + ["payload = build_payload(#{args})", url, request,
-                           'body = parse_json(response.body)']
+          lines = todos + ["payload = build_payload(#{args})"] + url +
+                  [request, 'body = parse_json(response.body)']
           lines.concat(Ruby.guard(ACCEPT, @http.success_check(@operation), indent: INDENT))
           lines + dedup_lines + ['', 'provider_failure(response, body)']
         end

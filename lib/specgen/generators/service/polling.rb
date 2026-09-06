@@ -51,7 +51,7 @@ module SpecGen
           return missing if @operation.nil?
 
           url, todos = @http.url(@operation)
-          lines = todos + [url, @http.request(@operation), 'body = parse_json(response.body)']
+          lines = todos + url + [@http.request(@operation), 'body = parse_json(response.body)']
           lines.concat(guard(@ctx.failure(:operation_not_found), "response.status == #{NOT_FOUND}"))
           lines.concat(guard('provider_failure(response, body)', @http.success_check(@operation),
                              negate: true))

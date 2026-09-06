@@ -102,6 +102,7 @@ generators:
     # Operations outside the contract
     extra_doc: "Operation %{key} (role %{role}, %{confidence}) is not mapped to the BaseService contract: a separate public method."
     unmapped_doc: "operation role not recognised (%{evidence}) — check whether the integration needs it"
+    spare_doc: "the contract method is already taken by operation %{taken}; this operation of the same role stays outside — decide whether the integration needs it"
     extra_payload_doc: "Request body of operation %{key} by the field roles of schema %{schema}; nil values are dropped."
     extra_payload: "request body by schema %{schema} (required fields: %{required}) is assembled by hand"
     cancel_restriction: "Cancellation is possible only in provider statuses %{statuses} (%{source}), in internal terms — CANCELLABLE_STATUSES."
