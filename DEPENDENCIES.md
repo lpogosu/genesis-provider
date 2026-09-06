@@ -28,10 +28,18 @@
 | rspec | 3.13.2 | MIT | тесты ядра, golden-тесты, сгенерированные негативные тесты |
 | webmock | 3.26.4 | MIT | запрет сетевых вызовов в тестах и заглушки HTTP для сгенерированного сервиса |
 | rubocop | 1.90.0 | MIT | линтер для ядра и для сгенерированного кода |
+| json_schemer | 2.5.0 | MIT | стадия сверки: тела из `fixtures.json` проверяются схемами той же спецификации (draft 2020-12, OpenAPI 3.0 и 3.1) |
 
-Парсер OpenAPI (`openapi3_parser` или `openapi_parser`) и валидатор запросов
-против спеки (`committee` или `openapi_first`) будут добавлены на этапе
-загрузчика и валидаторов и появятся в этой таблице.
+**Парсер OpenAPI написан свой** и в этой таблице гема не имеет.
+`openapi3_parser` и `openapi_parser` рассматривались и отклонены: смысловая
+интерпретация спеки — наша ценность, а разбор YAML и разрешение `$ref` мы
+контролируем сами (сообщения об ошибках с JSONPath, размыкание циклов,
+отказ от сетевых `$ref`).
+
+**Валидатор запросов** выбран после замера. `committee` отклонён: не читает
+OpenAPI 3.1. `openapi_first` отклонён: падает на путях с буквой диска
+(Windows). Остался `json_schemer` — он проверяет тела схемами самой
+спецификации, чего и требует Definition of done.
 
 ## Транзитивные зависимости
 
@@ -44,6 +52,7 @@
 | bigdecimal | 4.1.2 | Ruby / BSD-2-Clause | webmock (crack) |
 | crack | 1.0.1 | MIT | webmock |
 | diff-lcs | 1.6.2 | MIT / Artistic-1.0-Perl / GPL-2.0-or-later | rspec |
+| hana | 1.3.7 | MIT | json_schemer (JSON Pointer) |
 | hashdiff | 1.2.1 | MIT | webmock |
 | json | 2.21.2 | Ruby | rubocop |
 | language_server-protocol | 3.17.0.6 | MIT | rubocop |
@@ -62,6 +71,7 @@
 | rspec-support | 3.13.7 | MIT | rspec |
 | rubocop-ast | 1.50.0 | MIT | rubocop |
 | ruby-progressbar | 1.13.0 | MIT | rubocop |
+| simpleidn | 0.3.0 | MIT | json_schemer (формат idn-hostname) |
 | unicode-display_width | 3.2.0 | MIT | rubocop |
 | unicode-emoji | 4.2.0 | MIT | rubocop (unicode-display_width) |
 
