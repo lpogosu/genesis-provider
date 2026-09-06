@@ -32,16 +32,16 @@
 ## 2. Прогнать перед встречей
 
 Всё это должно быть зелёным и уже лежать на диске **до** созвона: генерация
-семи спецификаций идёт около полутора минут, вживую её ждать нельзя.
+десяти спецификаций идёт около полутора минут, вживую её ждать нельзя.
 
 ```sh
 export PATH="/c/Ruby34-x64/bin:$PATH"     # Git Bash на машине разработки
 
-bundle exec rspec                          # 901 пример, 0 падений
-bundle exec rubocop                        # 280 файлов, 0 замечаний
-ruby bin/ruby-share                        # 95.8 %
+bundle exec rspec                          # 928 примеров, 0 падений
+bundle exec rubocop                        # 290 файлов, 0 замечаний
+ruby bin/ruby-share                        # 94.6 % (с ERB 96.1 %)
 
-./integrate --all                          # 7 из 7, таблица ниже
+./integrate --all                          # 10 из 10, таблица ниже
 ./integrate --spec spec/fixtures/specs/novapay.yaml --provider novapay
 ./integrate --spec spec/fixtures/specs/broken.yaml --provider broken --output output/broken
 
@@ -53,14 +53,18 @@ ruby bin/serve --port 9292 &               # оставить поднятым �
 Ожидаемая таблица:
 
 ```
-broken.yaml                   broken              6   5/6    43 %   64    4
-cardpay.yaml                  cardpay             6   6/6    66 %   41    4
-depositbank.yaml              depositbank         6   5/6    61 %   43    4
-novapay.yaml                  novapay             5   5/5    75 %   18    4
-real/adyen_payout_v68.yaml    adyen_payout_v68    6   5/6    21 %   211   4
-real/adyen_transfers_v4.yaml  adyen_transfers_v4  12  11/12   35 %   333   4
-real/paypal_payouts_v1.json   paypal_payouts_v1   4   4/4    33 %   86    4
-Итого: 7 спецификаций, сгенерировано 7 из 7
+Спецификация                  Провайдер           Оп.  С ролью  Покр.  В контракте  Замеч.  Файлов
+broken.yaml                   broken              6    5/6      43 %   65 %         64      4
+cardpay.yaml                  cardpay             6    6/6      66 %   94 %         41      4
+depositbank.yaml              depositbank         6    5/6      61 %   88 %         43      4
+novapay.yaml                  novapay             5    5/5      75 %   98 %         18      4
+real/adyen_payout_v68.yaml    adyen_payout_v68    6    5/6      23 %   46 %         207     4
+real/adyen_transfers_v4.yaml  adyen_transfers_v4  12   11/12    36 %   80 %         332     4
+real/govuk_pay_v1.json        govuk_pay_v1        16   14/16    37 %   92 %         201     4
+real/moov_paygate_v1.yaml     moov_paygate_v1     10   9/10     59 %   83 %         52      4
+real/paypal_payouts_v1.json   paypal_payouts_v1   4    4/4      34 %   72 %         85      4
+real/paystack_v1.yaml         paystack_v1         120  95/120   53 %   72 %         453     4
+Итого: 10 спецификаций, сгенерировано 10 из 10
 ```
 
 Открытые заранее вкладки и окна:
@@ -75,11 +79,16 @@ real/paypal_payouts_v1.json   paypal_payouts_v1   4   4/4    33 %   86    4
 
 ## 3. Что говорить у каждого экрана
 
-**Пакетный прогон.** «Семь спецификаций, из них три — настоящие публичные:
-Adyen Payout, Adyen Transfers, PayPal Payouts. Мы их не писали. Ни одна не
-останавливает генерацию». Не оправдываться за 21 % у Adyen — сразу назвать
-причину: контракту нужны четыре роли из ответа, а в спеке Adyen три сотни
-полей.
+**Пакетный прогон.** «Десять спецификаций, из них шесть — настоящие
+публичные: Adyen Payout, Adyen Transfers, PayPal Payouts, Paystack, GOV.UK
+Pay, Moov. Мы их не писали. Ни одна не останавливает генерацию». Не
+оправдываться за 23 % у Adyen — сразу показать соседнюю колонку: «В
+контракте 46 %». Цифры две, потому что и вопроса два. Первая — сколько
+спецификации задействовано, и она ничего не прощает. Вторая — сколько
+упущено из того, что четыре метода `Provider::BaseService` вообще способны
+взять: адрес держателя счёта им положить некуда ни в запрос, ни в разбор
+ответа. Что именно вычтено из знаменателя, отчёт называет поимённо — это и
+есть ответ на «а почему так мало».
 
 **Сгенерированный сервис по чужой спеке.** Показать `build_payload` и
 `check_conditions`. Ключевая фраза: ограничения из спецификации стали
@@ -127,7 +136,7 @@ Ruby-API готовым.
 | E1 Разбор спецификации | 20 | закрыт: десять анализаторов, покрытие цифрой, `analyze --explain` |
 | E2 Генерация сервиса | 25 | закрыт по сгенерированному классу; живой трафик не делали — вы сказали, что он не нужен |
 | E3 Преобразование данных | 15 | ISO 4217, роли, статусы, `dependentRequired` нативно на OAS 3.1; сверка запросов со спекой в работе |
-| E4 Универсальность | 15 | семь спецификаций, `rules/` вместо кода, OpenAPI Overlay 1.0.0 работает |
+| E4 Универсальность | 15 | десять спецификаций, из них шесть чужих; `rules/` вместо кода, OpenAPI Overlay 1.0.0 работает |
 | E5 Документация и удобство | 15 | `INTEGRATION.md` девять разделов, `fixtures.json` три вида, `report.md` семь разделов, README, веб |
 | E6 Качество реализации | 10 | 901 тест, RuboCop зелёный, CI проверяет весь Definition of done |
 
