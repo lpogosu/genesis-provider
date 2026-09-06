@@ -1,0 +1,82 @@
+# locales/ru/diff.yml — тексты сравнения двух версий спецификации
+# (`integrate diff`).
+#
+# Один файл на стадию конвейера, чтобы две стадии не правили один файл.
+# Подстановки — %{имя}; набор ключей обязан совпадать с locales/en/diff.yml,
+# это проверяет spec/unit/specgen/texts_spec.rb.
+#
+# Значения «было» и «стало» сюда не попадают: их печатает Diff как данные
+# (имя поля, роль, код валюты), и переводить их значило бы переводить
+# идентификаторы спецификации.
+
+diff:
+  heading: "Сравнение: %{old} -> %{new}"
+  none: "Изменений нет"
+  total: "Изменений: %{total}, из них меняют сервис: %{code}"
+
+  # Разделы IR, по которым сгруппирован вывод.
+  area:
+    operations: "Операции"
+    auth: "Авторизация"
+    units: "Единицы суммы"
+    statuses: "Статусы"
+    errors: "Коды ошибок"
+    webhooks: "Вебхуки"
+    idempotency: "Идемпотентность"
+    fields: "Поля запросов"
+    conditions: "Условия взаимодействия"
+
+  # Что изменение значит для уже сгенерированной интеграции.
+  impact:
+    code: "меняет сгенерированный сервис"
+    docs: "меняет документацию и фикстуры"
+    info: "видно только в отчёте"
+
+  # Виды изменений; словарь закрыт списком Diff::Change::KINDS.
+  kind:
+    operation_added: "операция появилась"
+    operation_removed: "операция исчезла"
+    operation_role_changed: "роль операции"
+    operation_endpoint_changed: "метод и путь"
+    auth_type_changed: "тип авторизации"
+    auth_location_changed: "место учётных данных"
+    auth_param_changed: "имя параметра авторизации"
+    auth_credentials_changed: "ключи credentials"
+    currency_changed: "валюта"
+    unit_changed: "единица суммы"
+    exponent_changed: "экспонента валюты"
+    status_added: "статус появился"
+    status_removed: "статус исчез"
+    status_internal_changed: "внутренний статус"
+    error_added: "правило появилось"
+    error_removed: "правило исчезло"
+    error_action_changed: "действие по ошибке"
+    error_declaration_changed: "где объявлен код"
+    webhook_added: "вебхук появился"
+    webhook_removed: "вебхук исчез"
+    event_added: "событие появилось"
+    event_removed: "событие исчезло"
+    event_status_changed: "статус события"
+    signature_added: "подпись описана"
+    signature_removed: "подпись исчезла"
+    signature_profile_changed: "профиль подписи"
+    signature_header_changed: "заголовок подписи"
+    signature_algorithm_changed: "алгоритм подписи"
+    signature_encoding_changed: "кодирование подписи"
+    signature_payload_changed: "подписываемое тело"
+    idempotency_header_changed: "заголовок идемпотентности"
+    idempotency_required_changed: "обязательность заголовка"
+    idempotency_conflict_changed: "код дедупликации"
+    field_added: "поле появилось"
+    field_removed: "поле исчезло"
+    field_role_changed: "роль поля"
+    field_requirement_changed: "обязательность поля"
+    field_condition_changed: "условие обязательности"
+    field_condition_origin_changed: "источник условия"
+    parameter_added: "параметр появился"
+    parameter_removed: "параметр исчез"
+    parameter_required_changed: "обязательность параметра"
+    parameter_role_changed: "роль параметра"
+    condition_added: "условие появилось"
+    condition_removed: "условие исчезло"
+    condition_value_changed: "значение условия"

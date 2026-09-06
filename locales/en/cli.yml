@@ -9,7 +9,7 @@ cli:
   out_of_memory: "the specification does not fit in memory once `$ref` is expanded: the resolved document is many times larger than the source file. Split it into parts (a file per group of paths) or drop repeated references to large schemas"
   usage_prefix: "usage"
   spec_not_found: "spec file not found"
-  not_implemented: "`%{command}` is not implemented yet (skeleton build %{version})"
+  diff_strict_failed: "--strict: there are changes that alter the generated service"
   unsupported_lang: "--lang %{lang} is not supported (supported: %{supported})"
   unsupported_locale: "--locale %{locale} is not supported (supported: %{supported})"
   overlay_with_all: "--overlay applies to a single specification: pass --spec"
@@ -47,6 +47,16 @@ cli:
       and confidence, every schema with its fields, and the warnings. With
       --explain each derived value is followed by the evidence it rests on.
     diff: "Show integration-relevant differences between two versions of a spec"
+    diff_long: |
+      Parses both versions with its own pipeline and compares the intermediate
+      representation rather than the text of the files: operations,
+      authentication, amount units, statuses, error codes, webhooks,
+      idempotency, request fields and interaction conditions. Every difference
+      says whether it changes the generated service, the docs and the fixtures,
+      or the report only.
+
+      Descriptions and examples are not compared: they change in every other
+      version.
     version: "Print the generator version"
   option:
     spec: "Path to the OpenAPI spec (YAML or JSON)"
@@ -60,6 +70,9 @@ cli:
     specs: "Directory with the specifications for --all (default spec/fixtures/specs)"
     old: "Previous spec version"
     new: "New spec version"
+    overlay_old: "Overlay file for the previous version"
+    overlay_new: "Overlay file for the new version"
+    strict_diff: "Exit with status 1 when a change alters the generated service"
     explain: "Print the evidence behind every derived value"
     locale: "Language of messages and reports: ru or en (default ru, or SPECGEN_LOCALE)"
 

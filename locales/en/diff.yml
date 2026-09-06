@@ -1,0 +1,82 @@
+# locales/en/diff.yml — texts for comparing two versions of a specification
+# (`integrate diff`).
+#
+# One file per pipeline stage, so two stages never edit the same file.
+# Placeholders are %{name}; the key set must match locales/ru/diff.yml,
+# which spec/unit/specgen/texts_spec.rb checks.
+#
+# The "before" and "after" values never appear here: Diff prints them as data
+# (a field name, a role, a currency code), and translating them would mean
+# translating identifiers of the specification.
+
+diff:
+  heading: "Comparing: %{old} -> %{new}"
+  none: "No changes"
+  total: "Changes: %{total}, of them changing the service: %{code}"
+
+  # IR areas the output is grouped by.
+  area:
+    operations: "Operations"
+    auth: "Authentication"
+    units: "Amount units"
+    statuses: "Statuses"
+    errors: "Error codes"
+    webhooks: "Webhooks"
+    idempotency: "Idempotency"
+    fields: "Request fields"
+    conditions: "Interaction conditions"
+
+  # What the change means for an integration that is already generated.
+  impact:
+    code: "changes the generated service"
+    docs: "changes the docs and the fixtures"
+    info: "visible in the report only"
+
+  # Kinds of change; the vocabulary is closed by Diff::Change::KINDS.
+  kind:
+    operation_added: "operation appeared"
+    operation_removed: "operation gone"
+    operation_role_changed: "operation role"
+    operation_endpoint_changed: "method and path"
+    auth_type_changed: "auth type"
+    auth_location_changed: "credentials location"
+    auth_param_changed: "auth parameter name"
+    auth_credentials_changed: "credentials keys"
+    currency_changed: "currency"
+    unit_changed: "amount unit"
+    exponent_changed: "currency exponent"
+    status_added: "status appeared"
+    status_removed: "status gone"
+    status_internal_changed: "internal status"
+    error_added: "rule appeared"
+    error_removed: "rule gone"
+    error_action_changed: "error action"
+    error_declaration_changed: "where the code is declared"
+    webhook_added: "webhook appeared"
+    webhook_removed: "webhook gone"
+    event_added: "event appeared"
+    event_removed: "event gone"
+    event_status_changed: "event status"
+    signature_added: "signature described"
+    signature_removed: "signature gone"
+    signature_profile_changed: "signature profile"
+    signature_header_changed: "signature header"
+    signature_algorithm_changed: "signature algorithm"
+    signature_encoding_changed: "signature encoding"
+    signature_payload_changed: "signed payload"
+    idempotency_header_changed: "idempotency header"
+    idempotency_required_changed: "header requiredness"
+    idempotency_conflict_changed: "dedup status code"
+    field_added: "field appeared"
+    field_removed: "field gone"
+    field_role_changed: "field role"
+    field_requirement_changed: "field requiredness"
+    field_condition_changed: "requiredness condition"
+    field_condition_origin_changed: "condition origin"
+    parameter_added: "parameter appeared"
+    parameter_removed: "parameter gone"
+    parameter_required_changed: "parameter requiredness"
+    parameter_role_changed: "parameter role"
+    condition_added: "condition appeared"
+    condition_removed: "condition gone"
+    condition_value_changed: "condition value"

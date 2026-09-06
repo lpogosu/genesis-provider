@@ -185,15 +185,63 @@ RSpec.describe SpecGen::CLI do
   end
 
   describe 'diff' do
+    let(:version_two) do
+      File.join(SpecGen::ROOT, 'spec', 'fixtures', 'good', 'novapay_v2.yaml')
+    end
+
     it 'requires --old and --new' do
       result = run_cli('diff')
       expect(result.status).to eq(described_class::EXIT_USAGE)
       expect(result.stderr).to include('--old').and include('--new')
     end
 
-    it 'accepts two spec versions' do
+    it 'says that one specification against itself changes nothing, and exits with 0' do
       result = run_cli('diff', '--old', novapay, '--new', novapay)
-      expect(result.stderr).to include('команда `diff` ещё не реализована')
+      expect(result.status).to eq(0)
+      expect(result.stderr).to be_empty
+      expect(result.stdout).to include('Изменений нет')
+    end
+
+    it 'groups what the next version changed and counts what it costs' do
+      result = run_cli('diff', '--old', novapay, '--new', version_two)
+      expect(result.status).to eq(0)
+      expect(result.stdout).to include('операция появилась: retryPayout')
+        .and include('статус исчез: completed = approved')
+        .and include('заголовок подписи: X-NovaPay-Signature -> X-Signature')
+        .and include('параметр появился: X-Client-Id')
+        .and include('Изменений: 10, из них меняют сервис: 10')
+    end
+
+    # --strict здесь значит не «есть предупреждения», а «есть изменения,
+    # из-за которых сервис надо перегенерировать»: ровно это и нужно знать
+    # сборке, которая следит за версией чужой спецификации.
+    it 'with --strict exits with 1 when a change alters the generated service' do
+      result = run_cli('diff', '--old', novapay, '--new', version_two, '--strict')
+      expect(result.status).to eq(described_class::EXIT_ERROR)
+      expect(result.stderr).to include('--strict')
+      expect(result.stdout).to include('Изменений: 10')
+    end
+
+    it 'takes an overlay per version and shows only what the overlay made formal' do
+      result = run_cli('diff', '--old', novapay, '--new', novapay, '--overlay-new', overlay,
+                       '--strict')
+      expect(result.status).to eq(0)
+      expect(result.stdout).to include('Сравнение: novapay.yaml -> novapay.yaml + novapay.yaml')
+        .and include('источник условия: description_hint -> x_jsonschema_if')
+        .and include('из них меняют сервис: 0')
+    end
+
+    it 'speaks English with --locale en' do
+      result = run_cli('diff', '--old', novapay, '--new', version_two, '--locale', 'en')
+      expect(result.stdout).to include('Comparing: novapay.yaml -> novapay_v2.yaml')
+        .and include('changes the generated service')
+    end
+
+    it 'reports a missing version with its path and without a stack trace' do
+      result = run_cli('diff', '--old', novapay, '--new', 'nope.yaml')
+      expect(result.status).to eq(described_class::EXIT_ERROR)
+      expect(result.stderr).to include('nope.yaml').and include('не найден')
+      expect(result.stderr).not_to include('.rb:')
     end
   end
 
