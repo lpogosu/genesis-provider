@@ -123,9 +123,9 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
       operation = profile.operations.first
 
       expect(operation.role.value).to eq(:create_payout)
-      expect(operation.key).to eq('POST /payouts')
+      expect(operation.key).to eq('post_payouts')
       expect(profile.warnings.first).to have_attributes(code: :operation_id_missing, severity: :info)
-      expect(profile.warnings.first.message).to include('"POST /payouts"')
+      expect(profile.warnings.first.message).to include('"post_payouts"')
     end
   end
 

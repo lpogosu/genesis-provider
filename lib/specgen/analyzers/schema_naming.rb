@@ -66,9 +66,7 @@ module SpecGen
       # @param path [String]
       # @return [String] "createPayout" или "post_payouts_payout_id"
       def self.operation_key(id, http_method, path)
-        return id.strip if id.is_a?(String) && !id.strip.empty?
-
-        Rules::Normalizer.call("#{http_method}_#{path}")
+        IR::Operation.key_for(id, http_method, path)
       end
     end
   end

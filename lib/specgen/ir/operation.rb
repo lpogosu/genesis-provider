@@ -69,9 +69,27 @@ module SpecGen
       # Устойчивый идентификатор, которым ErrorRule, Idempotency и Webhook
       # ссылаются на операцию даже тогда, когда в спецификации нет
       # operationId.
-      # @return [String] operationId или "POST /payouts"
+      #
+      # Форма обязана совпадать с Analyzers::SchemaNaming.operation_key: это
+      # одна и та же ссылка, только вычисленная в разных местах конвейера.
+      # Пока они расходились, у спецификации без operationId правило ошибки
+      # знало операцию как `post_payments`, а отчёт — как `POST /payments`, и
+      # соединение по ключу молча не срабатывало: у ЮKassa 64 кода из 184
+      # считались непокрытыми при том, что ветка для них сгенерирована.
+      #
+      # @return [String] operationId или "post_payments"
       def key
-        id || "#{http_method.to_s.upcase} #{path}"
+        self.class.key_for(id, http_method, path)
+      end
+
+      # @param id [String, nil] operationId, если он есть
+      # @param http_method [Symbol, String]
+      # @param path [String]
+      # @return [String]
+      def self.key_for(id, http_method, path)
+        return id.strip if id.is_a?(String) && !id.strip.empty?
+
+        Rules::Normalizer.call("#{http_method}_#{path}")
       end
 
       # @param status [String, Integer]

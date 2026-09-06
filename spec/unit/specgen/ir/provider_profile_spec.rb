@@ -86,9 +86,11 @@ RSpec.describe SpecGen::IR::ProviderProfile do
       expect { profile.operations_by_role(:teleport) }.to raise_error(ArgumentError, /роль операции/)
     end
 
+    # Ключ без operationId — тот же, которым операцию называют правила
+    # ошибок и сгенерированный код: `get_balance`, а не `GET /balance`.
     it 'finds an operation by its key, which falls back to method and path' do
       expect(profile.operation('createPayout')).to eq(create)
-      expect(profile.operation('GET /balance')).to eq(balance)
+      expect(profile.operation('get_balance')).to eq(balance)
     end
 
     it 'finds a schema by name' do
