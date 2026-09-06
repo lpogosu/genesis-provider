@@ -60,11 +60,43 @@ module SpecGen
       end
 
       def build(hits)
-        first = hits.first
+        chosen = choose(hits)
         required = hits.any?(&:required)
-        IR::Idempotency.new(header: header_of(first, hits, required), strategy: strategy,
+        IR::Idempotency.new(header: header_of(chosen, hits, required), strategy: strategy,
                             required: required, operations: hits.map(&:key),
-                            conflict_status: conflict(hits, first), json_path: first.json_path)
+                            conflict_status: conflict(hits, chosen), json_path: chosen.json_path)
+      end
+
+      # Спецификация может объявить несколько известных имён сразу. Порядок
+      # обхода операций тут не судья: у Moov PayGate он отдавал победу
+      # заголовку трассировки, который уникален на каждый повтор. Судит
+      # список priority в rules/idempotency.yml, а при равенстве — кто
+      # встретился раньше.
+      def choose(hits)
+        ranked = hits.each_with_index.min_by do |hit, index|
+          [rules.idempotency.rank(hit.name), index]
+        end
+        best = ranked.first
+        ambiguous(hits, best) if distinct(hits).size > 1
+        best
+      end
+
+      # @return [Array<String>] имена заголовков без учёта регистра и
+      #   разделителей, в порядке первой встречи
+      def distinct(hits)
+        hits.map(&:name).uniq { |name| Rules::Normalizer.call(name) }
+      end
+
+      # Выбор между двумя заголовками — догадка, и молчать о ней нельзя даже
+      # когда справочник назвал победителя уверенно. Готового overlay здесь
+      # нет намеренно: лечится это порядком в rules/idempotency.yml, куда и
+      # отправляет отчёт (Report::Warnings::BOOKS).
+      def ambiguous(hits, best)
+        winner = Rules::Normalizer.call(best.name)
+        rejected = distinct(hits).reject { |name| Rules::Normalizer.call(name) == winner }
+        profile.warn(:idempotency_header_ambiguous,
+                     t('ambiguous_message', header: best.name, others: rejected.join(', ')),
+                     json_path: best.json_path, severity: :info)
       end
 
       def header_of(first, hits, required)

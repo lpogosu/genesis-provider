@@ -33,12 +33,16 @@ module SpecGen
       # @param lookup [RoleLookup]
       # @param entry [SchemaIndex::Entry] схема, в которой лежит сумма
       # @param node [Hash] узел поля суммы
-      def initialize(index:, lookup:, entry:, node:)
+      # @param book [Rules::CurrenciesBook] таблица ISO 4217: по ней
+      #   отсеиваются подсказки, которые кодом валюты не являются
+      def initialize(index:, lookup:, entry:, node:, book:)
         @index = index
         @lookup = lookup
         @entry = entry
         @node = node
+        @book = book
         @silent = nil
+        @alien = nil
       end
 
       # @return [Result]
@@ -110,11 +114,27 @@ module SpecGen
           next unless value.is_a?(String) && !value.strip.empty?
 
           code = value.strip.upcase
+          next if alien?(code, name)
+
           derived = IR::Derived.heuristic(code, confidence: confidence,
                                                 evidence: t(key, value: code, name: name))
           return result(derived, [code], name, path)
         end
         nil
+      end
+
+      # Пример и default — образец значения, а не объявление. Образец,
+      # которого нет в ISO 4217, не валюту уточняет, а опровергает роль поля:
+      # так у GOV.UK Pay поле `method` с примером `GET` набрало роль currency
+      # на 0.24 и чуть не стало валютой запроса. У `const` и `enum` проверки
+      # нет намеренно — они объявляют код, и неофициальный код там законен
+      # (см. шапку rules/currencies.yml): он получает экспоненту по умолчанию
+      # вместе с предупреждением.
+      def alien?(code, name)
+        return false if @book.known?(code)
+
+        @alien ||= [name, code]
+        true
       end
 
       # Поле валюты есть, но молчит: об этом скажет обоснование, если больше
@@ -125,10 +145,18 @@ module SpecGen
       end
 
       def none
+        return alien_none unless @alien.nil?
         return result(IR::Derived.unknown(evidence: t('currency_missing')), []) if @silent.nil?
 
         name, path = @silent
         result(IR::Derived.unknown(evidence: t('currency_silent', name: name)), [], name, path)
+      end
+
+      # Отвергнутый кандидат называется вслух: молчание о нём было бы той же
+      # догадкой без пометки, только с обратным знаком.
+      def alien_none
+        name, code = @alien
+        result(IR::Derived.unknown(evidence: t('currency_alien', name: name, value: code)), [])
       end
 
       def result(derived, codes, name = nil, path = nil)

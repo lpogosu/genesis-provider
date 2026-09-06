@@ -47,7 +47,7 @@ module SpecGen
 
       # @return [Array(SchemaIndex::Entry, String, Hash, String), nil]
       def locate
-        requests, others = @index.entries.partition { |entry| entry.origin == :request }
+        requests, others = @index.entries.partition { |entry| @index.request?(entry) }
         (requests + others).each do |entry|
           @index.fields(entry).each do |name, node, path|
             return [entry, name, node, path] if @lookup.role?(name, ROLE)
@@ -61,7 +61,7 @@ module SpecGen
       # ровно настолько же обосновывает множитель (RoleLookup#temper).
       def build
         currency = CurrencyReader.new(index: @index, lookup: @lookup, entry: @entry,
-                                      node: @node).call
+                                      node: @node, book: rules.currencies).call
         exponent = overlay_exponent || @lookup.temper(exponent_for(currency), currency.name)
         unit = @lookup.temper(unit_for(exponent, currency), @name)
         IR::Units.new(currency: currency.derived, unit: unit, exponent: exponent,

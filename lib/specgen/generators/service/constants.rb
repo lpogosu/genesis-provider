@@ -79,9 +79,15 @@ module SpecGen
           schemas.any? { |name| @ctx.role_path(name, :currency) }
         end
 
+        # Код валюты в комментарий подставляется, только когда он выведен.
+        # Множитель бывает известен и без него: у провайдера с enum из
+        # четырёх валют одной экспоненты (Paystack — NGN, GHS, ZAR, USD)
+        # единственной валюты нет, и подстановка пустой строки оставляла в
+        # сгенерированном файле висящее «, валюта )».
         def units_comment(units)
-          text = @ctx.t('units_comment', unit: units.unit.value, evidence: units.exponent.evidence,
-                                         currency: units.currency.value.to_s)
+          key = units.currency.known? ? 'units_comment' : 'units_comment_any'
+          text = @ctx.t(key, unit: units.unit.value, evidence: units.exponent.evidence,
+                             currency: units.currency.value.to_s)
           Ruby.comment(text, width: WIDTH)
         end
 

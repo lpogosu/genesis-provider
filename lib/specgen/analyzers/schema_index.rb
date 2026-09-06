@@ -38,6 +38,7 @@ module SpecGen
         @data = data.is_a?(Hash) ? data : {}
         @entries = []
         @by_name = {}
+        @requested = {}
         collect
       end
 
@@ -48,6 +49,24 @@ module SpecGen
       # @return [Entry, nil]
       def entry(name)
         @by_name[name]
+      end
+
+      # Схема попадает в тело запроса — сама или вложенным объектом.
+      #
+      # Это не то же самое, что `origin == :request`. Origin говорит, где
+      # схема объявлена, и компонент, найденный через `$ref` из
+      # requestBody, остаётся `:component`: индекс не заводит вторую запись.
+      # А спрашивают обычно другое — «что сервис отправляет провайдеру», и
+      # без отдельного ответа этот вопрос молча оставался без ответа у
+      # каждой спецификации, где все тела вынесены в компоненты. У GOV.UK
+      # Pay таких записей не было ни одной, и поиск поля суммы шёл по
+      # алфавиту: побеждал `AgreementSearchResults.total` — счётчик
+      # результатов поиска, а не деньги.
+      #
+      # @param entry [Entry]
+      # @return [Boolean]
+      def request?(entry)
+        @requested.key?(entry.name)
       end
 
       # Поля схемы с их свёрнутыми узлами и JSONPath.
@@ -136,7 +155,23 @@ module SpecGen
 
         component = SchemaNaming.component_of(schema)
         path = component ? SchemaNaming.component_path(component) : inline_path(at, media)
-        add(SchemaNaming.name_for(schema, context), schema, path, [origin, key])
+        name = SchemaNaming.name_for(schema, context)
+        add(name, schema, path, [origin, key])
+        mark_requested(name) if origin == :request
+      end
+
+      # Помечает схему тела запроса и всё, что в неё вложено. Обход
+      # повторяет обход `add`, но по уже собранному индексу: компонент,
+      # зарегистрированный раньше, второй раз не разбирается.
+      def mark_requested(name, depth = 0)
+        entry = @by_name[name]
+        return if entry.nil? || depth > MAX_DEPTH || @requested.key?(name)
+
+        @requested[name] = true
+        fields(entry).each do |field, body, field_path|
+          child = child_of(entry, field, body, field_path)
+          mark_requested(child.first, depth + 1) if child
+        end
       end
 
       def inline_path(at, media)

@@ -66,6 +66,39 @@ RSpec.describe SpecGen::Analyzers::IdempotencyAnalyzer do
       expect(idempotency.header.evidence).not_to include('send_when_optional')
     end
 
+    # Moov PayGate объявляет X-Idempotency-Key у создания перевода и
+    # X-Request-ID у четырёх остальных операций. Порядок обхода отдавал
+    # победу второму — заголовку трассировки, уникальному на каждый повтор.
+    it 'prefers the header the dictionary ranks higher when several are declared' do
+      profile = analyze('/status' => { 'get' => { 'operationId' => 'getStatus', 'tags' => ['Payouts'],
+                                                  'parameters' => [header('X-Request-Id')],
+                                                  'responses' => { '200' => response('PayoutResponse') } } },
+                        '/payouts' => { 'post' => create(parameters: [header('X-Idempotency-Key')]) })
+
+      expect(profile.idempotency.header.value).to eq('X-Idempotency-Key')
+    end
+
+    it 'never picks between two headers silently' do
+      profile = analyze('/status' => { 'get' => { 'operationId' => 'getStatus', 'tags' => ['Payouts'],
+                                                  'parameters' => [header('X-Request-Id')],
+                                                  'responses' => { '200' => response('PayoutResponse') } } },
+                        '/payouts' => { 'post' => create(parameters: [header('X-Idempotency-Key')]) })
+      warning = profile.warnings.find { |item| item.code == :idempotency_header_ambiguous }
+
+      expect(warning).not_to be_nil
+      expect(warning.severity).to eq(:info)
+      expect(warning.message).to include('выбран X-Idempotency-Key', 'отклонены: X-Request-Id')
+    end
+
+    it 'stays quiet when the same header is declared by every operation' do
+      profile = analyze('/status' => { 'get' => { 'operationId' => 'getStatus', 'tags' => ['Payouts'],
+                                                  'parameters' => [header('Idempotency-Key')],
+                                                  'responses' => { '200' => response('PayoutResponse') } } },
+                        '/payouts' => { 'post' => create })
+
+      expect(profile.warnings.map(&:code)).not_to include(:idempotency_header_ambiguous)
+    end
+
     it 'sees a header inherited from the path item' do
       profile = analyze('/payouts' => { 'parameters' => [header('X-Idempotency-Key')],
                                         'post' => create(parameters: []) })

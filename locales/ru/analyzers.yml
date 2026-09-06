@@ -184,6 +184,7 @@ analyzers:
     header_evidence: "параметр-заголовок %{header} совпал с алиасом rules/idempotency.yml; принимают: %{operations}"
     optional_note: "; объявлен required: false, но по rules/idempotency.yml (send_when_optional) ключ отправляется всегда"
     strategy_evidence: "rules/idempotency.yml: default_strategy %{strategy} — ключ детерминирован от operation.id, повтор даёт тот же ключ"
+    ambiguous_message: "спецификация объявляет несколько известных заголовков идемпотентности; выбран %{header} по списку priority в rules/idempotency.yml, отклонены: %{others}"
     dedup_unknown: "ни одна операция с заголовком (%{operations}) не объявляет ответ %{status} со схемой успешного ответа"
     dedup_unclear_message: "заголовок %{header} объявлен, но ни одна операция не описывает ответ %{status} со схемой успешного ответа; при повторе сервис не отличит дубль от ошибки — уточните у провайдера или опишите ответ в overlay"
     dedup_overlay: |
@@ -228,6 +229,7 @@ analyzers:
     currency_example: "example: %{value} у поля `%{name}`; ни enum, ни default не заданы, поэтому это одна из возможных валют"
     currency_missing: "ни одно поле не совпало с синонимами роли currency в rules/roles.yml"
     currency_silent: "поле `%{name}` совпало с ролью currency, но не задаёт ни enum, ни default, ни example"
+    currency_alien: "поле `%{name}` совпало с ролью currency, но его пример `%{value}` не код ISO 4217 — кандидат отвергнут"
     currency_missing_message: "валюта суммы не выведена (%{evidence}); без кода валюты экспоненту ISO 4217 определить нельзя — задайте валюту в overlay"
     currency_multiple_message: "поле `%{name}` допускает несколько валют (%{values}); экспонента зависит от валюты конкретной операции — закрепите валюту в overlay или доработайте генератор под мультивалютность"
     currency_code_message: "кода валюты %{code} нет в таблице ISO 4217 (rules/currencies.yml); взята экспонента по умолчанию %{exponent} — проверьте и закрепите её в overlay"

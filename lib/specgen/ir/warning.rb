@@ -70,7 +70,7 @@ module SpecGen
         error_code_undeclared error_code_unused error_action_unknown
         webhook_missing webhook_event_unmapped webhook_event_undeclared
         signature_profile_incomplete signature_profile_conflict
-        idempotency_header_missing idempotency_dedup_unclear
+        idempotency_header_missing idempotency_dedup_unclear idempotency_header_ambiguous
         auth_unknown auth_multiple_schemes auth_absent auth_key_in_query
         overlay_conflict overlay_target_missing
         contract_gap condition_unclear

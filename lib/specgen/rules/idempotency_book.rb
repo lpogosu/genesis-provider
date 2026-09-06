@@ -35,6 +35,19 @@ module SpecGen
         @normalized.include?(Normalizer.call(header))
       end
 
+      # Место заголовка в списке приоритета: меньше — увереннее.
+      #
+      # Нужно, когда спецификация объявляет сразу несколько известных имён.
+      # У Moov PayGate это `X-Idempotency-Key` у одной операции создания и
+      # `X-Request-ID` у четырёх остальных: без приоритета побеждал второй —
+      # то есть заголовок трассировки, уникальный на каждый повтор.
+      #
+      # @param header [String]
+      # @return [Integer] имя вне списка идёт после всех перечисленных
+      def rank(header)
+        @priority.index(Normalizer.call(header)) || @priority.size
+      end
+
       # @return [Boolean] отправлять ключ и там, где спецификация помечает
       #   заголовок необязательным
       def send_when_optional?
@@ -48,7 +61,19 @@ module SpecGen
                                  path('canonical_header'))
         @aliases = string_list(data['aliases'], noun(:list, key: 'aliases'), path('aliases'))
         @normalized = collect_aliases.freeze
+        @priority = collect_priority.freeze
         load_strategy
+      end
+
+      def collect_priority
+        at = path('priority')
+        string_list(data['priority'], noun(:list, key: 'priority'), at,
+                    required: false).each_with_index.filter_map do |name, index|
+          key = Normalizer.call(name)
+          next key if @normalized.include?(key)
+
+          fault('idempotency.unknown_priority', "#{at}[#{index}]", name: name.inspect)
+        end
       end
 
       def load_strategy

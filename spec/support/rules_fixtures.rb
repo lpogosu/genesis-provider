@@ -52,6 +52,7 @@ module RulesFixtures
     'idempotency.yml' => lambda {
       { 'version' => 1, 'canonical_header' => 'Idempotency-Key',
         'aliases' => %w[Idempotency-Key X-Idempotency-Key X-Request-Id],
+        'priority' => %w[Idempotency-Key X-Idempotency-Key X-Request-Id],
         'default_strategy' => 'uuid_v5',
         'uuid_v5_namespace' => '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
         'conflict_status' => 409, 'send_when_optional' => true }

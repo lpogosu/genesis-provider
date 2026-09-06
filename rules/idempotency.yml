@@ -55,6 +55,30 @@ aliases:
   - X-Request-Id            # встречается как ключ идемпотентности, не как трассировка
   - X-Unique-Transaction-Id # из описания кейса
 
+# Порядок предпочтения, когда спецификация объявляет сразу несколько имён из
+# списка выше. Первое совпавшее побеждает, имя вне этого списка идёт после
+# всех перечисленных, а сам факт конкуренции попадает в report.md — молча
+# выбирать между двумя заголовками нельзя.
+#
+# Почему именно такой порядок. Сверху имена, у которых в названии стоит сам
+# термин: они не могут значить ничего другого. Ниже — имена провайдеров,
+# которые черновик IETF перечисляет как реализации: PayPal-Request-Id и
+# X-Unique-Transaction-Id уникальны на операцию. В самом низу X-Request-Id:
+# у одних провайдеров это ключ идемпотентности, у других — трассировка,
+# уникальная на каждый повтор. Пример конкуренции — Moov PayGate
+# (spec/fixtures/specs/real/moov_paygate_v1.yaml): X-Idempotency-Key «expires
+# after 24 hours» у создания перевода и X-Request-ID «allows application
+# developer to trace requests through the systems logs» у четырёх других
+# операций. Без приоритета побеждал второй, и повтор после сетевого сбоя
+# создавал вторую выплату.
+priority:
+  - Idempotency-Key
+  - Idempotence-Key
+  - X-Idempotency-Key
+  - PayPal-Request-Id
+  - X-Unique-Transaction-Id
+  - X-Request-Id
+
 # uuid_v5 — детерминированный ключ от operation.id (см. шапку файла).
 default_strategy: uuid_v5
 

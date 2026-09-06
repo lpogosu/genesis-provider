@@ -46,7 +46,8 @@ module SpecGen
           status_missing_from_enum: 'statuses', error_action_unknown: 'errors',
           currency_unknown: 'currencies', signature_profile_incomplete: 'signatures',
           signature_profile_conflict: 'signatures', idempotency_header_missing: 'idempotency',
-          idempotency_dedup_unclear: 'idempotency', auth_unknown: 'auth',
+          idempotency_dedup_unclear: 'idempotency', idempotency_header_ambiguous: 'idempotency',
+          auth_unknown: 'auth',
           auth_multiple_schemes: 'auth', webhook_event_unmapped: 'statuses',
           condition_unclear: 'conditions'
         }.freeze

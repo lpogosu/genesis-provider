@@ -145,6 +145,7 @@ rules:
     empty_alias: "alias %{name} normalizes to an empty name"
     duplicate_alias: "alias %{name} repeats %{other}"
     canonical_missing: "canonical header %{header} is missing from the aliases"
+    unknown_priority: "priority entry %{name} is not among the aliases"
 
   auth:
     empty: "no security scheme is described"

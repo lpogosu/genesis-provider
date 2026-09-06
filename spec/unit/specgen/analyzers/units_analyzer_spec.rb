@@ -118,6 +118,28 @@ RSpec.describe SpecGen::Analyzers::UnitsAnalyzer do
       expect(shared.units.exponent.value).to eq(2)
     end
 
+    # У GOV.UK Pay поле `method` объекта ссылок (пример `GET`) набрало роль
+    # currency на 0.24 — три заглавные буквы прошли ограничения. Пример это
+    # образец значения, а не объявление: образец вне ISO 4217 роль поля не
+    # уточняет, а опровергает.
+    it 'refuses an example that is not an ISO 4217 code, and names the rejected candidate' do
+      profile = with_request('amount' => { 'type' => 'integer' },
+                             'currency' => { 'type' => 'string', 'example' => 'GET' })
+
+      expect(profile.units.currency).to be_unknown
+      expect(profile.units.currency.evidence).to include('пример `GET` не код ISO 4217')
+    end
+
+    # Неофициальный код в enum законен: справочник даёт ему экспоненту по
+    # умолчанию вместе с предупреждением. Отсеиваются только подсказки.
+    it 'still accepts a declared code the table does not know, with a warning' do
+      profile = with_request('amount' => { 'type' => 'integer' },
+                             'currency' => { 'type' => 'string', 'enum' => ['XBT'] })
+
+      expect(profile.units.currency.value).to eq('XBT')
+      expect(codes(profile)).to include(:currency_unknown)
+    end
+
     it 'derives nothing when no field names the currency, and asks for an overlay' do
       profile = with_request('amount' => { 'type' => 'integer' })
 
@@ -216,6 +238,32 @@ RSpec.describe SpecGen::Analyzers::UnitsAnalyzer do
 
       expect(profile.units.unit.value).to eq(:major)
       expect(profile.units.json_path).to start_with("$.paths['/payouts'].post.requestBody")
+    end
+
+    # У GOV.UK Pay все тела вынесены в components и приходят по $ref, а
+    # разыменованная схема сохраняет имя компонента и не заводит второй
+    # записи. Пока предпочтение опиралось на место объявления, ни одна
+    # схема не считалась телом запроса, и поле суммы искалось по алфавиту:
+    # побеждал счётчик результатов поиска.
+    it 'prefers a component the request body refers to over one that only sorts earlier' do
+      referred = { 'type' => 'object', 'x-specgen-ref' => '#/components/schemas/PayoutRequest',
+                   'properties' => { 'amount' => { 'type' => 'number', 'example' => 1.5 },
+                                     'currency' => { 'type' => 'string', 'enum' => ['RUB'] } } }
+      profile = analyze(
+        'openapi' => '3.0.3',
+        'components' => { 'schemas' => {
+          'AgreementSearchResults' => { 'type' => 'object',
+                                        'properties' => { 'amount' => { 'type' => 'integer' } } },
+          'PayoutRequest' => referred
+        } },
+        'paths' => { '/payouts' => { 'post' => {
+          'operationId' => 'createPayout',
+          'requestBody' => { 'content' => { 'application/json' => { 'schema' => referred } } }
+        } } }
+      )
+
+      expect(profile.units.json_path).to eq('$.components.schemas.PayoutRequest.properties.amount')
+      expect(profile.units.unit.value).to eq(:major)
     end
 
     it 'leaves units nil and warns when no schema has an amount at all' do

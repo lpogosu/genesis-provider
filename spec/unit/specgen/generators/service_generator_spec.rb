@@ -184,6 +184,42 @@ RSpec.describe SpecGen::Generators::ServiceGenerator do
     end
   end
 
+  # Провайдер с несколькими валютами одной экспоненты (Paystack: NGN, GHS,
+  # ZAR, USD) даёт известный множитель без единственной валюты. Подстановка
+  # пустого кода оставляла в сгенерированном файле висящее «, валюта )».
+  describe 'a specification with several currencies of one exponent' do
+    it 'explains the multiplier without naming a currency it does not have' do
+      Dir.mktmpdir('specgen-multi') do |dir|
+        spec = File.join(dir, 'multi.yaml')
+        File.binwrite(spec, <<~YAML)
+          openapi: 3.0.3
+          info: { title: Multi Currency API, version: '0.1' }
+          paths:
+            /payouts:
+              post:
+                operationId: createPayout
+                requestBody:
+                  required: true
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        required: [amount, currency]
+                        properties:
+                          amount: { type: integer, example: 150000 }
+                          currency: { type: string, enum: [NGN, GHS, ZAR, USD] }
+                responses:
+                  '201': { description: ok }
+        YAML
+        artifact, = generate(spec, dir)
+        source = File.read(artifact.path, encoding: 'UTF-8')
+
+        expect(source).to include('AMOUNT_MULTIPLIER = 100', 'при любой валюте спецификации')
+        expect(source).not_to match(/валюта\s*\)/)
+      end
+    end
+  end
+
   # Ключи payload и границы сумм приходят из спецификации: RuboCop не должен
   # находить в них ни своего стиля имён, ни голых больших литералов.
   describe 'a specification whose field names and limits fight the house style' do

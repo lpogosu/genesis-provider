@@ -184,6 +184,7 @@ analyzers:
     header_evidence: "header parameter %{header} matches an alias of rules/idempotency.yml; accepted by: %{operations}"
     optional_note: "; declared required: false, but per rules/idempotency.yml (send_when_optional) the key is always sent"
     strategy_evidence: "rules/idempotency.yml: default_strategy %{strategy} — the key is derived deterministically from operation.id, a replay yields the same key"
+    ambiguous_message: "the specification declares several known idempotency headers; %{header} is chosen by the priority list of rules/idempotency.yml, rejected: %{others}"
     dedup_unknown: "no operation with the header (%{operations}) declares a %{status} response with the success schema"
     dedup_unclear_message: "header %{header} is declared, but no operation describes a %{status} response with the success schema; on a replay the service cannot tell a duplicate from an error — ask the provider or describe the response in an overlay"
     dedup_overlay: |
@@ -228,6 +229,7 @@ analyzers:
     currency_example: "example: %{value} on field `%{name}`; neither enum nor default, so this is one of the possible currencies"
     currency_missing: "no field matches a synonym of role currency in rules/roles.yml"
     currency_silent: "field `%{name}` matches role currency but declares no enum, default or example"
+    currency_alien: "field `%{name}` matches role currency, but its example `%{value}` is not an ISO 4217 code — the candidate is rejected"
     currency_missing_message: "amount currency could not be derived (%{evidence}); without a currency code the ISO 4217 exponent cannot be determined — set the currency in an overlay"
     currency_multiple_message: "field `%{name}` allows several currencies (%{values}); the exponent depends on the currency of each operation — pin the currency in an overlay or extend the generator for multi-currency"
     currency_code_message: "currency code %{code} is not in the ISO 4217 table (rules/currencies.yml); the default exponent %{exponent} was taken — check it and pin it in an overlay"
