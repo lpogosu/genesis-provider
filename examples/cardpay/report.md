@@ -175,7 +175,7 @@ Generators::Report::Gap::BUCKETS.
 
 Что сделал инструмент: поле помечено условно обязательным, условие вынесено в комментарий над записью payload
 
-- **`$.components.schemas.Destination`** — `wallet_id` выглядит условно обязательным (`method` = wallet), но схема не задаёт условия; фрагмент ниже задаёт его формально
+- **`$.components.schemas.Destination`** — `expiry_month` выглядит условно обязательным (`method` = card), но схема не задаёт условия; фрагмент ниже задаёт его формально
 
   ```yaml
   - target: "$.components.schemas.Destination"
@@ -183,9 +183,9 @@ Generators::Report::Gap::BUCKETS.
       x-jsonschema-if:
         properties:
           method:
-            const: wallet
+            const: card
       x-jsonschema-then:
-        required: [wallet_id]
+        required: [expiry_month]
   ```
 - **`$.components.schemas.Destination`** — `expiry_year` выглядит условно обязательным (`method` = card), но схема не задаёт условия; фрагмент ниже задаёт его формально
 
@@ -199,18 +199,6 @@ Generators::Report::Gap::BUCKETS.
       x-jsonschema-then:
         required: [expiry_year]
   ```
-- **`$.components.schemas.Destination`** — `expiry_month` выглядит условно обязательным (`method` = card), но схема не задаёт условия; фрагмент ниже задаёт его формально
-
-  ```yaml
-  - target: "$.components.schemas.Destination"
-    update:
-      x-jsonschema-if:
-        properties:
-          method:
-            const: card
-      x-jsonschema-then:
-        required: [expiry_month]
-  ```
 - **`$.components.schemas.Destination`** — `pan` выглядит условно обязательным (`method` = card), но схема не задаёт условия; фрагмент ниже задаёт его формально
 
   ```yaml
@@ -222,6 +210,18 @@ Generators::Report::Gap::BUCKETS.
             const: card
       x-jsonschema-then:
         required: [pan]
+  ```
+- **`$.components.schemas.Destination`** — `wallet_id` выглядит условно обязательным (`method` = wallet), но схема не задаёт условия; фрагмент ниже задаёт его формально
+
+  ```yaml
+  - target: "$.components.schemas.Destination"
+    update:
+      x-jsonschema-if:
+        properties:
+          method:
+            const: wallet
+      x-jsonschema-then:
+        required: [wallet_id]
   ```
 
 ### `field_role_low_confidence` — 1

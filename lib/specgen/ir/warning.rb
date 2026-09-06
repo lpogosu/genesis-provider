@@ -105,7 +105,7 @@ module SpecGen
       # одинаковые отчёты.
       # @return [Array]
       def sort_key
-        [SEVERITIES.index(severity), json_path.to_s, code.to_s]
+        [SEVERITIES.index(severity), json_path.to_s, code.to_s, message.to_s]
       end
 
       # @return [Boolean] генерацию нельзя считать завершённой

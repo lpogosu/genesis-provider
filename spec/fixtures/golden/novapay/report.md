@@ -156,18 +156,6 @@ Generators::Report::Gap::BUCKETS.
 
 Что сделал инструмент: поле помечено условно обязательным, условие вынесено в комментарий над записью payload
 
-- **`$.components.schemas.Recipient`** — `card_number` выглядит условно обязательным (`type` = card), но схема не задаёт условия; фрагмент ниже задаёт его формально
-
-  ```yaml
-  - target: "$.components.schemas.Recipient"
-    update:
-      x-jsonschema-if:
-        properties:
-          type:
-            const: card
-      x-jsonschema-then:
-        required: [card_number]
-  ```
 - **`$.components.schemas.Recipient`** — `bank_code` выглядит условно обязательным (`type` = sbp), но схема не задаёт условия; фрагмент ниже задаёт его формально
 
   ```yaml
@@ -179,6 +167,18 @@ Generators::Report::Gap::BUCKETS.
             const: sbp
       x-jsonschema-then:
         required: [bank_code]
+  ```
+- **`$.components.schemas.Recipient`** — `card_number` выглядит условно обязательным (`type` = card), но схема не задаёт условия; фрагмент ниже задаёт его формально
+
+  ```yaml
+  - target: "$.components.schemas.Recipient"
+    update:
+      x-jsonschema-if:
+        properties:
+          type:
+            const: card
+      x-jsonschema-then:
+        required: [card_number]
   ```
 
 ### `required_field_role_unknown` — 1
