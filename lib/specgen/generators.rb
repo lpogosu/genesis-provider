@@ -67,6 +67,8 @@ require_relative 'generators/report/checklist'
 require_relative 'generators/report/checks'
 require_relative 'generators/report/view'
 require_relative 'generators/report_generator'
+require_relative 'generators/skeleton/view'
+require_relative 'generators/overlay_generator'
 require_relative 'generators/runner'
 
 module SpecGen

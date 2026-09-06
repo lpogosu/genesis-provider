@@ -13,10 +13,26 @@ generators:
     integration: "integration guide"
     fixtures: "fixtures"
     report: "report"
+    overlay: "overlay skeleton"
   warnings: "Warnings: %{total} (%{counts}); details: ./integrate analyze --spec %{spec}"
   strict_failed: "--strict: warnings present, exit code 1 (files were written)"
   write_failed: "could not write the file: %{error}"
   template_failed: "the template did not render: %{error}"
+
+  # Overlay skeleton (templates/overlay.yaml.erb, the --fix flag): the file
+  # header and slot captions. The fragments themselves come from profile
+  # warnings and are byte-identical in both locales: they are text for the
+  # machine.
+  overlay:
+    title: "%{provider} disambiguation"
+    header_what: "An OpenAPI Overlay 1.0.0 skeleton for %{spec}. One slot per ambiguity that has a ready fragment; written by --fix, so the structure needs no hand work."
+    header_how: "Uncomment the slots you need (drop the two leading characters of every line), leave a single variant in the value and hand the file back to the tool:"
+    header_trust: "An uncommented line is read as trusted: for the tool an overlay is the specification itself, trust level 1, confidence 1.00. That is why the slots arrive commented out: the choice between candidates belongs to a human, and the tool writing its own guess here as a live line would turn that guess into a fact and silence the warning without solving anything."
+    header_anchor: "The only live action below is an anchor. An Overlay 1.0.0 document must declare at least one action, and this one chooses nothing for anybody: it marks the specification with an extension it did not have. Once at least one slot is uncommented, the anchor may be deleted."
+    anchor_description: "Skeleton anchor action, it decides nothing for a human"
+    slots_intro: "Below: %{count}. Each starts with its number, the warning code and the element address: that is how a slot is found in sections 3 and 5 of report.md."
+    slot_shared: "Careful: the same target is addressed by %{count} more — %{slots}. Actions merge recursively and a repeated key survives only in the last one — if you uncomment several, fold them into one action."
+    no_slots: "No slots: not a single warning of this run is closed by an overlay. See report.md — what is left is cured by the rules/ dictionaries or by fixing the specification itself."
 
   service:
     # Request body
@@ -241,6 +257,7 @@ generators:
     dedup_none: "No deduplication success path was derived: no operation with the idempotency header declares a retry response with the success schema, so a conflict response is treated as an error — %{report}."
     dedup_no_idempotency: "Idempotency is not declared in the specification: the provider cannot tell a retry from a new request — %{report}."
     # 6. Gateway
+    gateway_case_note: "This section covers the `## ProviderGateway config` of the case description; the shape differs because the platform needs no separate gateway config and takes the address and the authorisation from the specification (expert answer of 5 September 2026, `docs/QUESTIONS.md`, question 15)."
     gateway_note: "Everything below is derived from the specification itself: address, credential keys, currencies, amount units and limits, field constraints, notification path and header. The service needs no separate config — this is a summary to check against. The values are computed by the same code as the %{check} preconditions of the service: amounts are in internal (major) units."
     gateway_env: "environment variable %{env}, address from the specification servers"
     currencies_unknown: "currency not derived from the specification"
@@ -349,6 +366,7 @@ generators:
     artifact_integration: "integration guide"
     artifact_fixtures: "request, response and notification examples"
     artifact_report: "this report"
+    artifact_overlay: "overlay skeleton written by --fix"
     artifact_self: "counted as it is written"
     overlay_applied: "OpenAPI Overlay 1.0.0 `%{file}` (%{title}) was applied to the
       specification. Everything said below about the specification is said about it
@@ -504,3 +522,4 @@ plural:
   line: { one: "line", other: "lines" }
   item: { one: "item", other: "items" }
   element: { one: "element", other: "elements" }
+  slot: { one: "slot", other: "slots" }

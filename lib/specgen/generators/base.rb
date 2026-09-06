@@ -13,6 +13,15 @@ module SpecGen
       TEMPLATE = nil
       KIND = nil
 
+      # Артефакт пишется всегда, если наследник не сказал иного: генерация
+      # не блокируется и не сокращается сама по себе. Флаг CLI может
+      # добавить артефакт (--fix), но не убрать обязательный.
+      # @param _options [Hash] опции CLI
+      # @return [Boolean]
+      def self.enabled?(_options)
+        true
+      end
+
       # @param profile [IR::ProviderProfile]
       # @param rules [Rules::Registry]
       # @param options [Hash] опции CLI

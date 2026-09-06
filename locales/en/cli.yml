@@ -36,7 +36,8 @@ cli:
     generate_long: |
       Reads an OpenAPI 3.x specification of a payment provider and writes four
       artifacts into the output directory: <provider>_service.rb,
-      INTEGRATION.md, fixtures.json and report.md.
+      INTEGRATION.md, fixtures.json and report.md. The --fix flag adds a
+      fifth one: <provider>.overlay.yaml, an overlay skeleton.
 
       Either --spec or --all is required.
     analyze: "Show what the analyzers recognise in a spec, without generating anything"
@@ -53,8 +54,7 @@ cli:
     lang: "Target language (only ruby is supported)"
     overlay: "OpenAPI Overlay 1.0.0 file with manual overrides"
     output: "Output directory"
-    with_mock: "Also generate a mock provider server from the same spec"
-    fix: "Write an overlay skeleton with a TODO slot for every ambiguity"
+    fix: "Write an overlay skeleton: a commented-out slot for every ambiguity"
     strict: "Exit with status 1 when the report contains warnings"
     all: "Run on every spec in the --specs directory and print a summary"
     specs: "Directory with the specifications for --all (default spec/fixtures/specs)"

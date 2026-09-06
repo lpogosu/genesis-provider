@@ -149,7 +149,7 @@ RSpec.describe SpecGen::CLI do
     it 'accepts every documented flag and applies the overlay it was handed' do
       result = run_cli('generate', '--spec', novapay, '--provider', 'demo', '--lang', 'ruby',
                        '--overlay', overlay, '--output', @out,
-                       '--with-mock', '--fix', '--strict')
+                       '--fix', '--strict')
       expect(result.stderr).not_to include('использование:')
       expect(result.stdout).to include('Overlay').and include('demo_service.rb')
     end

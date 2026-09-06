@@ -17,7 +17,7 @@ module SpecGen
     class Pipeline
       # Язык подсветки для фронта; ключи — виды артефактов из Runner::ORDER.
       LANGUAGES = { service: 'ruby', integration: 'markdown', fixtures: 'json',
-                    report: 'markdown' }.freeze
+                    report: 'markdown', overlay: 'yaml' }.freeze
       DEFAULT_LANGUAGE = 'text'
       OVERLAY_FILE = 'overlay.yaml'
       OUTPUT_DIR = 'output'

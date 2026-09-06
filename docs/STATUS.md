@@ -38,7 +38,8 @@ SpecLoader → OverlayApplier → Analyzers + Matchers → IR → Generators →
 | Matchers (роли полей) | готов: Name, Type, Constraint, Structure, Composite, Assigner | `SpecGen::Matchers::Assigner.new(rules:).call(subjects)`; вызывается из SchemaReader и ParameterReader | `spec/unit/specgen/matchers/*_spec.rb`, стадия целиком — `spec/unit/specgen/analyzers/field_roles_spec.rb`; на выданной спеке 22 из 26 скалярных полей и все 3 параметра получают роль |
 | Generators | готов: четыре артефакта из одной команды | `SpecGen::Generators.call(profile:, rules:, options:)` → `[Artifact]`; `./integrate --spec ... --provider ...` пишет `output/<provider>_service.rb`, `output/INTEGRATION.md` и `output/fixtures.json` | `ruby -c output/<provider>_service.rb`; `bundle exec rubocop --config config/rubocop_generated.yml output/<provider>_service.rb`; `grep '^## ' output/INTEGRATION.md` — ровно девять разделов; `ruby -rjson -e 'JSON.parse(File.read("output/fixtures.json"))'`; `grep '^## ' output/report.md` — ровно семь разделов; golden — `spec/golden/novapay_spec.rb` против `spec/fixtures/golden/novapay/` (все четыре файла); `spec/unit/specgen/generators/` |
 | Пакетный прогон | готов | `SpecGen::Batch.new(dir:, rules:).call` → `[Row]`; `./integrate --all --specs <каталог>` | `spec/unit/specgen/batch_spec.rb`; сводка печатается `Reporter::BatchLines`, покрытие берётся из метрик артефакта `report.md` |
-| Mock provider | не начат | — | промпт 8 |
+| Заготовка overlay (`--fix`) | готов: пятый артефакт по флагу, все слоты закомментированы | `SpecGen::Generators::OverlayGenerator` в `Runner::ORDER` | `./integrate --spec spec/fixtures/specs/broken.yaml --provider broken --fix --output tmp/fix/broken` — пятым файлом `broken.overlay.yaml`; круговой прогон с `--overlay` не добавляет предупреждений; `spec/unit/specgen/generators/overlay_generator_spec.rb` |
+| Mock provider | не начат и не обещан: флага `--with-mock` в CLI больше нет | — | — |
 | Validators | не начат | — | промпт 9 |
 | Reporter | готов: `Summary` в консоли и `report.md` на диске | `SpecGen::Reporter::Summary`, `SpecGen::Generators::ReportGenerator` | `./integrate analyze --spec ... --explain`; `output/report.md` |
 | Texts (язык) | готов: ru по умолчанию, en | `SpecGen::Texts.t`, `locales/<код>/*.yml` | `--locale en`; `spec/unit/specgen/texts_spec.rb` следит за полнотой ключей |
@@ -622,6 +623,25 @@ Adyen `resultCode` — исход авторизации, то есть стат
 `Naming` и CLI не меняются. `Base#render` оборачивает любую ошибку шаблона
 в `GenerationError` с именем шаблона и местом ошибки.
 
+**Артефакт по флагу объявляет себя сам.** `Base.enabled?(options)` по
+умолчанию `true`; `OverlayGenerator` отвечает по `--fix`, и `Runner` просто
+фильтрует `ORDER`. Список флагов не размазан по двум местам, а вывод без
+флага побайтово прежний.
+
+**Заготовка overlay приходит закомментированной целиком.** Overlay читается
+как уровень 1 доверия: всё, что в нём написано, становится фактом с
+уверенностью 1.00. Поэтому инструмент не пишет живой строкой ни одного
+своего выбора — иначе эвристика 0.5 стала бы утверждением, а предупреждение
+исчезло бы, не будучи решённым. Слот несёт код предупреждения, адрес,
+сообщение и фрагмент под префиксом ровно в два знака (`# `), чтобы человек
+снимал его одним движением и получал YAML нужной глубины. Единственное живое
+действие — якорь `$.info` / `x-specgen-overlay: skeleton`: документ
+Overlay 1.0.0 обязан объявить хотя бы одно действие (иначе `actions_empty`
+на круговом прогоне), а это не выбирает ничего и не спорит со спецификацией,
+потому что такого ключа в ней не было. Слоты с одной целью предупреждают
+друг о друге: два действия на `Recipient` слились бы, и одно из двух условий
+пропало бы молча.
+
 **Шаблон видит только представление.** `templates/service.rb.erb` держит
 разметку класса и таблицы; всё остальное — строки от презентеров
 `Generators::Service::*` (`Payload`, `Tables`, `Precheck`, `Creation`,
@@ -950,10 +970,10 @@ Paystack это подняло измерение с 9 полей из 242 до 
   идемпотентности при конкуренции имён, валюта из примера вне ISO 4217, поле
   суммы у спецификации, где все тела вынесены в компоненты.
 
-Дальше: сверка сформированных запросов со спекой на уровне полного цикла и
-`--fix`, который соберёт overlay из фрагментов раздела 3 отчёта — инструкция
-по сборке уже напечатана в самом отчёте, а её формат разбирает
-`YAML.safe_load` в юнит-тесте. Мок-провайдер остаётся в бонусе: эксперты
+Дальше: сверка сформированных запросов со спекой на уровне полного цикла.
+`--fix` закрыт: флаг собирает `<provider>.overlay.yaml` ровно той формы,
+которую обещает раздел «Как собрать overlay» отчёта, и файл возвращается
+инструменту через `--overlay` как есть. Мок-провайдер остаётся в бонусе: эксперты
 оценивают сгенерированный класс, а не живой трафик. Единственная чужая спека
 из проверенных, которую мы не берём, — Stripe: развёрнутый документ не
 помещается в память, и это названо в

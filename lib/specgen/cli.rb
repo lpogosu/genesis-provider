@@ -62,7 +62,6 @@ module SpecGen
     method_option :overlay, type: :string, desc: Texts.t('cli.option.overlay')
     method_option :output, type: :string, default: 'output', aliases: '-o',
                            desc: Texts.t('cli.option.output')
-    method_option :with_mock, type: :boolean, default: false, desc: Texts.t('cli.option.with_mock')
     method_option :fix, type: :boolean, default: false, desc: Texts.t('cli.option.fix')
     method_option :strict, type: :boolean, default: false, desc: Texts.t('cli.option.strict')
     method_option :all, type: :boolean, default: false, desc: Texts.t('cli.option.all')

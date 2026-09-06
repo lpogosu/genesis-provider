@@ -15,6 +15,7 @@ module SpecGen
     class Naming
       FALLBACK = 'provider'
       SUFFIX = 'service'
+      OVERLAY_SUFFIX = 'overlay.yaml'
       # Кириллица → латиница, чтобы русское имя провайдера не исчезало из
       # идентификатора целиком. Транслитерация упрощённая, без ё/й-нюансов:
       # цель — читаемый ASCII, а не стандарт ГОСТ.
@@ -48,6 +49,13 @@ module SpecGen
       # @return [String] "acme_pay_service.rb"
       def file_name
         "#{slug}_#{SUFFIX}.rb"
+      end
+
+      # @return [String] "acme_pay.overlay.yaml" — заготовка переопределений;
+      #   имя обещано читателю разделом «Как собрать overlay» в report.md,
+      #   поэтому оно одно для отчёта и для флага --fix
+      def overlay_file_name
+        "#{slug}.#{OVERLAY_SUFFIX}"
       end
 
       # @return [String] "AcmePayService"

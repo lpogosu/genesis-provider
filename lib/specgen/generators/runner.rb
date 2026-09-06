@@ -7,8 +7,11 @@ module SpecGen
     # templates/; больше ничего.
     class Runner
       # Порядок фиксирован: report.md идёт последним, потому что перечисляет
-      # уже записанные артефакты с числом строк.
-      ORDER = [ServiceGenerator, IntegrationGenerator, FixturesGenerator, ReportGenerator].freeze
+      # уже записанные артефакты с числом строк. Заготовка overlay стоит
+      # перед ним по той же причине — попав в список, она видна там же, где
+      # сказано, из чего собран сервис.
+      ORDER = [ServiceGenerator, IntegrationGenerator, FixturesGenerator,
+               OverlayGenerator, ReportGenerator].freeze
       DEFAULT_OUTPUT = 'output'
 
       # @param profile [IR::ProviderProfile]
@@ -31,11 +34,19 @@ module SpecGen
       def call
         naming = Naming.for(@profile)
         writer = Writer.new(output_dir)
-        ORDER.each_with_object([]) do |generator, artifacts|
+        enabled.each_with_object([]) do |generator, artifacts|
           artifacts << generator.new(profile: @profile, rules: @rules, options: @options,
                                      naming: naming, writer: writer,
                                      artifacts: artifacts.dup, checks: checks(artifacts)).call
         end
+      end
+
+      # Артефакт, который просили. Решает сам генератор: спрашивать у
+      # Runner, какой флаг что включает, значило бы держать список флагов в
+      # двух местах.
+      # @return [Array<Class>] подмножество ORDER в том же порядке
+      def enabled
+        ORDER.select { |generator| generator.enabled?(@options) }
       end
 
       # Сверка фикстур со схемами спецификации. Считается один раз, сразу
