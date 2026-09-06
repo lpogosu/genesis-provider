@@ -19,7 +19,7 @@
 ## Derived — значение вместе с происхождением
 
 Каждый выведенный член IR обёрнут в `Derived`, потому что `report.md` обязан
-объяснить каждое решение. Три уровня доверия из `CLAUDE.md` — это ровно поле
+объяснить каждое решение. Три уровня доверия из `docs/PRINCIPLES.md` — это ровно поле
 `source`.
 
 | source | Откуда | confidence | Нужно ли предупреждение |
@@ -54,8 +54,8 @@ Derived.unknown(evidence: 'no currency field found')
 
 | Словарь | Значения |
 |---|---|
-| `FIELD` | шестнадцать ролей полей из `CLAUDE.md`, от `amount` до `signature` |
-| `OPERATION` | `create_payout`, `create_deposit`, `fetch_status`, `cancel`, `balance`, `webhook`, `unmapped` |
+| `FIELD` | шестнадцать ролей полей из `docs/PRINCIPLES.md`, от `amount` до `signature` |
+| `OPERATION` | `create_payout`, `create_deposit`, `fetch_status`, `cancel`, `confirm`, `refund`, `balance`, `webhook`, `unmapped` |
 | `CONTRACT` | подмножество `OPERATION`, отображаемое на `Provider::BaseService` |
 | `INTERNAL_STATUS` | `in_progress`, `approved`, `rejected` |
 | `ERROR_ACTION` | `reject`, `retry`, `retry_backoff`, `alert`, `escalate`, `dedup` |
@@ -64,7 +64,7 @@ Derived.unknown(evidence: 'no currency field found')
 `:unmapped` — это результат, а не отказ. Операция остаётся в IR и попадает в
 отчёт: молча выброшенная операция выглядит как потерянная функциональность.
 
-`cancel` и `balance` сознательно не входят в `CONTRACT`. По `CLAUDE.md` они
+`cancel`, `confirm`, `refund` и `balance` сознательно не входят в `CONTRACT`. По `docs/PRINCIPLES.md` они
 генерируются отдельными публичными методами и отмечаются в отчёте как «не
 отображено на контракт».
 
@@ -316,8 +316,8 @@ heuristic. Конфликт между overlay и structural — это пред
 **Новое имя поля у провайдера.** Ничего в `lib/` не меняется: строка синонима в
 `rules/roles.yml`.
 
-**Новая роль.** Обоснуй, почему существующих пятнадцати не хватает, добавь в
-`Roles::FIELD`, в `CLAUDE.md` и в этот документ одним изменением.
+**Новая роль.** Обоснуй, почему существующих шестнадцати не хватает, добавь в
+`Roles::FIELD`, в `docs/PRINCIPLES.md` и в этот документ одним изменением.
 
 **Новый код предупреждения.** Добавь в `Warning::CODES`. Список закрыт нарочно:
 опечатка в коде иначе тихо попадёт в отчёт и сломает группировку.

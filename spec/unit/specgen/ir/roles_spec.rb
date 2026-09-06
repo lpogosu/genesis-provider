@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe SpecGen::IR::Roles do
-  it 'holds the payment-domain field roles from CLAUDE.md' do
+  it 'holds the payment-domain field roles from docs/PRINCIPLES.md' do
     expect(described_class::FIELD).to include(:amount, :currency, :external_id, :bank_code,
                                               :idempotency_key, :signature)
     expect(described_class::FIELD.uniq).to eq(described_class::FIELD)
@@ -15,7 +15,7 @@ RSpec.describe SpecGen::IR::Roles do
     expect(described_class::CONTRACT).to eq(%i[create_payout create_deposit fetch_status webhook])
   end
 
-  it 'leaves cancel and balance outside the contract, as CLAUDE.md requires' do
+  it 'leaves cancel and balance outside the contract, as docs/PRINCIPLES.md requires' do
     expect(described_class.contract?(:cancel)).to be(false)
     expect(described_class.contract?(:balance)).to be(false)
     expect(described_class.contract?(:create_payout)).to be(true)

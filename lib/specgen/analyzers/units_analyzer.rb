@@ -5,7 +5,7 @@ module SpecGen
     # Заполняет profile.units: в каких единицах провайдер ждёт сумму и какой
     # множитель применить к `operation.amount`.
     #
-    # Порядок вывода — порядок из CLAUDE.md, и он же порядок доверия:
+    # Порядок вывода — порядок из docs/PRINCIPLES.md, и он же порядок доверия:
     # расширения overlay на поле суммы (`x-specgen-amount-unit`,
     # `x-specgen-exponent`, `x-specgen-currency`) побеждают всё; затем
     # `type: integer` вместе с кодом валюты даёт минорные единицы с

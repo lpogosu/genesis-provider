@@ -13,7 +13,7 @@ module SpecGen
     # защита от повтора, которой на самом деле нет.
     class SignaturesBook < Book
       FILE = 'signatures.yml'
-      # CLAUDE.md делает Standard Webhooks профилем по умолчанию, поэтому он
+      # docs/PRINCIPLES.md делает Standard Webhooks профилем по умолчанию, поэтому он
       # обязан быть в справочнике.
       DEFAULT_PROFILE = 'standard_webhooks'
       TIMESTAMPED = %i[id_header timestamp_header tolerance].freeze

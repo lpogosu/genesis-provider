@@ -6,14 +6,14 @@ module SpecGen
     # спецификациях бесконечно много, ролей — нет. Поддержка нового
     # провайдера означает новые синонимы в rules/, но никогда новую запись
     # здесь: добавить её — это осознанное изменение модели, которое делается
-    # вместе с CLAUDE.md и docs/IR.md.
+    # вместе с docs/PRINCIPLES.md и docs/IR.md.
     #
     # Методы с восклицательным знаком поднимают ArgumentError, потому что
     # значение вне словаря — ошибка программиста внутри генератора, а никогда
     # не плохой пользовательский ввод; плохой ввод становится предупреждением
     # или SpecGen::Error.
     module Roles
-      # Роли платёжной области, из CLAUDE.md.
+      # Роли платёжной области, из docs/PRINCIPLES.md.
       FIELD = %i[
         amount currency external_id provider_operation_id recipient_type recipient_phone
         bank_code bank_name card_number status error_code error_message created_at
@@ -29,7 +29,7 @@ module SpecGen
 
       # Роли, которые отображаются на метод Provider::BaseService. Отмена,
       # подтверждение, возврат и баланс сознательно остаются снаружи: по
-      # CLAUDE.md они генерируются отдельными публичными методами и попадают
+      # docs/PRINCIPLES.md они генерируются отдельными публичными методами и попадают
       # в report.md с пометкой «не отображено на контракт».
       CONTRACT = %i[create_payout create_deposit fetch_status webhook].freeze
 

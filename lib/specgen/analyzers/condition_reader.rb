@@ -4,7 +4,7 @@ module SpecGen
   module Analyzers
     # Почему поле обязательно только иногда.
     #
-    # Порядок здесь — порядок доверия из CLAUDE.md. `dependentRequired` и
+    # Порядок здесь — порядок доверия из docs/PRINCIPLES.md. `dependentRequired` и
     # `if/then` — формальная JSON Schema, они читаются как факт. OAS 3.0 эти
     # ключевые слова запрещает, поэтому зарегистрированные расширения
     # `x-jsonschema-if` и `x-jsonschema-then` читаются точно так же. И только

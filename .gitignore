@@ -16,12 +16,12 @@
 /coverage/
 *.gem
 
-# Claude Code local permissions
-.claude/settings.local.json
+# документ организаторов — не часть решения
+*.docx
 
 # веб-интерфейс: зависимости и сборка. Исходники фронта в репозиторий входят,
 # результат сборки — нет: это сгенерированный код, он в подсчёт доли Ruby не
-# входит по тексту положения (см. CLAUDE.md, «Ruby больше 50 процентов»).
+# входит по тексту положения (см. docs/PRINCIPLES.md, «Правила хакатона»).
 node_modules/
 .next/
 space-payments-dashboard/out/

@@ -16,9 +16,6 @@ out
 next-env.d.ts
 .DS_Store
 
-# создаёт `next dev`, конституция проекта лежит в корне репозитория
-AGENTS.md
-CLAUDE.md
 
 # корневой .gitignore прячет любой public/, а здесь это статика фронта
 !/public/

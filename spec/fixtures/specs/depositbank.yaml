@@ -28,7 +28,7 @@
 #      create_payout. Деньги идут в обратную сторону, лексика пути и
 #      operationId другая (collect/deposits против payouts).
 #   5. Мажорные единицы против минорных. deposit_amount объявлен
-#      `type: number` с дробным example — по порядку вывода из CLAUDE.md
+#      `type: number` с дробным example — по порядку вывода из docs/PRINCIPLES.md
 #      это major units и множитель 1. У NovaPay `type: integer` → minor и
 #      множитель 100.
 #   6. JPY с экспонентой 0 против RUB с 2. ISO 4217: у иены минорной единицы

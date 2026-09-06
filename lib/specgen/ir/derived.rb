@@ -4,7 +4,7 @@ module SpecGen
   module IR
     # Значение вместе с тем, откуда оно взялось. Каждое выведенное поле IR —
     # это Derived, потому что report.md обязан объяснить каждое решение, а три
-    # уровня доверия из CLAUDE.md — это ровно этот `source`:
+    # уровня доверия из docs/PRINCIPLES.md — это ровно этот `source`:
     #
     #   :structural  прочитано из спецификации (required, enum, type)  уверенность 1.0
     #   :overlay     сказано человеком в OpenAPI Overlay               уверенность 1.0

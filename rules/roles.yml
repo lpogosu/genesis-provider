@@ -62,7 +62,7 @@
 #      error_code/status, external_id/provider_operation_id.
 #   2. Добавлять роли. Ключи ролей закрыты в IR::Roles::FIELD; незнакомый
 #      ключ — ошибка загрузки. Новая роль — это изменение модели, оно
-#      делается вместе с CLAUDE.md и docs/IR.md.
+#      делается вместе с docs/PRINCIPLES.md и docs/IR.md.
 #   3. Класть сюда `request_id` / `x_request_id` в роль external_id. Это
 #      заголовки идемпотентности, они описаны в rules/idempotency.yml; имена
 #      идемпотентности разрешено пересекать только с ролью idempotency_key.
@@ -92,7 +92,7 @@
 #   iban, account_number — реквизит счёта. Роли «счёт» в IR::Roles::FIELD
 #                    нет, а подменять ею card_number нельзя: IBAN уехал бы
 #                    провайдеру в поле номера карты. Прямо этот случай
-#                    называет CLAUDE.md («реквизит, которого нет в таблице
+#                    называет docs/PRINCIPLES.md («реквизит, которого нет в таблице
 #                    requisites, вслепую не генерируется») и ответ экспертов
 #                    25. Поле остаётся с TODO и строкой в INTEGRATION.md
 #   correlation_id — у Velo и Open Banking это идентификатор трассировки

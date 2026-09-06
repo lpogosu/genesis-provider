@@ -6,6 +6,7 @@ AllCops:
   SuggestExtensions: false
   Exclude:
     - 'output/**/*'
+    - 'examples/**/*'
     - 'tmp/**/*'
     - 'vendor/**/*'
     - 'spec/fixtures/**/*'
@@ -16,7 +17,7 @@ Layout/LineLength:
   Exclude:
     - 'spec/**/*'
 
-# Project rules from CLAUDE.md: no method longer than 20 lines,
+# Project rules from docs/PRINCIPLES.md: no method longer than 20 lines,
 # no class longer than 150.
 Metrics/MethodLength:
   Max: 20

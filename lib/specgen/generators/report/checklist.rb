@@ -104,7 +104,7 @@ module SpecGen
           [t('todo_signature', members: missing.map { |member| code(member) }.join(', '))]
         end
 
-        # Необязательное поле тела запроса без роли: по CLAUDE.md оно в
+        # Необязательное поле тела запроса без роли: по docs/PRINCIPLES.md оно в
         # payload не попадает, и это решение видно здесь построчно.
         def optional_items
           entries = outgoing_fields.reject { |entry| needed?(entry.field) }

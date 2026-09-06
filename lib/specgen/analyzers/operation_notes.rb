@@ -57,7 +57,7 @@ module SpecGen
       end
 
       # Роль взята ниже порога или в плотной борьбе: по третьему уровню
-      # доверия из CLAUDE.md лучший кандидат всё равно присваивается, но
+      # доверия из docs/PRINCIPLES.md лучший кандидат всё равно присваивается, но
       # человек должен об этом узнать из отчёта.
       def ambiguous(key)
         note(:operation_role_ambiguous, t(key, scores: scores))
