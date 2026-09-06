@@ -1,0 +1,810 @@
+{
+  "provider": "adyen_payout_v68",
+  "spec": {
+    "file": "adyen_payout_v68.yaml",
+    "version": "68",
+    "openapi": "3.1.0"
+  },
+  "base_url": "https://pal-test.adyen.com/pal/servlet/Payout/v68",
+  "credentials": {
+    "api_key": "test_api_key"
+  },
+  "requests": [
+    {
+      "name": "post-confirmThirdParty",
+      "role": "confirm",
+      "method": "post",
+      "path": "/confirmThirdParty",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "merchantAccount": "YOUR_MERCHANT_ACCOUNT",
+        "originalReference": "9913140798220028"
+      },
+      "example_name": "confirmThirdParty",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-declineThirdParty",
+      "role": "unmapped",
+      "method": "post",
+      "path": "/declineThirdParty",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "merchantAccount": "YOUR_MERCHANT_ACCOUNT",
+        "originalReference": "9913140798220028"
+      },
+      "example_name": "declineThirdParty",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-payout",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/payout",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "amount": {
+          "value": 2500,
+          "currency": "USD"
+        },
+        "card": {
+          "number": "4111111111111111",
+          "expiryMonth": "03",
+          "expiryYear": "2030",
+          "holderName": "John Smith"
+        },
+        "billingAddress": {
+          "houseNumberOrName": "121",
+          "street": "Brannan Street",
+          "city": "Beverly Hills",
+          "postalCode": "90210",
+          "stateOrProvince": "CA",
+          "country": "US"
+        },
+        "merchantAccount": "YOUR_MERCHANT_ACCOUNT",
+        "reference": "P9999999999999999",
+        "shopperName": {
+          "firstName": "John",
+          "lastName": "Smith"
+        }
+      },
+      "example_name": "payout-b2c",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-storeDetail",
+      "role": "unmapped",
+      "method": "post",
+      "path": "/storeDetail",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "dateOfBirth": "string",
+        "entityType": "NaturalPerson",
+        "merchantAccount": "string",
+        "nationality": "string",
+        "recurring": {
+          "contract": "ONECLICK",
+          "tokenService": "VISATOKENSERVICE"
+        },
+        "shopperEmail": "string",
+        "shopperReference": "string"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetailAndSubmitThirdParty",
+      "role": "unmapped",
+      "method": "post",
+      "path": "/storeDetailAndSubmitThirdParty",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "amount": {
+          "currency": "string",
+          "value": 0
+        },
+        "dateOfBirth": "string",
+        "entityType": "NaturalPerson",
+        "merchantAccount": "string",
+        "nationality": "string",
+        "recurring": {
+          "contract": "ONECLICK",
+          "tokenService": "VISATOKENSERVICE"
+        },
+        "reference": "string",
+        "shopperEmail": "string",
+        "shopperReference": "string"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-submitThirdParty",
+      "role": "unmapped",
+      "method": "post",
+      "path": "/submitThirdParty",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "amount": {
+          "currency": "string",
+          "value": 0
+        },
+        "entityType": "NaturalPerson",
+        "merchantAccount": "string",
+        "recurring": {
+          "contract": "ONECLICK",
+          "tokenService": "VISATOKENSERVICE"
+        },
+        "reference": "string",
+        "selectedRecurringDetailReference": "string",
+        "shopperEmail": "string",
+        "shopperReference": "string"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    }
+  ],
+  "responses": [
+    {
+      "name": "post-confirmThirdParty 200 (confirmThirdParty)",
+      "operation": "post-confirmThirdParty",
+      "status": 200,
+      "body": {
+        "pspReference": "991617894325358C",
+        "response": "[payout-confirm-received]"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "example_name": "confirmThirdParty",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-confirmThirdParty 400 (generic)",
+      "operation": "post-confirmThirdParty",
+      "status": 400,
+      "body": {
+        "status": 400,
+        "errorCode": "702",
+        "message": "Unexpected input: I",
+        "errorType": "validation"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "example_name": "generic",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-confirmThirdParty 401",
+      "operation": "post-confirmThirdParty",
+      "status": 401,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-confirmThirdParty 403",
+      "operation": "post-confirmThirdParty",
+      "status": 403,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-confirmThirdParty 422",
+      "operation": "post-confirmThirdParty",
+      "status": 422,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-confirmThirdParty 500",
+      "operation": "post-confirmThirdParty",
+      "status": 500,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-declineThirdParty 200 (declineThirdParty)",
+      "operation": "post-declineThirdParty",
+      "status": 200,
+      "body": {
+        "pspReference": "991617894325360J",
+        "response": "[payout-decline-received]"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "example_name": "declineThirdParty",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-declineThirdParty 400 (generic)",
+      "operation": "post-declineThirdParty",
+      "status": 400,
+      "body": {
+        "status": 400,
+        "errorCode": "702",
+        "message": "Unexpected input: I",
+        "errorType": "validation"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "example_name": "generic",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-declineThirdParty 401",
+      "operation": "post-declineThirdParty",
+      "status": 401,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-declineThirdParty 403",
+      "operation": "post-declineThirdParty",
+      "status": 403,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-declineThirdParty 422",
+      "operation": "post-declineThirdParty",
+      "status": 422,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-declineThirdParty 500",
+      "operation": "post-declineThirdParty",
+      "status": 500,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-payout 200",
+      "operation": "post-payout",
+      "status": 200,
+      "body": {
+        "resultCode": "AuthenticationFinished"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-payout 400 (generic)",
+      "operation": "post-payout",
+      "status": 400,
+      "body": {
+        "status": 400,
+        "errorCode": "702",
+        "message": "Unexpected input: I",
+        "errorType": "validation"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "example_name": "generic",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-payout 401",
+      "operation": "post-payout",
+      "status": 401,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-payout 403",
+      "operation": "post-payout",
+      "status": 403,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-payout 422",
+      "operation": "post-payout",
+      "status": 422,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-payout 500",
+      "operation": "post-payout",
+      "status": 500,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetail 200 (storeDetail)",
+      "operation": "post-storeDetail",
+      "status": 200,
+      "body": {
+        "pspReference": "991617894326362D",
+        "recurringDetailReference": "9916178936754752",
+        "resultCode": "Success"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "example_name": "storeDetail",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-storeDetail 400 (generic)",
+      "operation": "post-storeDetail",
+      "status": 400,
+      "body": {
+        "status": 400,
+        "errorCode": "702",
+        "message": "Unexpected input: I",
+        "errorType": "validation"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "example_name": "generic",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-storeDetail 401",
+      "operation": "post-storeDetail",
+      "status": 401,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetail 403",
+      "operation": "post-storeDetail",
+      "status": 403,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetail 422",
+      "operation": "post-storeDetail",
+      "status": 422,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetail 500",
+      "operation": "post-storeDetail",
+      "status": 500,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetailAndSubmitThirdParty 200",
+      "operation": "post-storeDetailAndSubmitThirdParty",
+      "status": 200,
+      "body": {
+        "pspReference": "string",
+        "resultCode": "string"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetailAndSubmitThirdParty 400 (generic)",
+      "operation": "post-storeDetailAndSubmitThirdParty",
+      "status": 400,
+      "body": {
+        "status": 400,
+        "errorCode": "702",
+        "message": "Unexpected input: I",
+        "errorType": "validation"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "example_name": "generic",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-storeDetailAndSubmitThirdParty 401",
+      "operation": "post-storeDetailAndSubmitThirdParty",
+      "status": 401,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetailAndSubmitThirdParty 403",
+      "operation": "post-storeDetailAndSubmitThirdParty",
+      "status": 403,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetailAndSubmitThirdParty 422",
+      "operation": "post-storeDetailAndSubmitThirdParty",
+      "status": 422,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-storeDetailAndSubmitThirdParty 500",
+      "operation": "post-storeDetailAndSubmitThirdParty",
+      "status": 500,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-submitThirdParty 200",
+      "operation": "post-submitThirdParty",
+      "status": 200,
+      "body": {
+        "pspReference": "string",
+        "resultCode": "string"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-submitThirdParty 400 (generic)",
+      "operation": "post-submitThirdParty",
+      "status": 400,
+      "body": {
+        "status": 400,
+        "errorCode": "702",
+        "message": "Unexpected input: I",
+        "errorType": "validation"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "example_name": "generic",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-submitThirdParty 401",
+      "operation": "post-submitThirdParty",
+      "status": 401,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-submitThirdParty 403",
+      "operation": "post-submitThirdParty",
+      "status": 403,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-submitThirdParty 422",
+      "operation": "post-submitThirdParty",
+      "status": 422,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-submitThirdParty 500",
+      "operation": "post-submitThirdParty",
+      "status": 500,
+      "body": {
+        "additionalData": {},
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    }
+  ],
+  "notifications": []
+}

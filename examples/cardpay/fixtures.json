@@ -1,0 +1,632 @@
+{
+  "provider": "cardpay",
+  "spec": {
+    "file": "cardpay.yaml",
+    "version": "2.4.0",
+    "openapi": "3.0.3"
+  },
+  "base_url": "https://api.sandbox.cardpay.example",
+  "credentials": {
+    "token": "test_token",
+    "webhook_secret": "test_webhook_secret"
+  },
+  "requests": [
+    {
+      "name": "createTransfer",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/v2/transfers",
+      "headers": {
+        "Authorization": "Bearer test_token",
+        "Content-Type": "application/json",
+        "X-Request-Id": "5c13d96f-dcc9-59db-8f91-8db6d97f743e"
+      },
+      "body": {
+        "amount_minor": 12750,
+        "currency": "USD",
+        "merchant_reference": "po-2026-08-18-000417",
+        "statement_descriptor": "CARDPAY PAYOUT",
+        "destination": {
+          "method": "card",
+          "pan": "4111111111111111",
+          "expiry_month": 11,
+          "expiry_year": 2029,
+          "holder_name": "JOHN A SMITH",
+          "issuer_country": "US"
+        }
+      },
+      "example_name": "card_transfer",
+      "source": "spec_example"
+    },
+    {
+      "name": "getTransfer",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/v2/transfers/tr_9Q4ZK2M7XD1B",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "cancelTransfer",
+      "role": "cancel",
+      "method": "post",
+      "path": "/v2/transfers/tr_9Q4ZK2M7XD1B/cancel",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "createRefund",
+      "role": "refund",
+      "method": "post",
+      "path": "/v2/refunds",
+      "headers": {
+        "Authorization": "Bearer test_token",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "transfer_id": "tr_9Q4ZK2M7XD1B",
+        "merchant_reference": "rf-2026-08-19-000032"
+      },
+      "example_name": "full_refund",
+      "source": "spec_example"
+    },
+    {
+      "name": "getAccountBalance",
+      "role": "balance",
+      "method": "get",
+      "path": "/v2/accounts/balance",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "transferEventCallback",
+      "role": "webhook",
+      "method": "post",
+      "path": "/webhooks/transfer-events",
+      "headers": {
+        "Content-Type": "application/json",
+        "webhook-id": "msg_specgen_fixture",
+        "webhook-signature": "v1,JDVjcioJQEiGl+nelbgOEeo6y4SpYEY+V4V7bD1ZkoM=",
+        "webhook-timestamp": "1767225600"
+      },
+      "body": {
+        "event_type": "transfer.succeeded",
+        "event_id": "evt_7C1F5A9E42",
+        "transfer_id": "tr_9Q4ZK2M7XD1B",
+        "merchant_reference": "po-2026-08-18-000417",
+        "state": "succeeded",
+        "occurred_at": "2026-08-18T09:14:03Z"
+      },
+      "raw_body": "{\"event_type\":\"transfer.succeeded\",\"event_id\":\"evt_7C1F5A9E42\",\"transfer_id\":\"tr_9Q4ZK2M7XD1B\",\"merchant_reference\":\"po-2026-08-18-000417\",\"state\":\"succeeded\",\"occurred_at\":\"2026-08-18T09:14:03Z\"}",
+      "example_name": "succeeded",
+      "source": "spec_example"
+    }
+  ],
+  "responses": [
+    {
+      "name": "createTransfer 201",
+      "operation": "createTransfer",
+      "status": 201,
+      "body": {
+        "transfer_id": "tr_9Q4ZK2M7XD1B",
+        "merchant_reference": "po-2026-08-18-000417",
+        "state": "queued",
+        "amount_minor": 12750,
+        "currency": "USD",
+        "destination": {
+          "method": "card",
+          "masked_pan": "411111******1111",
+          "holder_name": "JOHN A SMITH",
+          "issuer_country": "US"
+        },
+        "created_at": "2026-08-18T09:12:41Z"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createTransfer 400",
+      "operation": "createTransfer",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_card_number",
+          "message": "destination.pan failed the Luhn check"
+        }
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createTransfer 401",
+      "operation": "createTransfer",
+      "status": 401,
+      "body": {
+        "error": {
+          "code": "unauthorized",
+          "message": "Bearer token is not valid for this merchant"
+        }
+      },
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createTransfer 409",
+      "operation": "createTransfer",
+      "status": 409,
+      "body": {
+        "transfer_id": "tr_9Q4ZK2M7XD1B",
+        "merchant_reference": "po-2026-08-18-000417",
+        "state": "queued",
+        "amount_minor": 12750,
+        "currency": "USD",
+        "created_at": "2026-08-18T09:12:41Z"
+      },
+      "expected": {
+        "dedup": true,
+        "internal_status": "in_progress"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createTransfer 422",
+      "operation": "createTransfer",
+      "status": 422,
+      "body": {
+        "error": {
+          "code": "insufficient_funds",
+          "message": "Merchant settlement balance is below the requested amount",
+          "field_errors": [
+            {
+              "field": "amount_minor",
+              "message": "available balance is 9000"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createTransfer 429",
+      "operation": "createTransfer",
+      "status": 429,
+      "body": {
+        "error": {
+          "code": "rate_limited",
+          "message": "Rate limit of 50 requests per second exceeded"
+        }
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createTransfer 500",
+      "operation": "createTransfer",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Unexpected error, the transfer state is unknown"
+        }
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "internal_server_error"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getTransfer 200",
+      "operation": "getTransfer",
+      "status": 200,
+      "body": {
+        "transfer_id": "tr_9Q4ZK2M7XD1B",
+        "merchant_reference": "po-2026-08-18-000417",
+        "state": "succeeded",
+        "amount_minor": 12750,
+        "currency": "USD",
+        "destination": {
+          "method": "card",
+          "masked_pan": "411111******1111",
+          "holder_name": "JOHN A SMITH",
+          "issuer_country": "US"
+        },
+        "network_reference": "ACQ-4471203",
+        "created_at": "2026-08-18T09:12:41Z",
+        "settled_at": "2026-08-18T09:14:03Z"
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getTransfer 401",
+      "operation": "getTransfer",
+      "status": 401,
+      "body": {
+        "error": {
+          "code": "unauthorized",
+          "message": "Bearer token is not valid for this merchant"
+        }
+      },
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getTransfer 404",
+      "operation": "getTransfer",
+      "status": 404,
+      "body": {
+        "error": {
+          "code": "transfer_not_found",
+          "message": "Transfer tr_9Q4ZK2M7XD1B does not exist"
+        }
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "cancelTransfer 200",
+      "operation": "cancelTransfer",
+      "status": 200,
+      "body": {
+        "transfer_id": "tr_9Q4ZK2M7XD1B",
+        "merchant_reference": "po-2026-08-18-000417",
+        "state": "declined",
+        "amount_minor": 12750,
+        "currency": "USD",
+        "created_at": "2026-08-18T09:12:41Z"
+      },
+      "expected": {
+        "internal_status": "rejected"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "cancelTransfer 404",
+      "operation": "cancelTransfer",
+      "status": 404,
+      "body": {
+        "error": {
+          "code": "transfer_not_found",
+          "message": "Transfer tr_9Q4ZK2M7XD1B does not exist"
+        }
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "cancelTransfer 409",
+      "operation": "cancelTransfer",
+      "status": 409,
+      "body": {
+        "error": {
+          "code": "transfer_not_cancelable",
+          "message": "Transfer tr_9Q4ZK2M7XD1B is already in state sending"
+        }
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "conflict"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createRefund 201",
+      "operation": "createRefund",
+      "status": 201,
+      "body": {
+        "refund_id": "rf_3B8WQ1LT6NPZ",
+        "transfer_id": "tr_9Q4ZK2M7XD1B",
+        "merchant_reference": "rf-2026-08-19-000032",
+        "state": "queued",
+        "amount_minor": 12750,
+        "currency": "USD",
+        "created_at": "2026-08-19T07:41:12Z"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createRefund 400",
+      "operation": "createRefund",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_card_number",
+          "message": "destination.pan failed the Luhn check"
+        }
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "createRefund 404",
+      "operation": "createRefund",
+      "status": 404,
+      "body": {
+        "error": {
+          "code": "transfer_not_found",
+          "message": "Transfer tr_9Q4ZK2M7XD1B does not exist"
+        }
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createRefund 422",
+      "operation": "createRefund",
+      "status": 422,
+      "body": {
+        "error": {
+          "code": "duplicate_request",
+          "message": "A refund for transfer tr_9Q4ZK2M7XD1B already exists"
+        }
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getAccountBalance 200",
+      "operation": "getAccountBalance",
+      "status": 200,
+      "body": {
+        "available_minor": 4820000,
+        "pending_minor": 137500,
+        "currency": "USD",
+        "updated_at": "2026-08-19T07:40:00Z"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getAccountBalance 401",
+      "operation": "getAccountBalance",
+      "status": 401,
+      "body": {
+        "error": {
+          "code": "unauthorized",
+          "message": "Bearer token is not valid for this merchant"
+        }
+      },
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "transferEventCallback 200",
+      "operation": "transferEventCallback",
+      "status": 200,
+      "body": {
+        "received": true
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    },
+    {
+      "name": "transferEventCallback 202",
+      "operation": "transferEventCallback",
+      "status": 202,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    }
+  ],
+  "notifications": [
+    {
+      "name": "webhook transfer.declined",
+      "event": "transfer.declined",
+      "headers": {
+        "Content-Type": "application/json",
+        "webhook-id": "msg_specgen_fixture",
+        "webhook-signature": "v1,Cwy3A27JimYFQE8MpdZVKNYtbOwVPa1IAb+FHjRbC2Y=",
+        "webhook-timestamp": "1767225600"
+      },
+      "raw_body": "{\"event_type\":\"transfer.declined\",\"event_id\":\"evt_7C1F5A9E43\",\"transfer_id\":\"tr_5H2XN8VC0PQR\",\"merchant_reference\":\"po-2026-08-18-000419\",\"state\":\"declined\",\"occurred_at\":\"2026-08-18T09:15:22Z\",\"failure\":{\"reason_code\":\"card_declined\",\"reason_text\":\"Issuer declined the original credit transaction\"}}",
+      "body": {
+        "event_type": "transfer.declined",
+        "event_id": "evt_7C1F5A9E43",
+        "transfer_id": "tr_5H2XN8VC0PQR",
+        "merchant_reference": "po-2026-08-18-000419",
+        "state": "declined",
+        "occurred_at": "2026-08-18T09:15:22Z",
+        "failure": {
+          "reason_code": "card_declined",
+          "reason_text": "Issuer declined the original credit transaction"
+        }
+      },
+      "expected": {
+        "internal_status": "rejected"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "webhook transfer.queued",
+      "event": "transfer.queued",
+      "headers": {
+        "Content-Type": "application/json",
+        "webhook-id": "msg_specgen_fixture",
+        "webhook-signature": "v1,T/CCOAKqtpwwcqAuAnH5mtuTC276PXJ+pj8Om1u494g=",
+        "webhook-timestamp": "1767225600"
+      },
+      "raw_body": "{\"event_type\":\"transfer.queued\",\"event_id\":\"evt_7C1F5A9E42\",\"transfer_id\":\"tr_9Q4ZK2M7XD1B\",\"merchant_reference\":\"po-2026-08-18-000417\",\"state\":\"queued\",\"occurred_at\":\"2026-08-18T09:14:03Z\"}",
+      "body": {
+        "event_type": "transfer.queued",
+        "event_id": "evt_7C1F5A9E42",
+        "transfer_id": "tr_9Q4ZK2M7XD1B",
+        "merchant_reference": "po-2026-08-18-000417",
+        "state": "queued",
+        "occurred_at": "2026-08-18T09:14:03Z"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера уведомления для события transfer.queued: подставлены значения enum события и статуса."
+    },
+    {
+      "name": "webhook transfer.returned",
+      "event": "transfer.returned",
+      "headers": {
+        "Content-Type": "application/json",
+        "webhook-id": "msg_specgen_fixture",
+        "webhook-signature": "v1,Ozfw3TSGKJgzIfrXRVSYHYSugvk4czk+Xsk4Z03AmdU=",
+        "webhook-timestamp": "1767225600"
+      },
+      "raw_body": "{\"event_type\":\"transfer.returned\",\"event_id\":\"evt_7C1F5A9E44\",\"transfer_id\":\"tr_1M6PJ4RB9TSD\",\"merchant_reference\":\"po-2026-08-17-000388\",\"state\":\"returned\",\"occurred_at\":\"2026-08-19T04:02:57Z\",\"failure\":{\"reason_code\":\"account_closed\",\"reason_text\":\"Cardholder account is closed\"}}",
+      "body": {
+        "event_type": "transfer.returned",
+        "event_id": "evt_7C1F5A9E44",
+        "transfer_id": "tr_1M6PJ4RB9TSD",
+        "merchant_reference": "po-2026-08-17-000388",
+        "state": "returned",
+        "occurred_at": "2026-08-19T04:02:57Z",
+        "failure": {
+          "reason_code": "account_closed",
+          "reason_text": "Cardholder account is closed"
+        }
+      },
+      "expected": {
+        "internal_status": "rejected"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "webhook transfer.succeeded",
+      "event": "transfer.succeeded",
+      "headers": {
+        "Content-Type": "application/json",
+        "webhook-id": "msg_specgen_fixture",
+        "webhook-signature": "v1,JDVjcioJQEiGl+nelbgOEeo6y4SpYEY+V4V7bD1ZkoM=",
+        "webhook-timestamp": "1767225600"
+      },
+      "raw_body": "{\"event_type\":\"transfer.succeeded\",\"event_id\":\"evt_7C1F5A9E42\",\"transfer_id\":\"tr_9Q4ZK2M7XD1B\",\"merchant_reference\":\"po-2026-08-18-000417\",\"state\":\"succeeded\",\"occurred_at\":\"2026-08-18T09:14:03Z\"}",
+      "body": {
+        "event_type": "transfer.succeeded",
+        "event_id": "evt_7C1F5A9E42",
+        "transfer_id": "tr_9Q4ZK2M7XD1B",
+        "merchant_reference": "po-2026-08-18-000417",
+        "state": "succeeded",
+        "occurred_at": "2026-08-18T09:14:03Z"
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "webhook signature_invalid",
+      "event": "transfer.declined",
+      "headers": {
+        "Content-Type": "application/json",
+        "webhook-id": "msg_specgen_fixture",
+        "webhook-signature": "v1,00000000000000000000000000000000000000000000",
+        "webhook-timestamp": "1767225600"
+      },
+      "raw_body": "{\"event_type\":\"transfer.declined\",\"event_id\":\"evt_7C1F5A9E43\",\"transfer_id\":\"tr_5H2XN8VC0PQR\",\"merchant_reference\":\"po-2026-08-18-000419\",\"state\":\"declined\",\"occurred_at\":\"2026-08-18T09:15:22Z\",\"failure\":{\"reason_code\":\"card_declined\",\"reason_text\":\"Issuer declined the original credit transaction\"}}",
+      "body": {
+        "event_type": "transfer.declined",
+        "event_id": "evt_7C1F5A9E43",
+        "transfer_id": "tr_5H2XN8VC0PQR",
+        "merchant_reference": "po-2026-08-18-000419",
+        "state": "declined",
+        "occurred_at": "2026-08-18T09:15:22Z",
+        "failure": {
+          "reason_code": "card_declined",
+          "reason_text": "Issuer declined the original credit transaction"
+        }
+      },
+      "expected": {
+        "failure_code": "unauthorized",
+        "error_key": "errors.signature_invalid"
+      },
+      "source": "synthesized",
+      "_todo": "негативная фикстура: подпись намеренно неверна, process_callback обязан вернуть отказ signature_invalid."
+    },
+    {
+      "name": "webhook unknown_event",
+      "event": "transfer.unknown",
+      "headers": {
+        "Content-Type": "application/json",
+        "webhook-id": "msg_specgen_fixture",
+        "webhook-signature": "v1,qpZgw5Qfgpbw+CVzcAA7r9n2+JpG91gddUx3sg+nHiA=",
+        "webhook-timestamp": "1767225600"
+      },
+      "raw_body": "{\"event_type\":\"transfer.unknown\",\"event_id\":\"evt_7C1F5A9E43\",\"transfer_id\":\"tr_5H2XN8VC0PQR\",\"merchant_reference\":\"po-2026-08-18-000419\",\"state\":\"declined\",\"occurred_at\":\"2026-08-18T09:15:22Z\",\"failure\":{\"reason_code\":\"card_declined\",\"reason_text\":\"Issuer declined the original credit transaction\"}}",
+      "body": {
+        "event_type": "transfer.unknown",
+        "event_id": "evt_7C1F5A9E43",
+        "transfer_id": "tr_5H2XN8VC0PQR",
+        "merchant_reference": "po-2026-08-18-000419",
+        "state": "declined",
+        "occurred_at": "2026-08-18T09:15:22Z",
+        "failure": {
+          "reason_code": "card_declined",
+          "reason_text": "Issuer declined the original credit transaction"
+        }
+      },
+      "expected": {
+        "failure_code": "unprocessable_entity",
+        "error_key": "errors.unknown_event"
+      },
+      "source": "synthesized",
+      "_todo": "негативная фикстура: событие не объявлено в enum, process_callback обязан вернуть отказ unknown_event."
+    }
+  ]
+}

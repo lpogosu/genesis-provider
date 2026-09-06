@@ -1,0 +1,444 @@
+{
+  "provider": "paypal_payouts_v1",
+  "spec": {
+    "file": "paypal_payouts_v1.json",
+    "version": "1.9",
+    "openapi": "3.0.3"
+  },
+  "base_url": "https://api-m.sandbox.paypal.com",
+  "credentials": {
+    "client_id": "test_client_id",
+    "client_secret": "test_client_secret"
+  },
+  "requests": [
+    {
+      "name": "payouts.post",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/v1/payments/payouts",
+      "headers": {
+        "Authorization": "Bearer test_client_id",
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": "6048f761-a578-5c5f-ac6b-2a9b3b7af84c"
+      },
+      "body": {
+        "sender_batch_header": {
+          "sender_batch_id": "Payouts_2018_100007",
+          "email_subject": "You have a payout!",
+          "email_message": "You have received a payout! Thanks for using our service!"
+        },
+        "items": [
+          {
+            "recipient_type": "EMAIL",
+            "amount": {
+              "value": "9.87",
+              "currency": "USD"
+            },
+            "note": "Thanks for your patronage!",
+            "sender_item_id": "201403140001",
+            "receiver": "receiver@example.com",
+            "alternate_notification_method": {
+              "phone": {
+                "country_code": "91",
+                "national_number": "9999988888"
+              }
+            },
+            "notification_language": "fr-FR"
+          },
+          {
+            "recipient_type": "PHONE",
+            "amount": {
+              "value": "112.34",
+              "currency": "USD"
+            },
+            "note": "Thanks for your support!",
+            "sender_item_id": "201403140002",
+            "receiver": "91-734-234-1234"
+          },
+          {
+            "recipient_type": "PAYPAL_ID",
+            "amount": {
+              "value": "5.32",
+              "currency": "USD"
+            },
+            "note": "Thanks for your patronage!",
+            "sender_item_id": "201403140003",
+            "receiver": "G83JXTJ5EHCQ2"
+          }
+        ]
+      },
+      "example_name": "create_payout_request",
+      "source": "spec_example",
+      "_todo": "значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    },
+    {
+      "name": "payouts.get",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/v1/payments/payouts/test_id",
+      "headers": {
+        "Authorization": "Bearer test_client_id"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "параметр пути id не имеет примера в спецификации: подставлена заглушка, замените на настоящий идентификатор. значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    },
+    {
+      "name": "payouts-item.get",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/v1/payments/payouts-item/test_id",
+      "headers": {
+        "Authorization": "Bearer test_client_id"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "параметр пути payout_item_id не имеет примера в спецификации: подставлена заглушка, замените на настоящий идентификатор. значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    },
+    {
+      "name": "payouts-item.cancel",
+      "role": "cancel",
+      "method": "post",
+      "path": "/v1/payments/payouts-item/test_id/cancel",
+      "headers": {
+        "Authorization": "Bearer test_client_id"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "параметр пути payout_item_id не имеет примера в спецификации: подставлена заглушка, замените на настоящий идентификатор. значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    }
+  ],
+  "responses": [
+    {
+      "name": "payouts.post 201",
+      "operation": "payouts.post",
+      "status": 201,
+      "body": {
+        "batch_header": {
+          "payout_batch_id": "string",
+          "batch_status": "DENIED",
+          "sender_batch_header": {
+            "recipient_type": "EMAIL"
+          }
+        },
+        "links": [
+          {
+            "href": "string",
+            "rel": "string",
+            "method": "GET"
+          }
+        ]
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts.post 400",
+      "operation": "payouts.post",
+      "status": 400,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts.post 403",
+      "operation": "payouts.post",
+      "status": 403,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "alert",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts.post 500",
+      "operation": "payouts.post",
+      "status": 500,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts.post default",
+      "operation": "payouts.post",
+      "status": "default",
+      "body": {},
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. код ответа default — диапазон, а не число: подставьте конкретный HTTP-код перед подключением фикстуры к WebMock."
+    },
+    {
+      "name": "payouts.get 200",
+      "operation": "payouts.get",
+      "status": 200,
+      "body": {
+        "total_items": 0,
+        "total_pages": 0,
+        "batch_header": {
+          "payout_batch_id": "string",
+          "batch_status": "DENIED",
+          "sender_batch_header": {
+            "recipient_type": "EMAIL"
+          },
+          "funding_source": "BALANCE"
+        },
+        "items": [
+          {
+            "payout_item_id": "string",
+            "transaction_status": "SUCCESS",
+            "payout_batch_id": "string",
+            "payout_item": {
+              "recipient_type": "EMAIL",
+              "amount": {
+                "currency": "string",
+                "value": "string"
+              },
+              "receiver": "string",
+              "recipient_wallet": "PAYPAL",
+              "purpose": "AWARDS"
+            }
+          }
+        ],
+        "links": [
+          {
+            "href": "string",
+            "rel": "string",
+            "method": "GET"
+          }
+        ]
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts.get 404",
+      "operation": "payouts.get",
+      "status": 404,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts.get 500",
+      "operation": "payouts.get",
+      "status": 500,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts.get default",
+      "operation": "payouts.get",
+      "status": "default",
+      "body": {},
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. код ответа default — диапазон, а не число: подставьте конкретный HTTP-код перед подключением фикстуры к WebMock."
+    },
+    {
+      "name": "payouts-item.get 200",
+      "operation": "payouts-item.get",
+      "status": 200,
+      "body": {
+        "payout_item_id": "string",
+        "transaction_status": "SUCCESS",
+        "payout_batch_id": "string",
+        "payout_item": {
+          "recipient_type": "EMAIL",
+          "amount": {
+            "currency": "string",
+            "value": "string"
+          },
+          "receiver": "string",
+          "recipient_wallet": "PAYPAL",
+          "purpose": "AWARDS"
+        }
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts-item.get 404",
+      "operation": "payouts-item.get",
+      "status": 404,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts-item.get 500",
+      "operation": "payouts-item.get",
+      "status": 500,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts-item.get default",
+      "operation": "payouts-item.get",
+      "status": "default",
+      "body": {},
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. код ответа default — диапазон, а не число: подставьте конкретный HTTP-код перед подключением фикстуры к WebMock."
+    },
+    {
+      "name": "payouts-item.cancel 200",
+      "operation": "payouts-item.cancel",
+      "status": 200,
+      "body": {
+        "payout_item_id": "string",
+        "transaction_status": "SUCCESS",
+        "payout_batch_id": "string",
+        "payout_item": {
+          "recipient_type": "EMAIL",
+          "amount": {
+            "currency": "string",
+            "value": "string"
+          },
+          "receiver": "string",
+          "recipient_wallet": "PAYPAL",
+          "purpose": "AWARDS"
+        }
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts-item.cancel 400",
+      "operation": "payouts-item.cancel",
+      "status": 400,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts-item.cancel 404",
+      "operation": "payouts-item.cancel",
+      "status": 404,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts-item.cancel 500",
+      "operation": "payouts-item.cancel",
+      "status": 500,
+      "body": {
+        "name": "string",
+        "message": "string",
+        "debug_id": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "payouts-item.cancel default",
+      "operation": "payouts-item.cancel",
+      "status": "default",
+      "body": {},
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. код ответа default — диапазон, а не число: подставьте конкретный HTTP-код перед подключением фикстуры к WebMock."
+    }
+  ],
+  "notifications": []
+}

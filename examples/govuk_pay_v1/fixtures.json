@@ -1,0 +1,1609 @@
+{
+  "provider": "govuk_pay_v1",
+  "spec": {
+    "file": "govuk_pay_v1.json",
+    "version": "1.0.3",
+    "openapi": "3.0.1"
+  },
+  "base_url": "https://publicapi.payments.service.gov.uk",
+  "credentials": {
+    "token": "test_token"
+  },
+  "requests": [
+    {
+      "name": "Search agreements",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/v1/agreements",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Create an agreement",
+      "role": "unmapped",
+      "method": "post",
+      "path": "/v1/agreements",
+      "headers": {
+        "Authorization": "Bearer test_token",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "description": "Dorset Council 2022/23 council tax subscription.",
+        "reference": "CT-22-23-0001",
+        "user_identifier": "user-3fb81107-76b7-4910"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get an agreement",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/v1/agreements/cgc1ocvh0pt9fqs0ma67r42l58",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Cancel an agreement",
+      "role": "cancel",
+      "method": "post",
+      "path": "/v1/agreements/cgc1ocvh0pt9fqs0ma67r42l58/cancel",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Authorise a MOTO payment",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/v1/auth",
+      "headers": {
+        "Authorization": "Bearer test_token",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "card_number": "4242424242424242",
+        "cardholder_name": "J. Citizen",
+        "cvc": "123",
+        "expiry_date": "09/22",
+        "one_time_token": "12345-edsfr-6789-gtyu"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search disputes",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/v1/disputes",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Search payments",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/v1/payments",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Create a payment",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/v1/payments",
+      "headers": {
+        "Authorization": "Bearer test_token",
+        "Content-Type": "application/json",
+        "Idempotency-Key": "8a177e97-ec87-5a39-a34e-86ac4544a3db"
+      },
+      "body": {
+        "agreement_id": "abcefghjklmnopqr1234567890",
+        "agreement_payment_type": "instalment",
+        "amount": 12000,
+        "authorisation_mode": "web",
+        "delayed_capture": false,
+        "description": "New passport application",
+        "email": "Joe.Bogs@example.org",
+        "language": "en",
+        "metadata": "{\"property1\": \"value1\", \"property2\": \"value2\"}\"",
+        "moto": false,
+        "reference": "12345",
+        "return_url": "https://service-name.gov.uk/transactions/12345",
+        "set_up_agreement": "abcefghjklmnopqr1234567890"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/v1/payments/hu20sqlact5260q2nanm0q8u93",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Cancel a payment",
+      "role": "cancel",
+      "method": "post",
+      "path": "/v1/payments/hu20sqlact5260q2nanm0q8u93/cancel",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Capture a payment",
+      "role": "confirm",
+      "method": "post",
+      "path": "/v1/payments/hu20sqlact5260q2nanm0q8u93/capture",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Get events for a payment",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/v1/payments/hu20sqlact5260q2nanm0q8u93/events",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Get all refunds for a payment",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/v1/payments/12345/refunds",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Submit a refund for a payment",
+      "role": "refund",
+      "method": "post",
+      "path": "/v1/payments/12345/refunds",
+      "headers": {
+        "Authorization": "Bearer test_token",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "amount": 150000,
+        "refund_amount_available": 200000
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment refund",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/v1/payments/12345/refunds/12345",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "Search refunds",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/v1/refunds",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "body": null,
+      "source": "spec_example"
+    }
+  ],
+  "responses": [
+    {
+      "name": "Search agreements 200",
+      "operation": "Search agreements",
+      "status": 200,
+      "body": {
+        "count": 20,
+        "page": 1,
+        "total": 100
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search agreements 401",
+      "operation": "Search agreements",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Search agreements 404",
+      "operation": "Search agreements",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search agreements 422",
+      "operation": "Search agreements",
+      "status": 422,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search agreements 429",
+      "operation": "Search agreements",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search agreements 500",
+      "operation": "Search agreements",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create an agreement 201",
+      "operation": "Create an agreement",
+      "status": 201,
+      "body": {
+        "agreement_id": "cgc1ocvh0pt9fqs0ma67r42l58",
+        "cancelled_date": "2022-07-08T14:33:00.000Z",
+        "created_date": "2022-07-08T14:33:00.000Z",
+        "description": "Dorset Council 2022/23 council tax subscription.",
+        "reference": "CT-22-23-0001",
+        "status": "created",
+        "user_identifier": "user-3fb81107-76b7-4910"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create an agreement 400",
+      "operation": "Create an agreement",
+      "status": 400,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create an agreement 401",
+      "operation": "Create an agreement",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Create an agreement 422",
+      "operation": "Create an agreement",
+      "status": 422,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create an agreement 429",
+      "operation": "Create an agreement",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create an agreement 500",
+      "operation": "Create an agreement",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get an agreement 200",
+      "operation": "Get an agreement",
+      "status": 200,
+      "body": {
+        "agreement_id": "cgc1ocvh0pt9fqs0ma67r42l58",
+        "cancelled_date": "2022-07-08T14:33:00.000Z",
+        "created_date": "2022-07-08T14:33:00.000Z",
+        "description": "Dorset Council 2022/23 council tax subscription.",
+        "reference": "CT-22-23-0001",
+        "status": "created",
+        "user_identifier": "user-3fb81107-76b7-4910"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get an agreement 401",
+      "operation": "Get an agreement",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Get an agreement 404",
+      "operation": "Get an agreement",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get an agreement 429",
+      "operation": "Get an agreement",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get an agreement 500",
+      "operation": "Get an agreement",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Cancel an agreement 204",
+      "operation": "Cancel an agreement",
+      "status": 204,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "Cancel an agreement 400",
+      "operation": "Cancel an agreement",
+      "status": 400,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Cancel an agreement 401",
+      "operation": "Cancel an agreement",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Cancel an agreement 404",
+      "operation": "Cancel an agreement",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Cancel an agreement 429",
+      "operation": "Cancel an agreement",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Cancel an agreement 500",
+      "operation": "Cancel an agreement",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Authorise a MOTO payment 204",
+      "operation": "Authorise a MOTO payment",
+      "status": 204,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "Authorise a MOTO payment 400",
+      "operation": "Authorise a MOTO payment",
+      "status": 400,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Authorise a MOTO payment 402",
+      "operation": "Authorise a MOTO payment",
+      "status": 402,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "service_unavailable"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Authorise a MOTO payment 422",
+      "operation": "Authorise a MOTO payment",
+      "status": 422,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Authorise a MOTO payment 500",
+      "operation": "Authorise a MOTO payment",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search disputes 200",
+      "operation": "Search disputes",
+      "status": 200,
+      "body": {
+        "count": 20,
+        "page": 1,
+        "total": 100
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search disputes 401",
+      "operation": "Search disputes",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Search disputes 422",
+      "operation": "Search disputes",
+      "status": 422,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search disputes 429",
+      "operation": "Search disputes",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search disputes 500",
+      "operation": "Search disputes",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search payments 200",
+      "operation": "Search payments",
+      "status": 200,
+      "body": {
+        "count": 20,
+        "page": 1,
+        "total": 100
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search payments 401",
+      "operation": "Search payments",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Search payments 422",
+      "operation": "Search payments",
+      "status": 422,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search payments 429",
+      "operation": "Search payments",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search payments 500",
+      "operation": "Search payments",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create a payment 201",
+      "operation": "Create a payment",
+      "status": 201,
+      "body": {
+        "amount": 1200,
+        "created_date": "2016-01-21T17:15:00.000Z",
+        "delayed_capture": false,
+        "description": "New passport application",
+        "email": "citizen@example.org",
+        "language": "en",
+        "metadata": "{\"property1\": \"value1\", \"property2\": \"value2\"}\"",
+        "moto": false,
+        "payment_id": "hu20sqlact5260q2nanm0q8u93",
+        "payment_provider": "worldpay",
+        "provider_id": "null",
+        "reference": "12345",
+        "return_url": "https://service-name.gov.uk/transactions/12345"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create a payment 400",
+      "operation": "Create a payment",
+      "status": 400,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create a payment 401",
+      "operation": "Create a payment",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Create a payment 422",
+      "operation": "Create a payment",
+      "status": 422,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create a payment 429",
+      "operation": "Create a payment",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Create a payment 500",
+      "operation": "Create a payment",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment 200",
+      "operation": "Get a payment",
+      "status": 200,
+      "body": {
+        "agreement_payment_type": "instalment",
+        "amount": 1200,
+        "authorisation_mode": "web",
+        "card_brand": "Visa",
+        "corporate_card_surcharge": 250,
+        "created_date": "2016-01-21T17:15:00.000Z",
+        "delayed_capture": false,
+        "description": "Your Service Description",
+        "email": "The paying user’s email address.",
+        "fee": 5,
+        "language": "en",
+        "metadata": "{\"property1\": \"value1\", \"property2\": \"value2\"}\"",
+        "moto": false,
+        "net_amount": 1195,
+        "payment_id": "hu20sqlact5260q2nanm0q8u93",
+        "payment_provider": "worldpay",
+        "provider_id": "reference-from-payment-gateway",
+        "reference": "your-reference",
+        "return_url": "http://your.service.domain/your-reference",
+        "total_amount": 1450
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment 401",
+      "operation": "Get a payment",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Get a payment 404",
+      "operation": "Get a payment",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment 429",
+      "operation": "Get a payment",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment 500",
+      "operation": "Get a payment",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Cancel a payment 204",
+      "operation": "Cancel a payment",
+      "status": 204,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "Cancel a payment 400",
+      "operation": "Cancel a payment",
+      "status": 400,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Cancel a payment 401",
+      "operation": "Cancel a payment",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Cancel a payment 404",
+      "operation": "Cancel a payment",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Cancel a payment 409",
+      "operation": "Cancel a payment",
+      "status": 409,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "conflict"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Cancel a payment 429",
+      "operation": "Cancel a payment",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Cancel a payment 500",
+      "operation": "Cancel a payment",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Capture a payment 204",
+      "operation": "Capture a payment",
+      "status": 204,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "Capture a payment 400",
+      "operation": "Capture a payment",
+      "status": 400,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Capture a payment 401",
+      "operation": "Capture a payment",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Capture a payment 404",
+      "operation": "Capture a payment",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Capture a payment 409",
+      "operation": "Capture a payment",
+      "status": 409,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "conflict"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Capture a payment 429",
+      "operation": "Capture a payment",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Capture a payment 500",
+      "operation": "Capture a payment",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get events for a payment 200",
+      "operation": "Get events for a payment",
+      "status": 200,
+      "body": {
+        "payment_id": "hu20sqlact5260q2nanm0q8u93"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get events for a payment 401",
+      "operation": "Get events for a payment",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Get events for a payment 404",
+      "operation": "Get events for a payment",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get events for a payment 429",
+      "operation": "Get events for a payment",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get events for a payment 500",
+      "operation": "Get events for a payment",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get all refunds for a payment 200",
+      "operation": "Get all refunds for a payment",
+      "status": 200,
+      "body": {
+        "payment_id": "hu20sqlact5260q2nanm0q8u93"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get all refunds for a payment 401",
+      "operation": "Get all refunds for a payment",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Get all refunds for a payment 404",
+      "operation": "Get all refunds for a payment",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get all refunds for a payment 429",
+      "operation": "Get all refunds for a payment",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get all refunds for a payment 500",
+      "operation": "Get all refunds for a payment",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Submit a refund for a payment 200",
+      "operation": "Submit a refund for a payment",
+      "status": 200,
+      "body": {
+        "amount": 120,
+        "created_date": "2017-01-10T16:52:07.855Z",
+        "payment_id": "hu20sqlact5260q2nanm0q8u93",
+        "refund_id": "act4c33g40j3edfmi8jknab84x",
+        "status": "success"
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Submit a refund for a payment 202",
+      "operation": "Submit a refund for a payment",
+      "status": 202,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Submit a refund for a payment 401",
+      "operation": "Submit a refund for a payment",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Submit a refund for a payment 404",
+      "operation": "Submit a refund for a payment",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Submit a refund for a payment 412",
+      "operation": "Submit a refund for a payment",
+      "status": 412,
+      "body": null,
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Submit a refund for a payment 429",
+      "operation": "Submit a refund for a payment",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Submit a refund for a payment 500",
+      "operation": "Submit a refund for a payment",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment refund 200",
+      "operation": "Get a payment refund",
+      "status": 200,
+      "body": {
+        "amount": 120,
+        "created_date": "2017-01-10T16:52:07.855Z",
+        "payment_id": "hu20sqlact5260q2nanm0q8u93",
+        "refund_id": "act4c33g40j3edfmi8jknab84x",
+        "status": "success"
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment refund 401",
+      "operation": "Get a payment refund",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Get a payment refund 404",
+      "operation": "Get a payment refund",
+      "status": 404,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment refund 429",
+      "operation": "Get a payment refund",
+      "status": 429,
+      "body": {
+        "code": "P0900",
+        "description": "Too many requests"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Get a payment refund 500",
+      "operation": "Get a payment refund",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search refunds 200",
+      "operation": "Search refunds",
+      "status": 200,
+      "body": {
+        "count": 20,
+        "page": 1,
+        "total": 100
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search refunds 401",
+      "operation": "Search refunds",
+      "status": 401,
+      "body": null,
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "Search refunds 422",
+      "operation": "Search refunds",
+      "status": 422,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "Search refunds 500",
+      "operation": "Search refunds",
+      "status": 500,
+      "body": {
+        "code": "P0102",
+        "description": "Invalid attribute value: amount. Must be less than or equal to 10000000",
+        "field": "amount",
+        "header": "Idempotency-Key"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    }
+  ],
+  "notifications": []
+}

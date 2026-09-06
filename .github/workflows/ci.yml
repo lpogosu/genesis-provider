@@ -55,8 +55,13 @@ jobs:
           ./integrate --all --output tmp/ci-again
           diff -r tmp/ci tmp/ci-again
 
+      # examples/ — тот же прогон, закоммиченный для чтения без запуска.
+      # Расхождение значит, что примеры отстали от генератора.
+      - name: Committed examples match a fresh run
+        run: diff -r --exclude=README.md tmp/ci examples
+
       # Ядро не знает ни одного провайдера: всё провайдер-специфичное живёт в
-      # rules/. Инвариант из CLAUDE.md, проверяется машиной, а не глазами.
+      # rules/. Инвариант из docs/PRINCIPLES.md («Провайдер-нейтральность lib/»), проверяется машиной, а не глазами.
       - name: Core stays provider-neutral
         run: |
           if grep -rinE 'novapay|\bsbp\b' lib/; then

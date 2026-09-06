@@ -1,0 +1,587 @@
+{
+  "provider": "depositbank",
+  "spec": {
+    "file": "depositbank.yaml",
+    "version": "1.2.0",
+    "openapi": "3.1.0"
+  },
+  "base_url": "https://api-sandbox.depositbank.example/collect/v1",
+  "credentials": {
+    "client_id": "test_client_id",
+    "client_secret": "test_client_secret"
+  },
+  "requests": [
+    {
+      "name": "createDeposit",
+      "role": "create_deposit",
+      "method": "post",
+      "path": "/deposits",
+      "headers": {
+        "Authorization": "Bearer test_client_id",
+        "Content-Type": "application/json",
+        "Idempotence-Key": "72c171c4-45bf-5b48-9796-265f05019e1b"
+      },
+      "body": {
+        "deposit_amount": 125000.0,
+        "currency_code": "JPY",
+        "client_reference": "ORD-2026-000417",
+        "purpose_code": "trade_settlement",
+        "value_date": "2026-09-14",
+        "remitter": {
+          "settlement_type": "domestic",
+          "zengin_bank_code": "0005",
+          "branch_code": "123",
+          "account_number": "1234567",
+          "account_holder_kana": "ヤマダ タロウ"
+        }
+      },
+      "example_name": "domestic_remitter",
+      "source": "spec_example",
+      "_todo": "значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    },
+    {
+      "name": "listDeposits",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/deposits",
+      "headers": {
+        "Authorization": "Bearer test_client_id"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    },
+    {
+      "name": "getDepositStatus",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/deposits/dep_01J8ZK4Q7M",
+      "headers": {
+        "Authorization": "Bearer test_client_id"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    },
+    {
+      "name": "confirmDeposit",
+      "role": "confirm",
+      "method": "post",
+      "path": "/deposits/dep_01J8ZK4Q7M/confirm",
+      "headers": {
+        "Authorization": "Bearer test_client_id"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    },
+    {
+      "name": "getAccountBalance",
+      "role": "balance",
+      "method": "get",
+      "path": "/accounts/acc_88120033/balance",
+      "headers": {
+        "Authorization": "Bearer test_client_id"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    },
+    {
+      "name": "listBankCodes",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/reference/banks",
+      "headers": {
+        "Authorization": "Bearer test_client_id"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "значение заголовка авторизации собирает код сервиса: в фикстуре стоит заглушка, при прогоне подставьте своё."
+    }
+  ],
+  "responses": [
+    {
+      "name": "createDeposit 200",
+      "operation": "createDeposit",
+      "status": 200,
+      "body": {
+        "deposit_id": "dep_01J8ZK4Q7M",
+        "client_reference": "ORD-2026-000417",
+        "deposit_status": "initiated",
+        "deposit_amount": 125000.0,
+        "currency_code": "JPY",
+        "created_at": "2026-09-14T03:58:11Z",
+        "posted_at": null,
+        "bank_reference": null
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createDeposit 201",
+      "operation": "createDeposit",
+      "status": 201,
+      "body": {
+        "deposit_id": "dep_01J8ZK4Q7M",
+        "client_reference": "ORD-2026-000417",
+        "deposit_status": "initiated",
+        "deposit_amount": 125000.0,
+        "currency_code": "JPY",
+        "remitter": {
+          "settlement_type": "domestic",
+          "zengin_bank_code": "0005",
+          "branch_code": "123",
+          "account_number": "1234567",
+          "account_holder_kana": "ヤマダ タロウ"
+        },
+        "created_at": "2026-09-14T03:58:11Z",
+        "posted_at": null,
+        "bank_reference": null
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createDeposit 400",
+      "operation": "createDeposit",
+      "status": 400,
+      "body": {
+        "error_code": "invalid_request",
+        "error_message": "limit must be an integer between 1 and 200",
+        "trace_id": "b1c8d3f0-8a41-4f2c-9d55-7e2a4c0b1f93"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createDeposit 401",
+      "operation": "createDeposit",
+      "status": 401,
+      "body": {
+        "error_code": "unauthorized",
+        "error_message": "Access token expired",
+        "trace_id": "5d2e7a10-3f44-4c8b-9b0e-2a7c6d5e4f31"
+      },
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createDeposit 422",
+      "operation": "createDeposit",
+      "status": 422,
+      "body": {
+        "error_code": "value_date_invalid",
+        "error_message": "value_date falls on a bank holiday",
+        "error_details": [
+          {
+            "field": "value_date",
+            "issue": "2026-09-21 is Respect for the Aged Day"
+          }
+        ],
+        "trace_id": "0f6c2b1e-6c3a-4a51-9a1c-6f5f0f2a9c77"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "createDeposit 503",
+      "operation": "createDeposit",
+      "status": 503,
+      "body": {
+        "error_code": "service_unavailable",
+        "error_message": "Settlement window in progress, retry after 15 minutes",
+        "trace_id": "c4b8e2d7-0a35-4f61-9d28-8e1a7b3c5f40"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "service_unavailable"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "listDeposits 200",
+      "operation": "listDeposits",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "deposit_id": "dep_01J8ZK4Q7M",
+            "client_reference": "ORD-2026-000417",
+            "deposit_status": "posted",
+            "deposit_amount": 125000.0,
+            "currency_code": "JPY",
+            "created_at": "2026-09-14T03:58:11Z",
+            "posted_at": "2026-09-14T04:12:30Z",
+            "bank_reference": "ZG20260914001"
+          },
+          {
+            "deposit_id": "dep_01J8ZK51TT",
+            "client_reference": "INV-77120",
+            "deposit_status": "returned",
+            "deposit_amount": 980000.0,
+            "currency_code": "JPY",
+            "rejection": {
+              "rejection_code": "name_mismatch",
+              "rejection_reason": "Remitter name does not match the account holder record",
+              "rejected_at": "2026-09-14T05:02:44Z"
+            },
+            "created_at": "2026-09-14T04:40:02Z",
+            "posted_at": null,
+            "bank_reference": null
+          }
+        ],
+        "next_cursor": "eyJvIjoyMDB9"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "listDeposits 400",
+      "operation": "listDeposits",
+      "status": 400,
+      "body": {
+        "error_code": "invalid_request",
+        "error_message": "limit must be an integer between 1 and 200",
+        "trace_id": "b1c8d3f0-8a41-4f2c-9d55-7e2a4c0b1f93"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "listDeposits 401",
+      "operation": "listDeposits",
+      "status": 401,
+      "body": {
+        "error_code": "unauthorized",
+        "error_message": "Access token expired",
+        "trace_id": "5d2e7a10-3f44-4c8b-9b0e-2a7c6d5e4f31"
+      },
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "listDeposits 429",
+      "operation": "listDeposits",
+      "status": 429,
+      "body": {
+        "error_code": "invalid_request",
+        "error_message": "Rate limit of 60 requests per minute exceeded",
+        "trace_id": "6e3d9f21-7b02-4a1d-8c34-5f9e2b7a0d16"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "too_many_requests"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "listDeposits 500",
+      "operation": "listDeposits",
+      "status": 500,
+      "body": {
+        "error_code": "service_unavailable",
+        "error_message": "Core banking system did not answer in time",
+        "trace_id": "2f7a1c93-4d60-4b8e-9a12-3c5d7e0f6b24"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "internal_server_error"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getDepositStatus 200 (posted)",
+      "operation": "getDepositStatus",
+      "status": 200,
+      "body": {
+        "deposit_id": "dep_01J8ZK4Q7M",
+        "client_reference": "ORD-2026-000417",
+        "deposit_status": "posted",
+        "deposit_amount": 125000.0,
+        "currency_code": "JPY",
+        "created_at": "2026-09-14T03:58:11Z",
+        "posted_at": "2026-09-14T04:12:30Z",
+        "bank_reference": "ZG20260914001"
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "example_name": "posted",
+      "source": "spec_example"
+    },
+    {
+      "name": "getDepositStatus 200 (under_review)",
+      "operation": "getDepositStatus",
+      "status": 200,
+      "body": {
+        "deposit_id": "dep_01J8ZK4Q7M",
+        "client_reference": "ORD-2026-000417",
+        "deposit_status": "under_review",
+        "deposit_amount": 125000.0,
+        "currency_code": "JPY",
+        "created_at": "2026-09-14T03:58:11Z",
+        "posted_at": null,
+        "bank_reference": null
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "under_review",
+      "source": "spec_example"
+    },
+    {
+      "name": "getDepositStatus 200 (returned)",
+      "operation": "getDepositStatus",
+      "status": 200,
+      "body": {
+        "deposit_id": "dep_01J8ZK51TT",
+        "client_reference": "INV-77120",
+        "deposit_status": "returned",
+        "deposit_amount": 980000.0,
+        "currency_code": "JPY",
+        "rejection": {
+          "rejection_code": "account_closed",
+          "rejection_reason": "The remitter account has been closed",
+          "rejected_at": "2026-09-14T05:02:44Z"
+        },
+        "created_at": "2026-09-14T04:40:02Z",
+        "posted_at": null,
+        "bank_reference": null
+      },
+      "expected": {
+        "internal_status": "rejected"
+      },
+      "example_name": "returned",
+      "source": "spec_example"
+    },
+    {
+      "name": "getDepositStatus 401",
+      "operation": "getDepositStatus",
+      "status": 401,
+      "body": {
+        "error_code": "unauthorized",
+        "error_message": "Access token expired",
+        "trace_id": "5d2e7a10-3f44-4c8b-9b0e-2a7c6d5e4f31"
+      },
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getDepositStatus 404",
+      "operation": "getDepositStatus",
+      "status": 404,
+      "body": {
+        "error_code": "deposit_not_found",
+        "error_message": "Deposit dep_01J8ZK4Q7M not found",
+        "trace_id": "9c0b6a52-1d77-4e39-8f2a-0b4d3c1e6a58"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "confirmDeposit 200",
+      "operation": "confirmDeposit",
+      "status": 200,
+      "body": {
+        "deposit_id": "dep_01J8ZK4Q7M",
+        "client_reference": "ORD-2026-000417",
+        "deposit_status": "posted",
+        "deposit_amount": 125000.0,
+        "currency_code": "JPY",
+        "created_at": "2026-09-14T03:58:11Z",
+        "posted_at": "2026-09-14T04:12:30Z",
+        "bank_reference": "ZG20260914001"
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "confirmDeposit 404",
+      "operation": "confirmDeposit",
+      "status": 404,
+      "body": {
+        "error_code": "deposit_not_found",
+        "error_message": "Deposit dep_01J8ZK4Q7M not found",
+        "trace_id": "9c0b6a52-1d77-4e39-8f2a-0b4d3c1e6a58"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "confirmDeposit 409",
+      "operation": "confirmDeposit",
+      "status": 409,
+      "body": {
+        "error_code": "deposit_not_confirmable",
+        "error_message": "Deposit dep_01J8ZK51TT is in status returned",
+        "trace_id": "3a1f9e77-2a0b-4a6d-8b3e-1c9a55b2d401"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "conflict"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getAccountBalance 200",
+      "operation": "getAccountBalance",
+      "status": 200,
+      "body": {
+        "account_id": "acc_88120033",
+        "available_balance": 4820000.0,
+        "reserved_balance": 125000.0,
+        "currency_code": "JPY",
+        "as_of": "2026-09-14T06:00:00Z"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getAccountBalance 401",
+      "operation": "getAccountBalance",
+      "status": 401,
+      "body": {
+        "error_code": "unauthorized",
+        "error_message": "Access token expired",
+        "trace_id": "5d2e7a10-3f44-4c8b-9b0e-2a7c6d5e4f31"
+      },
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getAccountBalance 404",
+      "operation": "getAccountBalance",
+      "status": 404,
+      "body": {
+        "error_code": "deposit_not_found",
+        "error_message": "Deposit dep_01J8ZK4Q7M not found",
+        "trace_id": "9c0b6a52-1d77-4e39-8f2a-0b4d3c1e6a58"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getAccountBalance 429",
+      "operation": "getAccountBalance",
+      "status": 429,
+      "body": {
+        "error_code": "invalid_request",
+        "error_message": "Rate limit of 60 requests per minute exceeded",
+        "trace_id": "6e3d9f21-7b02-4a1d-8c34-5f9e2b7a0d16"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "too_many_requests"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "getAccountBalance 500",
+      "operation": "getAccountBalance",
+      "status": 500,
+      "body": {
+        "error_code": "service_unavailable",
+        "error_message": "Core banking system did not answer in time",
+        "trace_id": "2f7a1c93-4d60-4b8e-9a12-3c5d7e0f6b24"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "internal_server_error"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "listBankCodes 200",
+      "operation": "listBankCodes",
+      "status": 200,
+      "body": [
+        {
+          "bank_code": "0005",
+          "bank_name": "Mizuho Bank, Ltd.",
+          "bank_name_kana": "ミズホギンコウ"
+        },
+        {
+          "bank_code": "0009",
+          "bank_name": "Sumitomo Mitsui Banking Corporation",
+          "bank_name_kana": "ミツイスミトモギンコウ"
+        }
+      ],
+      "expected": {
+        "result": "success"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "listBankCodes 401",
+      "operation": "listBankCodes",
+      "status": 401,
+      "body": {
+        "error_code": "unauthorized",
+        "error_message": "Access token expired",
+        "trace_id": "5d2e7a10-3f44-4c8b-9b0e-2a7c6d5e4f31"
+      },
+      "expected": {
+        "action": "alert",
+        "failure_code": "unauthorized"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "listBankCodes 500",
+      "operation": "listBankCodes",
+      "status": 500,
+      "body": {
+        "error_code": "service_unavailable",
+        "error_message": "Core banking system did not answer in time",
+        "trace_id": "2f7a1c93-4d60-4b8e-9a12-3c5d7e0f6b24"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "internal_server_error"
+      },
+      "source": "spec_example"
+    }
+  ],
+  "notifications": []
+}

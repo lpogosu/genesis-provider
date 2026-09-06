@@ -1,0 +1,301 @@
+{
+  "provider": "broken",
+  "spec": {
+    "file": "broken.yaml",
+    "version": "0.1",
+    "openapi": "3.0.3"
+  },
+  "base_url": "https://api.gateway.example/v1",
+  "credentials": {
+    "api_key": "test_api_key",
+    "webhook_secret": "test_webhook_secret"
+  },
+  "requests": [
+    {
+      "name": "post_transactions",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/transactions",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Key": "test_api_key"
+      },
+      "body": {
+        "amt": 0,
+        "cur": "string",
+        "xref_tag_9": "string",
+        "party": {
+          "kind": "P2P",
+          "acct": "string"
+        }
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get_transactions_ref",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/transactions/test_id",
+      "headers": {
+        "X-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "параметр пути ref не имеет примера в спецификации: подставлена заглушка, замените на настоящий идентификатор."
+    },
+    {
+      "name": "post_transactions_ref_void",
+      "role": "cancel",
+      "method": "post",
+      "path": "/transactions/test_id/void",
+      "headers": {
+        "X-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "параметр пути ref не имеет примера в спецификации: подставлена заглушка, замените на настоящий идентификатор."
+    },
+    {
+      "name": "get_reports_daily",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/reports/daily",
+      "headers": {
+        "X-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "post_notify",
+      "role": "webhook",
+      "method": "post",
+      "path": "/notify",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "st": "IN_REVIEW",
+        "ref": "tx_0001",
+        "ts": 1767225600
+      },
+      "example_name": "first",
+      "source": "spec_example"
+    },
+    {
+      "name": "get_limits",
+      "role": "balance",
+      "method": "get",
+      "path": "/limits",
+      "headers": {
+        "X-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example"
+    }
+  ],
+  "responses": [
+    {
+      "name": "post_transactions 200",
+      "operation": "post_transactions",
+      "status": 200,
+      "body": {
+        "st": "WAITING"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post_transactions 400",
+      "operation": "post_transactions",
+      "status": 400,
+      "body": {
+        "err": "E777",
+        "txt": "bad request"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "spec_example"
+    },
+    {
+      "name": "get_transactions_ref 200",
+      "operation": "get_transactions_ref",
+      "status": 200,
+      "body": {
+        "st": "WAITING"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    },
+    {
+      "name": "post_transactions_ref_void 200",
+      "operation": "post_transactions_ref_void",
+      "status": 200,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    },
+    {
+      "name": "get_reports_daily 200",
+      "operation": "get_reports_daily",
+      "status": 200,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    },
+    {
+      "name": "post_notify 200",
+      "operation": "post_notify",
+      "status": 200,
+      "body": {
+        "ok": true
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    },
+    {
+      "name": "get_limits 200",
+      "operation": "get_limits",
+      "status": 200,
+      "body": {
+        "min_amt": 0,
+        "max_amt": 0,
+        "cur": "string"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    }
+  ],
+  "notifications": [
+    {
+      "name": "webhook DONE",
+      "event": "DONE",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "raw_body": "{\"st\":\"done\",\"ref\":\"tx_0001\",\"ts\":1767225600}",
+      "body": {
+        "st": "done",
+        "ref": "tx_0001",
+        "ts": 1767225600
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера уведомления для события DONE: подставлены значения enum события и статуса. профиль подписи не выведен: заголовка подписи в фикстуре нет, process_callback её не примет."
+    },
+    {
+      "name": "webhook IN_REVIEW",
+      "event": "IN_REVIEW",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "raw_body": "{\"st\":\"IN_REVIEW\",\"ref\":\"tx_0001\",\"ts\":1767225600}",
+      "body": {
+        "st": "IN_REVIEW",
+        "ref": "tx_0001",
+        "ts": 1767225600
+      },
+      "expected": {
+        "internal_status": null
+      },
+      "source": "spec_example",
+      "_todo": "событие IN_REVIEW не сопоставлено внутреннему статусу: в EVENT_MAP nil, ожидаемый статус проверьте вручную. профиль подписи не выведен: заголовка подписи в фикстуре нет, process_callback её не примет."
+    },
+    {
+      "name": "webhook NOTOK",
+      "event": "NOTOK",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "raw_body": "{\"st\":\"IN_REVIEW\",\"ref\":\"tx_0001\",\"ts\":1767225600}",
+      "body": {
+        "st": "IN_REVIEW",
+        "ref": "tx_0001",
+        "ts": 1767225600
+      },
+      "expected": {
+        "internal_status": null
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера уведомления для события NOTOK: подставлены значения enum события и статуса. событие NOTOK не сопоставлено внутреннему статусу: в EVENT_MAP nil, ожидаемый статус проверьте вручную. профиль подписи не выведен: заголовка подписи в фикстуре нет, process_callback её не примет."
+    },
+    {
+      "name": "webhook PART_DONE",
+      "event": "PART_DONE",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "raw_body": "{\"st\":\"PART_DONE\",\"ref\":\"tx_0002\",\"ts\":1767225900}",
+      "body": {
+        "st": "PART_DONE",
+        "ref": "tx_0002",
+        "ts": 1767225900
+      },
+      "expected": {
+        "internal_status": null
+      },
+      "source": "spec_example",
+      "_todo": "событие PART_DONE не сопоставлено внутреннему статусу: в EVENT_MAP nil, ожидаемый статус проверьте вручную. профиль подписи не выведен: заголовка подписи в фикстуре нет, process_callback её не примет."
+    },
+    {
+      "name": "webhook WAITING",
+      "event": "WAITING",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "raw_body": "{\"st\":\"waiting\",\"ref\":\"tx_0001\",\"ts\":1767225600}",
+      "body": {
+        "st": "waiting",
+        "ref": "tx_0001",
+        "ts": 1767225600
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера уведомления для события WAITING: подставлены значения enum события и статуса. профиль подписи не выведен: заголовка подписи в фикстуре нет, process_callback её не примет."
+    },
+    {
+      "name": "webhook unknown_event",
+      "event": "unknown_event",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "raw_body": "{\"st\":\"IN_REVIEW\",\"ref\":\"tx_0001\",\"ts\":1767225600}",
+      "body": {
+        "st": "IN_REVIEW",
+        "ref": "tx_0001",
+        "ts": 1767225600
+      },
+      "expected": {
+        "failure_code": "unprocessable_entity",
+        "error_key": "errors.unknown_event"
+      },
+      "source": "synthesized",
+      "_todo": "негативная фикстура: событие не объявлено в enum, process_callback обязан вернуть отказ unknown_event."
+    }
+  ]
+}

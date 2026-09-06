@@ -1,0 +1,2395 @@
+{
+  "provider": "adyen_transfers_v4",
+  "spec": {
+    "file": "adyen_transfers_v4.yaml",
+    "version": "4",
+    "openapi": "3.1.0"
+  },
+  "base_url": "https://balanceplatform-api-test.adyen.com/btl/v4",
+  "credentials": {
+    "api_key": "test_api_key"
+  },
+  "requests": [
+    {
+      "name": "get-grants",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/grants",
+      "headers": {
+        "X-API-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "post-grants",
+      "role": "unmapped",
+      "method": "post",
+      "path": "/grants",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "grantAccountId": "CG00000000000000000000001",
+        "grantOfferId": "0000000000000001",
+        "counterparty": {
+          "balanceAccountId": "BA00000000000000000000001"
+        }
+      },
+      "example_name": "requestGrant",
+      "source": "spec_example"
+    },
+    {
+      "name": "get-grants-id",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/grants/test_id",
+      "headers": {
+        "X-API-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "параметр пути id не имеет примера в спецификации: подставлена заглушка, замените на настоящий идентификатор."
+    },
+    {
+      "name": "get-transactions",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/transactions",
+      "headers": {
+        "X-API-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "get-transactions-id",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/transactions/test_id",
+      "headers": {
+        "X-API-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "параметр пути id не имеет примера в спецификации: подставлена заглушка, замените на настоящий идентификатор."
+    },
+    {
+      "name": "get-transfers",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/transfers",
+      "headers": {
+        "X-API-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/transfers",
+      "headers": {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "842e958b-cc29-55cc-8b52-b23b45e75e58",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "amount": {
+          "value": 110000,
+          "currency": "EUR"
+        },
+        "balanceAccountId": "BAB8B2C3D4E5F6G7H8D9J6GD4",
+        "category": "bank",
+        "counterparty": {
+          "bankAccount": {
+            "accountHolder": {
+              "fullName": "A. Klaassen",
+              "address": {
+                "city": "San Francisco",
+                "country": "US",
+                "postalCode": "94678",
+                "stateOrProvince": "CA",
+                "line1": "274",
+                "line2": "Brannan Street"
+              }
+            },
+            "accountIdentification": {
+              "type": "numberAndBic",
+              "accountNumber": "123456789",
+              "bic": "BOFAUS3NXXX"
+            }
+          }
+        },
+        "priority": "crossBorder",
+        "referenceForBeneficiary": "Your-reference-sent-to-the-beneficiary",
+        "reference": "Your internal reference for the transfer",
+        "description": "Your description for the transfer"
+      },
+      "example_name": "payout-cross-border",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers-approve",
+      "role": "confirm",
+      "method": "post",
+      "path": "/transfers/approve",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "transferIds": [
+          "APUFHASUDF4AS",
+          "407ASFPUAHSFA"
+        ]
+      },
+      "example_name": "transfers-approve",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers-cancel",
+      "role": "cancel",
+      "method": "post",
+      "path": "/transfers/cancel",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "transferIds": [
+          "APUFHASUDF4AS",
+          "407ASFPUAHSFA"
+        ]
+      },
+      "example_name": "transfers-cancel",
+      "source": "spec_example"
+    },
+    {
+      "name": "get-transfers-id",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/transfers/test_id",
+      "headers": {
+        "X-API-Key": "test_api_key"
+      },
+      "body": null,
+      "source": "spec_example",
+      "_todo": "параметр пути id не имеет примера в спецификации: подставлена заглушка, замените на настоящий идентификатор."
+    },
+    {
+      "name": "post-transfers-transferId-returns",
+      "role": "refund",
+      "method": "post",
+      "path": "/transfers/test_id/returns",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "amount": {
+          "value": 189,
+          "currency": "EUR"
+        },
+        "reference": "Your internal reference for the return"
+      },
+      "example_name": "transfers-return",
+      "source": "spec_example",
+      "_todo": "параметр пути transferId не имеет примера в спецификации: подставлена заглушка, замените на настоящий идентификатор."
+    },
+    {
+      "name": "post-cashouts",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/cashouts",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "test_api_key"
+      },
+      "body": {
+        "instructingBalanceAccountId": "BA00000000000000000000001",
+        "amount": {
+          "currency": "EUR",
+          "value": 50000
+        },
+        "counterparty": {
+          "transferInstrumentId": "SE00000000000000000000001"
+        },
+        "description": "Cashout to bank account",
+        "referenceForBeneficiary": "CASHOUT-REF-001",
+        "fee": {
+          "amount": {
+            "currency": "EUR",
+            "value": 500
+          }
+        }
+      },
+      "example_name": "initiate-cashout",
+      "source": "spec_example"
+    }
+  ],
+  "responses": [
+    {
+      "name": "get-grants 200",
+      "operation": "get-grants",
+      "status": 200,
+      "body": {
+        "grants": [
+          {
+            "balances": {
+              "currency": "string",
+              "fee": 0,
+              "principal": 0,
+              "total": 0
+            },
+            "grantAccountId": "string",
+            "grantOfferId": "string",
+            "id": "string",
+            "status": "Pending"
+          }
+        ]
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants 400",
+      "operation": "get-grants",
+      "status": 400,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants 401",
+      "operation": "get-grants",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants 403",
+      "operation": "get-grants",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants 404",
+      "operation": "get-grants",
+      "status": 404,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants 422",
+      "operation": "get-grants",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants 500",
+      "operation": "get-grants",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-grants 200 (requestGrant)",
+      "operation": "post-grants",
+      "status": 200,
+      "body": {
+        "id": "GR00000000000000000000001",
+        "grantAccountId": "CG00000000000000000000001",
+        "grantOfferId": "0000000000000001",
+        "counterparty": {
+          "accountHolderId": "AH00000000000000000000001",
+          "balanceAccountId": "BA00000000000000000000001"
+        },
+        "amount": {
+          "currency": "EUR",
+          "value": 1000000
+        },
+        "fee": {
+          "amount": {
+            "value": 120000,
+            "currency": "EUR"
+          }
+        },
+        "balances": {
+          "currency": "EUR",
+          "fee": 120000,
+          "principal": 1000000,
+          "total": 1120000
+        },
+        "repayment": {
+          "basisPoints": 1400
+        },
+        "status": "Pending"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "requestGrant",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-grants 400",
+      "operation": "post-grants",
+      "status": 400,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-grants 401",
+      "operation": "post-grants",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-grants 403",
+      "operation": "post-grants",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-grants 404",
+      "operation": "post-grants",
+      "status": 404,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-grants 422",
+      "operation": "post-grants",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-grants 500",
+      "operation": "post-grants",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants-id 200",
+      "operation": "get-grants-id",
+      "status": 200,
+      "body": {
+        "balances": {
+          "currency": "string",
+          "fee": 0,
+          "principal": 0,
+          "total": 0
+        },
+        "grantAccountId": "string",
+        "grantOfferId": "string",
+        "id": "string",
+        "status": "Pending"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants-id 400",
+      "operation": "get-grants-id",
+      "status": 400,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants-id 401",
+      "operation": "get-grants-id",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants-id 403",
+      "operation": "get-grants-id",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants-id 404",
+      "operation": "get-grants-id",
+      "status": 404,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants-id 422",
+      "operation": "get-grants-id",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-grants-id 500",
+      "operation": "get-grants-id",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transactions 200 (success)",
+      "operation": "get-transactions",
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "balancePlatform": "YOUR_BALANCE_PLATFORM",
+            "creationDate": "2023-08-10T14:51:20+02:00",
+            "id": "EVJN42272224222B5JB8BRC84N686ZEUR",
+            "accountHolder": {
+              "description": "Your description for the account holder",
+              "id": "AH00000000000000000000001"
+            },
+            "amount": {
+              "currency": "USD",
+              "value": -1000
+            },
+            "balanceAccount": {
+              "description": "Your description for the account holder",
+              "id": "BA00000000000000000000001"
+            },
+            "bookingDate": "2023-08-10T14:51:33+02:00",
+            "status": "booked",
+            "transfer": {
+              "id": "3JNC3O5ZVFLLGV4B",
+              "reference": "Your internal reference for the transfer"
+            },
+            "valueDate": "2023-08-10T14:51:20+02:00"
+          },
+          {
+            "balancePlatform": "YOUR_BALANCE_PLATFORM",
+            "creationDate": "2023-08-10T15:34:31+02:00",
+            "id": "EVJN4227C224222B5JB8G3Q89N2NB6EUR",
+            "accountHolder": {
+              "description": "Your description for the account holder",
+              "id": "AH00000000000000000000001"
+            },
+            "amount": {
+              "currency": "USD",
+              "value": 123
+            },
+            "balanceAccount": {
+              "description": "Your description for the account holder",
+              "id": "BA00000000000000000000001"
+            },
+            "bookingDate": "2023-08-10T15:34:40+02:00",
+            "status": "booked",
+            "transfer": {
+              "id": "48POO45ZVG11166J",
+              "reference": "Your internal reference for the transfer"
+            },
+            "valueDate": "2023-08-10T15:34:31+02:00"
+          },
+          {
+            "balancePlatform": "YOUR_BALANCE_PLATFORM",
+            "creationDate": "2023-08-11T13:45:46+02:00",
+            "id": "EVJN4227C224222B5JBD3XHF8P3L8GUSD",
+            "accountHolder": {
+              "description": "Your description for the account holder",
+              "id": "AH00000000000000000000001"
+            },
+            "amount": {
+              "currency": "USD",
+              "value": -10000
+            },
+            "balanceAccount": {
+              "description": "Your description for the account holder",
+              "id": "BA00000000000000000000001"
+            },
+            "bookingDate": "2023-08-11T13:45:57+02:00",
+            "status": "booked",
+            "transfer": {
+              "id": "48RTTW5ZVT8KU9DV",
+              "reference": "my-reference"
+            },
+            "valueDate": "2023-08-11T13:45:46+02:00"
+          },
+          {
+            "balancePlatform": "YOUR_BALANCE_PLATFORM",
+            "creationDate": "2023-08-11T13:45:51+02:00",
+            "id": "EVJN42272224222B5JBD3XJGHF4J26USD",
+            "accountHolder": {
+              "description": "Your description for the account holder",
+              "id": "AH00000000000000000000001"
+            },
+            "amount": {
+              "currency": "USD",
+              "value": 1000
+            },
+            "balanceAccount": {
+              "description": "Your description for the account holder",
+              "id": "BA00000000000000000000001"
+            },
+            "bookingDate": "2023-08-11T13:45:58+02:00",
+            "status": "booked",
+            "transfer": {
+              "id": "48TYZO5ZVT8M1K47",
+              "reference": "my-reference"
+            },
+            "valueDate": "2023-08-11T13:45:51+02:00"
+          }
+        ],
+        "_links": {
+          "next": {
+            "href": "https://balanceplatform-api-test.adyen.com/btl/v4/transactions?balancePlatform=TestBalancePlatform&createdUntil=2023-08-20T13%3A07%3A40Z&createdSince=2023-08-10T10%3A50%3A40Z&cursor=S2B-c0p1N0tdN0l6RGhYK1YpM0lgOTUyMDlLXElyKE9LMCtyaFEuMj1NMHgidCsrJi1ZNnhqXCtqVi5JPGpRK1F2fCFqWzU33JTojSVNJc1J1VXhncS10QDd6JX9FQFl5Zn0uNyUvSXJNQTo"
+          }
+        }
+      },
+      "expected": {
+        "result": "success"
+      },
+      "example_name": "success",
+      "source": "spec_example"
+    },
+    {
+      "name": "get-transactions 401",
+      "operation": "get-transactions",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transactions 403",
+      "operation": "get-transactions",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transactions 422",
+      "operation": "get-transactions",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transactions 500",
+      "operation": "get-transactions",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transactions-id 200 (success)",
+      "operation": "get-transactions-id",
+      "status": 200,
+      "body": {
+        "id": "EVJN4227C224222B5JBDHPTD672M52EUR",
+        "amount": {
+          "value": -10000,
+          "currency": "EUR"
+        },
+        "status": "booked",
+        "transfer": {
+          "id": "48TYZO5ZVURJ2FCW",
+          "reference": "Your internal reference for the transfer"
+        },
+        "valueDate": "2023-08-11T16:19:35+02:00",
+        "bookingDate": "2023-08-11T16:19:39+02:00",
+        "creationDate": "2023-08-11T16:19:35+02:00",
+        "accountHolder": {
+          "id": "AH00000000000000000000001",
+          "description": "Your description of the account holder"
+        },
+        "balanceAccount": {
+          "id": "BA00000000000000000000001",
+          "description": "Your description of the balance account"
+        },
+        "balancePlatform": "YOUR_BALANCE_PLATFORM"
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "example_name": "success",
+      "source": "spec_example"
+    },
+    {
+      "name": "get-transactions-id 401",
+      "operation": "get-transactions-id",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transactions-id 403",
+      "operation": "get-transactions-id",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transactions-id 422",
+      "operation": "get-transactions-id",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transactions-id 500",
+      "operation": "get-transactions-id",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transfers 200 (success)",
+      "operation": "get-transfers",
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "balancePlatform": "YOUR_BALANCE_PLATFORM",
+            "creationDate": "2021-05-03T15:20:06+02:00",
+            "id": "1W1UG35QQEBJLHZ8",
+            "accountHolder": {
+              "description": "S. Eller - Staff 123",
+              "id": "AH32272223222B5CZW6QZ2V34"
+            },
+            "amount": {
+              "currency": "EUR",
+              "value": 5400
+            },
+            "balanceAccount": {
+              "description": "My Balance Account",
+              "id": "BA3227C223222B5B9SCR82TMV"
+            },
+            "category": "internal",
+            "categoryData": {
+              "type": "internal"
+            },
+            "counterparty": {
+              "balanceAccountId": "BA00000000000000000000001"
+            },
+            "description": "Your description",
+            "direction": "outgoing",
+            "reason": "approved",
+            "reference": "312M2060T6S4UOIF",
+            "status": "booked",
+            "balances": [
+              {
+                "balance": -5400,
+                "currency": "EUR",
+                "received": 0,
+                "reserved": 0
+              }
+            ],
+            "events": [
+              {
+                "bookingDate": "2021-05-03T14:53:39+01:00",
+                "id": "EVJN4233Q22322375JQ72V55G92ZXF",
+                "mutations": [
+                  {
+                    "currency": "EUR",
+                    "received": -5400
+                  }
+                ],
+                "status": "received",
+                "type": "accounting",
+                "valueDate": "2021-05-03T14:53:39+01:00"
+              },
+              {
+                "bookingDate": "2021-05-03T14:53:39+01:00",
+                "id": "EVJN4233Q22322375JQ72V55GB4TPV",
+                "mutations": [
+                  {
+                    "currency": "EUR",
+                    "received": 5400,
+                    "reserved": -5400
+                  }
+                ],
+                "status": "authorised",
+                "type": "accounting",
+                "valueDate": "2021-05-03T14:53:39+01:00"
+              },
+              {
+                "bookingDate": "2021-05-03T14:53:39+01:00",
+                "id": "EVJN4233Q22322375JQ72V55GD53HZ",
+                "mutations": [
+                  {
+                    "balance": -5400,
+                    "currency": "EUR",
+                    "received": 0,
+                    "reserved": 5400
+                  }
+                ],
+                "status": "booked",
+                "transactionId": "EVJN4233Q22322375JQ72V55GD53HZEUR",
+                "type": "accounting",
+                "valueDate": "2021-05-03T14:53:39+01:00"
+              }
+            ],
+            "sequenceNumber": 3,
+            "type": "internalTransfer"
+          },
+          {
+            "balancePlatform": "YOUR_BALANCE_PLATFORM",
+            "creationDate": "2021-08-02T15:20:06+02:00",
+            "id": "312M2060T5Z3YWYQ",
+            "accountHolder": {
+              "description": "S. Doe - Staff 124",
+              "id": "AH443397232222B5CZW6QZ2V34"
+            },
+            "amount": {
+              "currency": "EUR",
+              "value": 15000
+            },
+            "balanceAccount": {
+              "description": "My Balance Account",
+              "id": "BA3227C2582222B5B9SCR82VHM"
+            },
+            "category": "internal",
+            "categoryData": {
+              "type": "internal"
+            },
+            "counterparty": {
+              "balanceAccountId": "BA00000000000000000000001"
+            },
+            "description": "Your description",
+            "direction": "outgoing",
+            "reason": "approved",
+            "reference": "312M2060T6S4UOIF",
+            "status": "booked",
+            "balances": [
+              {
+                "balance": -15000,
+                "currency": "EUR",
+                "received": 0,
+                "reserved": 0
+              }
+            ],
+            "events": [
+              {
+                "bookingDate": "2021-08-02T14:53:39+01:00",
+                "id": "EVJN4233Q22322375JQ72V55G92ZXF",
+                "mutations": [
+                  {
+                    "currency": "EUR",
+                    "received": -15000
+                  }
+                ],
+                "status": "received",
+                "type": "accounting",
+                "valueDate": "2021-08-02T14:53:39+01:00"
+              },
+              {
+                "bookingDate": "2021-08-02T14:53:39+01:00",
+                "id": "EVJN4233Q22322375JQ72V55GB4TPV",
+                "mutations": [
+                  {
+                    "currency": "EUR",
+                    "received": 15000,
+                    "reserved": -15000
+                  }
+                ],
+                "status": "authorised",
+                "type": "accounting",
+                "valueDate": "2021-08-02T14:53:39+01:00"
+              },
+              {
+                "bookingDate": "2021-08-02T14:53:39+01:00",
+                "id": "EVASDFOUPASFDHSADFA6SN65FG6TD53HZ",
+                "mutations": [
+                  {
+                    "balance": -15000,
+                    "currency": "EUR",
+                    "received": 0,
+                    "reserved": 15000
+                  }
+                ],
+                "status": "booked",
+                "transactionId": "EVJN4233Q22322375JQ6SN65FG6TFTEUR",
+                "type": "accounting",
+                "valueDate": "2021-08-02T14:53:39+01:00"
+              }
+            ],
+            "sequenceNumber": 3,
+            "type": "internalTransfer"
+          }
+        ],
+        "_links": {
+          "next": {
+            "href": "https://balanceplatform-api-test.adyen.com/btl/v4/transfers?balancePlatform=YOUR_BALANCE_PLATFORM&createdUntil=2021-12-21T00%3A00%3A00Z&createdSince=2021-03-21T00%3A00%3A00Z&limit=2&cursor=S2B-TSAjOkIrYlIlbjdqe0RreHRyM32lKRSxubXBHRkhHL2E32XitQQz5SfzpucD5HbHwpM1p6NDR1eXVQLFF6MmY33J32sobDxQYT90MHIud1hwLnd6JitcX32xJ"
+          }
+        }
+      },
+      "expected": {
+        "result": "success"
+      },
+      "example_name": "success",
+      "source": "spec_example"
+    },
+    {
+      "name": "get-transfers 401",
+      "operation": "get-transfers",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transfers 403",
+      "operation": "get-transfers",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transfers 422",
+      "operation": "get-transfers",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transfers 500",
+      "operation": "get-transfers",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers 200",
+      "operation": "post-transfers",
+      "status": 200,
+      "body": {
+        "amount": {
+          "currency": "string",
+          "value": 0
+        },
+        "category": "bank",
+        "counterparty": {
+          "balanceAccountId": "string",
+          "bankAccount": {
+            "accountHolder": {
+              "type": "individual"
+            },
+            "accountIdentification": {
+              "type": "auLocal",
+              "accountType": "checking"
+            }
+          },
+          "card": {
+            "cardHolder": {
+              "type": "individual"
+            },
+            "cardIdentification": {
+              "expiryMonth": "string",
+              "expiryYear": "string",
+              "issueNumber": "string",
+              "number": "string",
+              "startMonth": "string",
+              "startYear": "string",
+              "storedPaymentMethodId": "string"
+            }
+          },
+          "merchant": {
+            "acquirerId": "string",
+            "mcc": "string",
+            "merchantId": "string",
+            "nameLocation": {
+              "city": "string",
+              "country": "string",
+              "countryOfOrigin": "string",
+              "name": "string",
+              "rawData": "string",
+              "state": "string"
+            },
+            "postalCode": "string"
+          },
+          "transferInstrumentId": "string"
+        },
+        "direction": "incoming",
+        "reason": "accountHierarchyNotActive",
+        "status": "approvalPending",
+        "type": "payment"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers 202 (payout-cross-border)",
+      "operation": "post-transfers",
+      "status": 202,
+      "body": {
+        "id": "1W1UG35U8A9J5ZLG",
+        "accountHolder": {
+          "description": "Your account holder description",
+          "id": "AH3227C223222C5GXQXF658WB",
+          "reference": "Your account holder reference"
+        },
+        "amount": {
+          "value": 110000,
+          "currency": "EUR"
+        },
+        "balanceAccount": {
+          "description": "Your balance account description",
+          "id": "BAB8B2C3D4E5F6G7H8D9J6GD4",
+          "reference": "Your balance account reference"
+        },
+        "category": "bank",
+        "categoryData": {
+          "priority": "crossBorder",
+          "type": "bank"
+        },
+        "counterparty": {
+          "bankAccount": {
+            "accountHolder": {
+              "fullName": "A. Klaassen",
+              "address": {
+                "city": "San Francisco",
+                "country": "US",
+                "postalCode": "94678",
+                "stateOrProvince": "CA",
+                "line1": "274",
+                "line2": "Brannan Street"
+              }
+            },
+            "accountIdentification": {
+              "type": "numberAndBic",
+              "accountNumber": "123456789",
+              "bic": "BOFAUS3NXXX"
+            }
+          }
+        },
+        "paymentInstrument": {
+          "description": "Your payment instrument description",
+          "id": "PI3222G223222G59347DAA265",
+          "reference": "Your payment instrument reference"
+        },
+        "referenceForBeneficiary": "Your-reference-sent-to-the-beneficiary",
+        "reference": "Your internal reference for the transfer",
+        "description": "Your description for the transfer",
+        "direction": "outgoing",
+        "reason": "pending",
+        "status": "received"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "payout-cross-border",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers 202 (payout-cross-border-platforms)",
+      "operation": "post-transfers",
+      "status": 202,
+      "body": {
+        "id": "1W1UG35U8A9J5ZLG",
+        "accountHolder": {
+          "description": "Your account holder description",
+          "id": "AH3227C223222C5GXQXF658WB",
+          "reference": "Your account holder reference"
+        },
+        "amount": {
+          "value": 110000,
+          "currency": "EUR"
+        },
+        "balanceAccount": {
+          "description": "Your balance account description",
+          "id": "BAB8B2C3D4E5F6G7H8D9J6GD4",
+          "reference": "Your balance account reference"
+        },
+        "category": "bank",
+        "counterparty": {
+          "transferInstrumentId": "SE1234567890ABC1234567890"
+        },
+        "paymentInstrument": {
+          "description": "Your payment instrument description",
+          "id": "PI3222G223222G59347DAA265",
+          "reference": "Your payment instrument reference"
+        },
+        "referenceForBeneficiary": "Your-reference-sent-to-the-beneficiary",
+        "reference": "Your internal reference for the transfer",
+        "description": "Your description for the transfer",
+        "direction": "outgoing",
+        "reason": "pending",
+        "status": "received"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "payout-cross-border-platforms",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers 202 (payout-local-transfer-sepa)",
+      "operation": "post-transfers",
+      "status": 202,
+      "body": {
+        "id": "1W1UG35U8A9J5ZLG",
+        "accountHolder": {
+          "description": "Your account holder description",
+          "id": "AH3227C223222C5GXQXF658WB",
+          "reference": "Your account holder reference"
+        },
+        "amount": {
+          "value": 110000,
+          "currency": "EUR"
+        },
+        "balanceAccount": {
+          "description": "Your balance account description",
+          "id": "BAB8B2C3D4E5F6G7H8D9J6GD4",
+          "reference": "Your balance account reference"
+        },
+        "category": "bank",
+        "categoryData": {
+          "priority": "regular",
+          "type": "bank"
+        },
+        "counterparty": {
+          "bankAccount": {
+            "accountHolder": {
+              "fullName": "A. Klaassen"
+            },
+            "accountIdentification": {
+              "type": "iban",
+              "iban": "NL91ABNA0417164300"
+            }
+          }
+        },
+        "paymentInstrument": {
+          "description": "Your payment instrument description",
+          "id": "PI3222G223222G59347DAA265",
+          "reference": "Your payment instrument reference"
+        },
+        "referenceForBeneficiary": "Your-reference-sent-to-the-beneficiary",
+        "reference": "Your internal reference for the transfer",
+        "description": "Your description for the transfer",
+        "direction": "outgoing",
+        "reason": "pending",
+        "status": "received"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "payout-local-transfer-sepa",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers 202 (payout-local-transfer-us)",
+      "operation": "post-transfers",
+      "status": 202,
+      "body": {
+        "id": "1W1UG35U8A9J5ZLG",
+        "accountHolder": {
+          "description": "Your account holder description",
+          "id": "AH3227C223222C5GXQXF658WB",
+          "reference": "Your account holder reference"
+        },
+        "amount": {
+          "value": 110000,
+          "currency": "USD"
+        },
+        "balanceAccount": {
+          "description": "Your balance account description",
+          "id": "BAB8B2C3D4E5F6G7H8D9J6GD4",
+          "reference": "Your balance account reference"
+        },
+        "category": "bank",
+        "categoryData": {
+          "priority": "regular",
+          "type": "bank"
+        },
+        "counterparty": {
+          "bankAccount": {
+            "accountHolder": {
+              "fullName": "A. Klaassen"
+            },
+            "accountIdentification": {
+              "type": "usLocal",
+              "accountNumber": "123456789",
+              "routingNumber": "011000138"
+            }
+          }
+        },
+        "paymentInstrument": {
+          "description": "Your payment instrument description",
+          "id": "PI3222G223222G59347DAA265",
+          "reference": "Your payment instrument reference"
+        },
+        "referenceForBeneficiary": "Your-reference-sent-to-the-beneficiary",
+        "reference": "Your internal reference for the transfer",
+        "description": "Your description for the transfer",
+        "direction": "outgoing",
+        "reason": "pending",
+        "status": "received"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "payout-local-transfer-us",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers 202 (payout-to-balance-account)",
+      "operation": "post-transfers",
+      "status": 202,
+      "body": {
+        "id": "1W1UG35U8A9J5ZLG",
+        "accountHolder": {
+          "description": "Your account holder description",
+          "id": "AH3227C223222C5GXQXF658WB",
+          "reference": "Your account holder reference"
+        },
+        "amount": {
+          "currency": "EUR",
+          "value": 10000
+        },
+        "balanceAccount": {
+          "description": "Your balance account description",
+          "id": "BAB8B2C3D4E5F6G7H8D9J6GD4",
+          "reference": "Your balance account reference"
+        },
+        "category": "internal",
+        "counterparty": {
+          "balanceAccountId": "BA32272223222B5LPRFDW7J9G"
+        },
+        "referenceForBeneficiary": "Your-reference-sent-to-the-beneficiary",
+        "reference": "Your internal reference for the transfer",
+        "description": "Your description for the transfer",
+        "direction": "outgoing",
+        "reason": "pending",
+        "status": "received"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "payout-to-balance-account",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers 202 (payout-to-card-raw)",
+      "operation": "post-transfers",
+      "status": 202,
+      "body": {
+        "creationDate": "2023-12-28T15:26:06+01:00",
+        "id": "48POP561F0ZWWLNW",
+        "accountHolder": {
+          "description": "Your description for the account holder",
+          "id": "AH00000000000000000000001"
+        },
+        "amount": {
+          "currency": "USD",
+          "value": 10000
+        },
+        "balanceAccount": {
+          "description": "Your description for the balance account",
+          "id": "BA00000000000000000000001"
+        },
+        "category": "card",
+        "counterparty": {
+          "card": {
+            "cardHolder": {
+              "address": {
+                "city": "San Francisco",
+                "country": "US",
+                "postalCode": "94107",
+                "stateOrProvince": "CA",
+                "line1": "274",
+                "line2": "Brannan St"
+              },
+              "firstName": "Albert",
+              "lastName": "Klaassen",
+              "type": "individual"
+            },
+            "cardIdentification": {
+              "expiryMonth": "03",
+              "expiryYear": "2030",
+              "number": "432112******8765"
+            }
+          }
+        },
+        "description": "Your internal description of the transfer",
+        "direction": "outgoing",
+        "reason": "pending",
+        "reference": "Your internal reference for the transfer",
+        "status": "received",
+        "type": "cardTransfer"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "payout-to-card-raw",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers 202 (payout-to-card-tokenized)",
+      "operation": "post-transfers",
+      "status": 202,
+      "body": {
+        "creationDate": "2024-06-11T16:12:32+02:00",
+        "id": "4VXLNQ638WU0IAN3",
+        "accountHolder": {
+          "description": "Your description for the account holder",
+          "id": "AH00000000000000000000001"
+        },
+        "amount": {
+          "currency": "USD",
+          "value": 10000
+        },
+        "balanceAccount": {
+          "description": "Your description for the balance account",
+          "id": "BA00000000000000000000001"
+        },
+        "category": "card",
+        "counterparty": {
+          "card": {
+            "cardHolder": {
+              "firstName": "Albert",
+              "lastName": "Klaassen",
+              "reference": "Your reference for the cardholder",
+              "type": "individual",
+              "address": {
+                "city": "San Francisco",
+                "country": "US",
+                "line1": "274",
+                "line2": "Brannan St",
+                "postalCode": "94107",
+                "stateOrProvince": "CA"
+              }
+            },
+            "cardIdentification": {
+              "storedPaymentMethodId": "ZMV627QSCQVDKG66"
+            }
+          }
+        },
+        "description": "Your internal description of the transfer",
+        "direction": "outgoing",
+        "reason": "pending",
+        "reference": "Your internal reference for the transfer",
+        "status": "received",
+        "type": "cardTransfer"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "payout-to-card-tokenized",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers 202 (payout-to-transfer-instrument)",
+      "operation": "post-transfers",
+      "status": 202,
+      "body": {
+        "id": "1W1UG35U8A9J5ZLG",
+        "accountHolder": {
+          "description": "Your account holder description",
+          "id": "AH3227C223222C5GXQXF658WB",
+          "reference": "Your account holder reference"
+        },
+        "amount": {
+          "value": 80000,
+          "currency": "EUR"
+        },
+        "balanceAccount": {
+          "description": "Your balance account description",
+          "id": "BAB8B2C3D4E5F6G7H8D9J6GD4",
+          "reference": "Your balance account reference"
+        },
+        "category": "bank",
+        "categoryData": {
+          "priority": "regular",
+          "type": "bank"
+        },
+        "counterparty": {
+          "transferInstrumentId": "SE1234567890ABC1234567890"
+        },
+        "paymentInstrument": {
+          "description": "Your payment instrument description",
+          "id": "PI3222G223222G59347DAA265",
+          "reference": "Your payment instrument reference"
+        },
+        "referenceForBeneficiary": "Your-reference-sent-to-the-beneficiary",
+        "reference": "Your internal reference for the transfer",
+        "description": "Your description for the transfer",
+        "direction": "outgoing",
+        "reason": "pending",
+        "status": "received"
+      },
+      "expected": {
+        "internal_status": "in_progress"
+      },
+      "example_name": "payout-to-transfer-instrument",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers 401",
+      "operation": "post-transfers",
+      "status": 401,
+      "body": {
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers 403",
+      "operation": "post-transfers",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers 422",
+      "operation": "post-transfers",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers 500",
+      "operation": "post-transfers",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-approve 200 (transfers-approve)",
+      "operation": "post-transfers-approve",
+      "status": 200,
+      "body": {},
+      "expected": {
+        "result": "success"
+      },
+      "example_name": "transfers-approve",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers-approve 401",
+      "operation": "post-transfers-approve",
+      "status": 401,
+      "body": {
+        "errorCode": "string",
+        "errorType": "string",
+        "message": "string",
+        "pspReference": "string",
+        "status": 0
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-approve 403",
+      "operation": "post-transfers-approve",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-approve 422",
+      "operation": "post-transfers-approve",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-approve 500",
+      "operation": "post-transfers-approve",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-cancel 200 (transfers-cancel)",
+      "operation": "post-transfers-cancel",
+      "status": 200,
+      "body": {},
+      "expected": {
+        "result": "success"
+      },
+      "example_name": "transfers-cancel",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers-cancel 401",
+      "operation": "post-transfers-cancel",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-cancel 403",
+      "operation": "post-transfers-cancel",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-cancel 422",
+      "operation": "post-transfers-cancel",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-cancel 500",
+      "operation": "post-transfers-cancel",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transfers-id 200 (success)",
+      "operation": "get-transfers-id",
+      "status": 200,
+      "body": {
+        "balancePlatform": "YOUR_BALANCE_PLATFORM",
+        "creationDate": "2021-05-03T15:20:06+02:00",
+        "id": "1W1UG35QQEBJLHZ8",
+        "accountHolder": {
+          "description": "S. Eller - Staff 123",
+          "id": "AH32272223222B5CZW6QZ2V34"
+        },
+        "amount": {
+          "currency": "EUR",
+          "value": 5400
+        },
+        "balanceAccount": {
+          "description": "My Balance Account",
+          "id": "BA3227C223222B5B9SCR82TMV"
+        },
+        "category": "internal",
+        "categoryData": {
+          "type": "internal"
+        },
+        "counterparty": {
+          "balanceAccountId": "BA00000000000000000000001"
+        },
+        "description": "Your description",
+        "direction": "outgoing",
+        "reason": "approved",
+        "reference": "312M2060T6S4UOIF",
+        "status": "booked",
+        "balances": [
+          {
+            "balance": -5400,
+            "currency": "EUR",
+            "received": 0,
+            "reserved": 0
+          }
+        ],
+        "events": [
+          {
+            "bookingDate": "2021-05-03T14:53:39+01:00",
+            "id": "EVJN4233Q22322375JQ72V55G92ZXF",
+            "mutations": [
+              {
+                "currency": "EUR",
+                "received": -5400
+              }
+            ],
+            "status": "received",
+            "type": "accounting",
+            "valueDate": "2021-05-03T14:53:39+01:00"
+          },
+          {
+            "bookingDate": "2021-05-03T14:53:39+01:00",
+            "id": "EVJN4233Q22322375JQ72V55GB4TPV",
+            "mutations": [
+              {
+                "currency": "EUR",
+                "received": 5400,
+                "reserved": -5400
+              }
+            ],
+            "status": "authorised",
+            "type": "accounting",
+            "valueDate": "2021-05-03T14:53:39+01:00"
+          },
+          {
+            "bookingDate": "2021-05-03T14:53:39+01:00",
+            "id": "EVJN4233Q22322375JQ72V55GD53HZ",
+            "mutations": [
+              {
+                "balance": -5400,
+                "currency": "EUR",
+                "received": 0,
+                "reserved": 5400
+              }
+            ],
+            "status": "booked",
+            "transactionId": "EVJN4233Q22322375JQ72V55GD53HZEUR",
+            "type": "accounting",
+            "valueDate": "2021-05-03T14:53:39+01:00"
+          }
+        ],
+        "sequenceNumber": 3,
+        "type": "internalTransfer"
+      },
+      "expected": {
+        "internal_status": "approved"
+      },
+      "example_name": "success",
+      "source": "spec_example"
+    },
+    {
+      "name": "get-transfers-id 401",
+      "operation": "get-transfers-id",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transfers-id 403",
+      "operation": "get-transfers-id",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transfers-id 422",
+      "operation": "get-transfers-id",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "get-transfers-id 500",
+      "operation": "get-transfers-id",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-transferId-returns 200 (transfers-return)",
+      "operation": "post-transfers-transferId-returns",
+      "status": 200,
+      "body": {
+        "id": "1W1UG35QQEBJLHZ8",
+        "reference": "Your internal reference for the return",
+        "status": "Authorised",
+        "transferId": "1W1UG35U8A9J5ZLG"
+      },
+      "expected": {
+        "internal_status": null
+      },
+      "example_name": "transfers-return",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-transfers-transferId-returns 401",
+      "operation": "post-transfers-transferId-returns",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-transferId-returns 403",
+      "operation": "post-transfers-transferId-returns",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-transferId-returns 422",
+      "operation": "post-transfers-transferId-returns",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-transfers-transferId-returns 500",
+      "operation": "post-transfers-transferId-returns",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-cashouts 200 (instruct-cashout)",
+      "operation": "post-cashouts",
+      "status": 200,
+      "body": {
+        "id": "CO00000000000000000000001",
+        "instructingBalanceAccountId": "BA00000000000000000000001",
+        "amount": {
+          "currency": "EUR",
+          "value": 50000
+        },
+        "counterparty": {
+          "transferInstrumentId": "SE00000000000000000000001"
+        },
+        "description": "Cashout to bank account",
+        "referenceForBeneficiary": "CASHOUT-REF-001",
+        "fee": {
+          "amount": {
+            "currency": "EUR",
+            "value": 500
+          }
+        },
+        "transfers": [
+          {
+            "id": "400F6060JMB1I0AB",
+            "type": "cashoutRepayment",
+            "amount": {
+              "currency": "EUR",
+              "value": 50500
+            }
+          },
+          {
+            "id": "400F6060JMB1I0AA",
+            "type": "cashoutFee",
+            "amount": {
+              "currency": "EUR",
+              "value": 500
+            }
+          }
+        ]
+      },
+      "expected": {
+        "result": "success"
+      },
+      "example_name": "instruct-cashout",
+      "source": "spec_example"
+    },
+    {
+      "name": "post-cashouts 400",
+      "operation": "post-cashouts",
+      "status": 400,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "instance": "string",
+        "invalidFields": [
+          {
+            "message": "string",
+            "name": "string",
+            "value": "string"
+          }
+        ],
+        "requestId": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-cashouts 401",
+      "operation": "post-cashouts",
+      "status": 401,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "instance": "string",
+        "invalidFields": [
+          {
+            "message": "string",
+            "name": "string",
+            "value": "string"
+          }
+        ],
+        "requestId": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unauthorized"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-cashouts 403",
+      "operation": "post-cashouts",
+      "status": 403,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "instance": "string",
+        "invalidFields": [
+          {
+            "message": "string",
+            "name": "string",
+            "value": "string"
+          }
+        ],
+        "requestId": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "forbidden"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-cashouts 404",
+      "operation": "post-cashouts",
+      "status": 404,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "instance": "string",
+        "invalidFields": [
+          {
+            "message": "string",
+            "name": "string",
+            "value": "string"
+          }
+        ],
+        "requestId": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-cashouts 422",
+      "operation": "post-cashouts",
+      "status": 422,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "instance": "string",
+        "invalidFields": [
+          {
+            "message": "string",
+            "name": "string",
+            "value": "string"
+          }
+        ],
+        "requestId": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-cashouts 429",
+      "operation": "post-cashouts",
+      "status": 429,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "instance": "string",
+        "invalidFields": [
+          {
+            "message": "string",
+            "name": "string",
+            "value": "string"
+          }
+        ],
+        "requestId": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "retry_backoff",
+        "failure_code": "too_many_requests"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "post-cashouts 500",
+      "operation": "post-cashouts",
+      "status": 500,
+      "body": {
+        "detail": "string",
+        "errorCode": "string",
+        "instance": "string",
+        "invalidFields": [
+          {
+            "message": "string",
+            "name": "string",
+            "value": "string"
+          }
+        ],
+        "requestId": "string",
+        "status": 0,
+        "title": "string",
+        "type": "string"
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "internal_server_error"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    }
+  ],
+  "notifications": []
+}

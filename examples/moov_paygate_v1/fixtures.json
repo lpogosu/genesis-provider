@@ -1,0 +1,496 @@
+{
+  "provider": "moov_paygate_v1",
+  "spec": {
+    "file": "moov_paygate_v1.yaml",
+    "version": "v1",
+    "openapi": "3.0.2"
+  },
+  "base_url": "http://localhost:8082",
+  "credentials": {},
+  "requests": [
+    {
+      "name": "ping",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/ping",
+      "headers": {},
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "getTransferConfiguration",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/configuration/transfers",
+      "headers": {},
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "updateTransferConfiguration",
+      "role": "unmapped",
+      "method": "put",
+      "path": "/configuration/transfers",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "companyIdentification": "f6eddffd"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "initiateMicroDeposits",
+      "role": "create_deposit",
+      "method": "post",
+      "path": "/micro-deposits",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "destination": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        }
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getMicroDeposits",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/micro-deposits/c336f57e",
+      "headers": {},
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "getAccountMicroDeposits",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/accounts/c336f57e/micro-deposits",
+      "headers": {},
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "getTransfers",
+      "role": "unmapped",
+      "method": "get",
+      "path": "/transfers",
+      "headers": {},
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "addTransfer",
+      "role": "create_payout",
+      "method": "post",
+      "path": "/transfers",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": "136cdceb-18fa-55d0-b902-fabe7f0052aa"
+      },
+      "body": {
+        "amount": {
+          "currency": "USD",
+          "value": 1204
+        },
+        "source": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        },
+        "destination": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        },
+        "description": "Loan Pay",
+        "sameDay": false
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера тела для этой операции: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "deleteTransferByID",
+      "role": "cancel",
+      "method": "delete",
+      "path": "/transfers/8e8cc27b",
+      "headers": {},
+      "body": null,
+      "source": "spec_example"
+    },
+    {
+      "name": "getTransferByID",
+      "role": "fetch_status",
+      "method": "get",
+      "path": "/transfers/33164ac6",
+      "headers": {},
+      "body": null,
+      "source": "spec_example"
+    }
+  ],
+  "responses": [
+    {
+      "name": "ping 200",
+      "operation": "ping",
+      "status": 200,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    },
+    {
+      "name": "getTransferConfiguration 200",
+      "operation": "getTransferConfiguration",
+      "status": 200,
+      "body": {
+        "companyIdentification": "f6eddffd"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы. спецификация не объявляет у операции ни одного ответа с ошибкой: неуспешный сценарий проверить нечем, допишите его в overlay."
+    },
+    {
+      "name": "updateTransferConfiguration 200",
+      "operation": "updateTransferConfiguration",
+      "status": 200,
+      "body": {
+        "companyIdentification": "f6eddffd"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "updateTransferConfiguration 400",
+      "operation": "updateTransferConfiguration",
+      "status": 400,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "updateTransferConfiguration 412",
+      "operation": "updateTransferConfiguration",
+      "status": 412,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "initiateMicroDeposits 200",
+      "operation": "initiateMicroDeposits",
+      "status": 200,
+      "body": {
+        "microDepositID": "8e8cc27b",
+        "transferIDs": [],
+        "destination": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        },
+        "amounts": [
+          {
+            "currency": "USD",
+            "value": 1204
+          }
+        ],
+        "status": "canceled",
+        "created": "string"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "initiateMicroDeposits 400",
+      "operation": "initiateMicroDeposits",
+      "status": 400,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "initiateMicroDeposits 412",
+      "operation": "initiateMicroDeposits",
+      "status": 412,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getMicroDeposits 200",
+      "operation": "getMicroDeposits",
+      "status": 200,
+      "body": {
+        "microDepositID": "8e8cc27b",
+        "transferIDs": [],
+        "destination": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        },
+        "amounts": [
+          {
+            "currency": "USD",
+            "value": 1204
+          }
+        ],
+        "status": "canceled",
+        "created": "string"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getMicroDeposits 400",
+      "operation": "getMicroDeposits",
+      "status": 400,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getAccountMicroDeposits 200",
+      "operation": "getAccountMicroDeposits",
+      "status": 200,
+      "body": {
+        "microDepositID": "8e8cc27b",
+        "transferIDs": [],
+        "destination": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        },
+        "amounts": [
+          {
+            "currency": "USD",
+            "value": 1204
+          }
+        ],
+        "status": "canceled",
+        "created": "string"
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getAccountMicroDeposits 400",
+      "operation": "getAccountMicroDeposits",
+      "status": 400,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getTransfers 200",
+      "operation": "getTransfers",
+      "status": 200,
+      "body": {},
+      "expected": {
+        "result": "success"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getTransfers 400",
+      "operation": "getTransfers",
+      "status": 400,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "addTransfer 201",
+      "operation": "addTransfer",
+      "status": 201,
+      "body": {
+        "transferID": "33164ac6",
+        "amount": {
+          "currency": "USD",
+          "value": 1204
+        },
+        "source": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        },
+        "destination": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        },
+        "description": "Loan Pay",
+        "status": "canceled",
+        "sameDay": false,
+        "returnCode": {
+          "reason": "Account Closed",
+          "code": "R02",
+          "description": "Previously active account has been closed by customer or RDFI"
+        },
+        "created": "string",
+        "traceNumbers": []
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "addTransfer 400",
+      "operation": "addTransfer",
+      "status": 400,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "addTransfer 412",
+      "operation": "addTransfer",
+      "status": 412,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "unprocessable_entity"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "deleteTransferByID 200",
+      "operation": "deleteTransferByID",
+      "status": 200,
+      "body": null,
+      "expected": {
+        "result": "success"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    },
+    {
+      "name": "deleteTransferByID 400",
+      "operation": "deleteTransferByID",
+      "status": 400,
+      "body": {
+        "error": "Validation error(s) present."
+      },
+      "expected": {
+        "action": "reject",
+        "failure_code": "bad_request"
+      },
+      "source": "schema_example",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getTransferByID 200",
+      "operation": "getTransferByID",
+      "status": 200,
+      "body": {
+        "transferID": "33164ac6",
+        "amount": {
+          "currency": "USD",
+          "value": 1204
+        },
+        "source": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        },
+        "destination": {
+          "accountID": "68b534b7",
+          "customerID": "11ffa67d"
+        },
+        "description": "Loan Pay",
+        "status": "canceled",
+        "sameDay": false,
+        "returnCode": {
+          "reason": "Account Closed",
+          "code": "R02",
+          "description": "Previously active account has been closed by customer or RDFI"
+        },
+        "created": "string",
+        "traceNumbers": []
+      },
+      "expected": {
+        "result": "success"
+      },
+      "source": "synthesized",
+      "_todo": "в спецификации нет примера для этого кода ответа: тело собрано из example, enum и default полей схемы."
+    },
+    {
+      "name": "getTransferByID 404",
+      "operation": "getTransferByID",
+      "status": 404,
+      "body": null,
+      "expected": {
+        "action": "reject",
+        "failure_code": "not_found"
+      },
+      "source": "undeclared",
+      "_todo": "тело у этого элемента объявлено в спецификации, но не описано: схемы нет, примера не существует — опишите схему или удалите фикстуру."
+    }
+  ],
+  "notifications": []
+}
