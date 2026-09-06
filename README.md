@@ -12,6 +12,7 @@ OpenAPI Overlay 1.0.0, JSON Schema, Standard Webhooks, IETF Idempotency-Key).
 Всё, что формально не выводится, попадает в отчёт, а не угадывается молча.
 
 Хакатон Hack.Genesis 2026, кейс 1 (Space Payments), команда «Два килобайта».
+## CКРИНКАСТ: https://disk.yandex.ru/d/ie60Kt0_7LlcWg
 
 ## Быстрый старт
 
