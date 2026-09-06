@@ -20,6 +20,12 @@ module SpecGen
       MAX_DEPTH = 256
       MISSING = JsonPointer::MISSING
       REMOTE = %r{\A[a-z][a-z0-9+.-]*://}i
+      # Ключи, значение которых — данные экземпляра, а не описание схемы.
+      # Внутрь не ходим: `$ref` там принадлежит примеру.
+      DATA_KEYS = %w[example default enum].freeze
+      # Карта примеров: сама ссылаться может, её содержимое — нет.
+      EXAMPLES = 'examples'
+      EXAMPLE_VALUE = 'value'
 
       # Где стоит `$ref`: файл (абсолютным путём), путь ключей до самого
       # ключа `$ref` и строка ссылки.
@@ -71,7 +77,46 @@ module SpecGen
       def resolve_hash(node, file, keys, depth)
         return resolve_ref(node, file, keys, depth) if node.key?(REF)
 
-        node.to_h { |key, value| [key, resolve_node(value, file, keys + [key], depth + 1)] }
+        node.to_h do |key, value|
+          [key, resolve_child(key, value, file, keys + [key], depth + 1)]
+        end
+      end
+
+      # Значение ключа данных не разворачивается: `$ref` внутри примера —
+      # это ключ примера, а не ссылка на схему. У одного из публичных API
+      # пример ответа содержит сетевой адрес под ключом `$ref`, и попытка
+      # его развернуть валила чтение всей спецификации сообщением про
+      # ссылку, которой там нет.
+      #
+      # `examples` — исключение с оговоркой: сама карта примеров может
+      # ссылаться на `#/components/examples/X`, поэтому по карте идём, а в
+      # тело каждого примера не заходим.
+      def resolve_child(key, value, file, keys, depth)
+        return value if DATA_KEYS.include?(key)
+        return resolve_examples(value, file, keys, depth) if key == EXAMPLES
+
+        resolve_node(value, file, keys, depth)
+      end
+
+      # @param value [Object] карта примеров либо массив примеров схемы 3.1
+      def resolve_examples(value, file, keys, depth)
+        return value unless value.is_a?(Hash)
+
+        value.to_h do |name, example|
+          [name, resolve_example(example, file, keys + [name], depth + 1)]
+        end
+      end
+
+      # Объект Example: сам может быть ссылкой, но его `value` — данные.
+      def resolve_example(example, file, keys, depth)
+        return resolve_node(example, file, keys, depth) unless example.is_a?(Hash)
+        return resolve_ref(example, file, keys, depth) if example.key?(REF)
+
+        example.to_h do |key, value|
+          next [key, value] if key == EXAMPLE_VALUE
+
+          [key, resolve_node(value, file, keys + [key], depth + 1)]
+        end
       end
 
       def resolve_ref(node, file, keys, depth)
@@ -105,15 +150,21 @@ module SpecGen
         @memo[id] = resolved
       end
 
+      # Сетевая ссылка проверяется раньше формы фрагмента. У сетевых
+      # ссылок фрагмент часто не JSON Pointer вовсе (`…#squareup.common.
+      # String`), и при обратном порядке пользователь получал жалобу на
+      # фрагмент — то есть верное сообщение о неверной причине. Причина
+      # называется та, которая обнаружится первой при чтении слева направо:
+      # сначала откуда ссылка, потом куда внутри.
       def split(site)
         ref = site.ref
         location, fragment = ref.split('#', 2)
         pointer = fragment.to_s
+        fail_parse(Texts.t('spec_loader.ref.remote', ref: ref), site) if
+          location.to_s.match?(REMOTE)
         unless pointer.empty? || pointer.start_with?('/')
           fail_parse(Texts.t('spec_loader.ref.fragment', ref: ref), site)
         end
-        fail_parse(Texts.t('spec_loader.ref.remote', ref: ref), site) if
-          location.to_s.match?(REMOTE)
 
         base = File.dirname(site.file)
         [location.to_s.empty? ? site.file : File.expand_path(location, base), pointer]

@@ -98,4 +98,47 @@ RSpec.describe SpecGen::SpecLoader::RefResolver do
       expect(error.path).to eq("$.a['$ref']")
     end
   end
+
+  # Данные примера — не описание схемы. Публичный API Square держит в примере
+  # ответа сетевой адрес под ключом `$ref`; развернуть его нельзя, и попытка
+  # валила чтение всей спецификации.
+  describe 'example payloads are data, not references' do
+    it 'leaves a $ref inside example untouched' do
+      data = { 'a' => { 'example' => { '$ref' => 'https://cdn.example/types#some.String' } } }
+      expect(resolve(data)['a']['example']).to eq('$ref' => 'https://cdn.example/types#some.String')
+    end
+
+    it 'leaves a $ref inside the value of an Example Object untouched' do
+      data = { 'a' => { 'examples' => { 'ok' => { 'value' => { '$ref' => 'https://cdn.example/x#y' } } } } }
+      expect(resolve(data)['a']['examples']['ok']['value']).to eq('$ref' => 'https://cdn.example/x#y')
+    end
+
+    it 'still resolves a reference to a shared Example Object' do
+      shared = { 'summary' => 'ok', 'value' => { 'id' => 1 } }
+      data = { 'a' => { 'examples' => { 'ok' => { '$ref' => '#/components/examples/Ok' } } },
+               'components' => { 'examples' => { 'Ok' => shared } } }
+      expect(resolve(data)['a']['examples']['ok']).to include('summary' => 'ok')
+    end
+
+    it 'leaves a $ref inside default and enum untouched' do
+      data = { 'a' => { 'default' => { '$ref' => 'nowhere' }, 'enum' => [{ '$ref' => 'nowhere' }] } }
+      resolved = resolve(data)
+      expect(resolved['a']['default']).to eq('$ref' => 'nowhere')
+      expect(resolved['a']['enum'].first).to eq('$ref' => 'nowhere')
+    end
+  end
+
+  # Верное сообщение о неверной причине хуже молчания: человек чинит фрагмент,
+  # а ссылка сетевая.
+  describe 'the reported cause of a bad reference' do
+    it 'names the network location, not the shape of the fragment' do
+      data = { 'a' => { '$ref' => 'https://cdn.example/types#some.String' } }
+      expect { resolve(data) }.to raise_error(SpecGen::SpecParseError, /http/)
+    end
+
+    it 'still names the fragment when the reference is local' do
+      data = { 'a' => { '$ref' => '#not-a-pointer' } }
+      expect { resolve(data) }.to raise_error(SpecGen::SpecParseError, /not-a-pointer/)
+    end
+  end
 end
