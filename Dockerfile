@@ -1,10 +1,25 @@
 # Образ с генератором: тот же инструмент, что запускается из репозитория,
-# только на чистой машине. Одна команда поднимает HTTP-API, другая гоняет
-# CLI по всем спецификациям — жюри не нужно ставить Ruby.
+# только на чистой машине. Одна команда поднимает веб-интерфейс, другая
+# гоняет CLI по всем спецификациям — жюри не нужно ставить ни Ruby, ни Node.
 #
 #   docker build -t specgen .
-#   docker run --rm -p 9292:9292 specgen          # веб-API на 9292
+#   docker run --rm -p 9292:9292 specgen          # веб-интерфейс на 9292
 #   docker run --rm specgen ./integrate --all     # пакетный прогон в консоли
+
+# Первая стадия собирает фронт. Node нужен только здесь: `output: 'export'`
+# в next.config.mjs даёт статику, и в рантайме её отдаёт Ruby-сервер. В
+# итоговый образ ни Node, ни node_modules не попадают.
+FROM node:22-slim AS front
+WORKDIR /front
+RUN corepack enable
+# Манифесты отдельным слоем: правка компонентов не переустанавливает
+# зависимости. pnpm-workspace.yaml нужен pnpm, без него install ругается.
+COPY space-payments-dashboard/package.json space-payments-dashboard/pnpm-lock.yaml \
+     space-payments-dashboard/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY space-payments-dashboard/ ./
+RUN pnpm build
+
 FROM ruby:3.4-slim
 
 # Ruby печатает и читает UTF-8: заголовки спецификаций и весь наш вывод —
@@ -14,8 +29,8 @@ ENV LC_ALL=C.UTF-8
 
 # Гемы лежат вне /app, поэтому COPY исходников их не затирает.
 ENV BUNDLE_PATH=/usr/local/bundle
-# В образе приложения нужны только rack и thor: rspec, rubocop и webmock —
-# инструменты разработки, в поставке им делать нечего.
+# В образе приложения нужны rack, thor и json_schemer: rspec, rubocop и
+# webmock — инструменты разработки, в поставке им делать нечего.
 ENV BUNDLE_WITHOUT=development:test
 # Расхождение Gemfile и Gemfile.lock должно ронять сборку, а не молча
 # ставить другую версию.
@@ -28,10 +43,18 @@ ENV PORT=9292
 WORKDIR /app
 
 # Зависимости отдельным слоем: правка исходников не пересобирает bundle.
-# Компилятор не ставим намеренно — rack и thor чистые Ruby, нативных
-# расширений в поставке нет.
+#
+# Компилятор нужен ровно на время установки. Сам инструмент чистый Ruby, но
+# json_schemer тянет bigdecimal, а тот в Ruby 3.4 стал bundled gem с
+# нативным расширением, и в slim-образе собрать его нечем. Ставим
+# build-essential, собираем гемы, сносим его в том же слое — иначе
+# компилятор остался бы в поставке, а образ вырос бы вдвое.
 COPY Gemfile Gemfile.lock ./
-RUN bundle install
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential \
+ && bundle install \
+ && apt-get purge -y --auto-remove build-essential \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
@@ -39,18 +62,10 @@ COPY . .
 # а запускать нужно и CLI, и сервер.
 RUN chmod +x integrate bin/integrate bin/serve
 
-# Сюда встанет сборка фронта, когда появится каталог web/:
-#
-#   FROM node:22-slim AS front
-#   WORKDIR /front
-#   COPY web/package*.json ./
-#   RUN npm ci
-#   COPY web/ ./
-#   RUN npm run build
-#
-# и в этот образ — COPY --from=front /front/dist ./public
-# Каталог public/ отдаётся автоматически, если он есть: SpecGen::Web::Static
-# проверяет его наличие на каждом запросе, отсутствие ничего не ломает.
+# Собранный фронт из первой стадии. Каталог public/ отдаётся автоматически,
+# если он есть: SpecGen::Web::Static проверяет его наличие на каждом запросе,
+# и без него сервер поднимается — тогда работает только API.
+COPY --from=front /front/out ./public
 
 EXPOSE 9292
 

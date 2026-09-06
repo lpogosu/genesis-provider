@@ -8,3 +8,11 @@ output/
 tmp/
 spec/fixtures/golden/
 *.docx
+
+# Сборка фронта. В образ она попадает только из стадии `front`, поэтому
+# результат сборки на машине разработчика не должен на неё влиять: иначе
+# образ окажется разным на чистом клоне и у того, кто уже собирал локально.
+public/
+space-payments-dashboard/out/
+space-payments-dashboard/.next/
+space-payments-dashboard/tsconfig.tsbuildinfo
