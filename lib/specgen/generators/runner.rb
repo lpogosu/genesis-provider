@@ -36,8 +36,8 @@ module SpecGen
         writer = Writer.new(output_dir)
         enabled.each_with_object([]) do |generator, artifacts|
           artifacts << generator.new(profile: @profile, rules: @rules, options: @options,
-                                     naming: naming, writer: writer,
-                                     artifacts: artifacts.dup, checks: checks(artifacts)).call
+                                     naming: naming, writer: writer, artifacts: artifacts.dup,
+                                     checks: checks(artifacts), run: run(artifacts)).call
         end
       end
 
@@ -61,6 +61,20 @@ module SpecGen
 
         @checks ||= Validators.check(document: @document, profile: @profile,
                                      fixtures_file: fixtures.path)
+      end
+
+      # Прогон собранного класса на его же фикстурах. Считается один раз,
+      # когда записаны оба файла: класс исполняется тот, что лежит на диске, а
+      # отвечает ему подменённый клиент телами из записанных фикстур.
+      # @param artifacts [Array<Artifact>] уже записанное
+      # @return [Validators::Result, nil]
+      def run(artifacts)
+        service = artifacts.find { |artifact| artifact.kind == ServiceGenerator::KIND }
+        fixtures = artifacts.find { |artifact| artifact.kind == FixturesGenerator::KIND }
+        return nil if service.nil? || fixtures.nil?
+
+        @run ||= Validators.exercise(profile: @profile, rules: @rules,
+                                     service_file: service.path, fixtures_file: fixtures.path)
       end
 
       # @return [String] каталог вывода из --output, иначе DEFAULT_OUTPUT

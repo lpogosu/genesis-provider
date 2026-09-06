@@ -17,12 +17,16 @@ module SpecGen
         # @param artifacts [Array<Artifact>] уже записанные артефакты прогона
         # @param checks [Validators::Result] сверка фикстур со схемами
         #   спецификации; её числа печатает раздел 1
-        def initialize(profile:, rules:, naming:, artifacts: [], checks: Validators::Result.new)
+        # @param run [Validators::Result] прогон собранного класса на его же
+        #   фикстурах; его числа печатает тот же раздел 1
+        def initialize(profile:, rules:, naming:, artifacts: [], checks: Validators::Result.new,
+                       run: Validators::Result.new)
           @service = Service::View.new(profile: profile, rules: rules, naming: naming)
           @ctx = @service.context
           @parts = @service.parts.merge(view: @service)
           @artifacts = artifacts
           @result = checks
+          @run_result = run
         end
 
         # @return [Binding] контекст рендеринга ERB
@@ -94,6 +98,16 @@ module SpecGen
         # @return [Checks] раздел 1: сверка фикстур со схемами спецификации
         def checks
           @checks ||= Checks.new(@ctx, @parts, @result)
+        end
+
+        # @return [Run] раздел 1: прогон собранного класса на его фикстурах
+        def run
+          @run ||= Run.new(@ctx, @parts, @run_result)
+        end
+
+        # @return [String] базовый класс платформы, который подменяет прогон
+        def base_class
+          @ctx.contract.base_class
         end
 
         # @return [Coverage] раздел 2

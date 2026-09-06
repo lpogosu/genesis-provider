@@ -32,7 +32,11 @@ module SpecGen
       # @param checks [Validators::Result, nil] итог сверки фикстур со
       #   схемами спецификации; появляется после того, как фикстуры
       #   записаны, и нужен только отчёту
-      def initialize(profile:, rules:, options:, naming:, writer:, artifacts: [], checks: nil)
+      # @param run [Validators::Result, nil] итог прогона собранного класса на
+      #   его же фикстурах; появляется после того, как записаны и сервис, и
+      #   фикстуры, и нужен только отчёту
+      def initialize(profile:, rules:, options:, naming:, writer:, artifacts: [], checks: nil,
+                     run: nil)
         @profile = profile
         @rules = rules
         @options = options
@@ -40,6 +44,7 @@ module SpecGen
         @writer = writer
         @artifacts = artifacts
         @checks = checks
+        @run = run
       end
 
       # Рендерит шаблон и пишет артефакт.
@@ -68,7 +73,7 @@ module SpecGen
 
       private
 
-      attr_reader :profile, :rules, :options, :naming, :writer, :artifacts, :checks
+      attr_reader :profile, :rules, :options, :naming, :writer, :artifacts, :checks, :run
 
       # Представление строится один раз: метрики артефакта считает тот же
       # объект, который отрендерил шаблон, иначе числа в отчёте и числа в

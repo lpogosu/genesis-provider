@@ -1,19 +1,15 @@
-# Интеграция с провайдером «<%= provider_title %>»
+# <%= t('heading.title', title: provider_title) %>
 
 | | |
 |---|---|
-| Провайдер | `<%= provider_slug %>` |
-| Спецификация | `<%= spec_file %>`, версия <%= spec_version %>, OpenAPI <%= oas_version %> |
-| Класс сервиса | `<%= class_name %> < <%= base_class %>` |
-| Файл сервиса | `<%= service_file %>` |
+| <%= t('head_provider') %> | `<%= provider_slug %>` |
+| <%= t('head_spec') %> | <%= t('head_spec_value', file: spec_file, version: spec_version, oas: oas_version) %> |
+| <%= t('head_class') %> | `<%= class_name %> < <%= base_class %>` |
+| <%= t('head_file') %> | `<%= service_file %>` |
 
-Документ сгенерирован инструментом integrate из той же модели провайдера,
-что и сервис: таблицы ниже совпадают с константами `STATUS_MAP`, `EVENT_MAP`,
-`ERROR_MAP` и `RETRY_POLICY` по построению. Не редактируйте вручную: правки —
-в overlay (OpenAPI Overlay 1.0.0) и повторная генерация. Что инструмент не
-вывел или вывел с сомнением, перечислено в `report.md` и в разделе 9.
+<%= t('prose.intro') %>
 
-## 1. Авторизация и хранение секрета
+## <%= t('heading.auth') %>
 
 <%- access.auth_lines.each do |line| -%>
 <%= line %>
@@ -25,18 +21,15 @@
 <%- end -%>
 <%= t('secret_storage') %>
 
-## 2. ENV-переменные
+## <%= t('heading.env') %>
 
 <%= table([t('env_name_col'), t('env_purpose_col'), t('env_default_col'), t('env_required_col')], access.env_rows).join("\n") %>
 
 <%= access.env_notes.join("\n\n") %>
 
-## 3. Таблица методов с идемпотентностью
+## <%= t('heading.methods') %>
 
-Методы контракта `<%= base_class %>` в порядке `rules/contract.yml`.
-Ключ идемпотентности — детерминированный UUID v5 от `<%= external_id %>`
-(RFC 4122 §4.3, `Digest::SHA1`, без `SecureRandom`): повтор запроса даёт тот
-же ключ и дедуплицируется провайдером.
+<%= t('prose.methods_intro', base_class: base_class, external_id: external_id) %>
 
 <%= table(methods_section.headers, methods_section.contract_rows).join("\n") %>
 <%- unless methods_section.extra_rows.empty? -%>
@@ -46,15 +39,12 @@
 <%= table(methods_section.headers, methods_section.extra_rows).join("\n") %>
 <%- end -%>
 
-## 4. Маппинг статусов
+## <%= t('heading.statuses') %>
 
 <%- if statuses.status_note -%>
 <%= statuses.status_note %>
 <%- else -%>
-`STATUS_MAP` — статус провайдера во внутренний статус платформы
-(`<%= helper(:approve_operation) %>` для `approved`, `<%= helper(:reject_operation) %>` для `rejected`,
-`in_progress` ничего не меняет). Незнакомое значение даёт `nil` и отказ
-`status_unknown`.
+<%= t('prose.status_map_note', approve: helper(:approve_operation), reject: helper(:reject_operation)) %>
 
 <%= table(statuses.headers('status_col'), statuses.status_rows).join("\n") %>
 <%- end -%>
@@ -62,18 +52,15 @@
 <%- if statuses.event_note -%>
 <%= statuses.event_note %>
 <%- else -%>
-`EVENT_MAP` — событие уведомления во внутренний статус; ветка `else` для
-незнакомого события даёт отказ `unknown_event`.
+<%= t('prose.event_map_note') %>
 
 <%= table(statuses.headers('event_col'), statuses.event_rows).join("\n") %>
 <%- end -%>
 
-## 5. Обработка ошибок с действиями
+## <%= t('heading.errors') %>
 
 <%- if errors.any? -%>
-`ERROR_MAP` читается в два шага: сначала код ошибки из тела ответа, потом
-HTTP-код. Символ действия — это политика обработки на стороне платформы;
-первым аргументом `failure` уходит код платформы (см. ниже).
+<%= t('prose.error_map_note') %>
 
 <%- unless errors.code_rows.empty? -%>
 <%= table(errors.code_headers, errors.code_rows).join("\n") %>
@@ -102,7 +89,7 @@ HTTP-код. Символ действия — это политика обра�
 <%- end -%>
 <%= t('dedup_heading') %> <%= errors.dedup_line %>
 
-## 6. Параметры подключения
+## <%= t('heading.gateway') %>
 
 <%= t('gateway_case_note') %>
 
@@ -118,7 +105,7 @@ HTTP-код. Символ действия — это политика обра�
 <%= table([t('mapping_field_col'), t('mapping_role_col'), t('mapping_method_col'), t('mapping_expression_col')], gateway.mapping_rows).join("\n") %>
 <%- end -%>
 
-## 7. Схема подписи вебхука
+## <%= t('heading.signature') %>
 
 <%- if signature.state == :none -%>
 <%= signature.note %>
@@ -142,28 +129,11 @@ HTTP-код. Символ действия — это политика обра�
 <%- end -%>
 <%- end -%>
 
-## 8. Как подключить в приложение
+## <%= t('heading.howto') %>
 
-1. Положите `<%= service_file %>` в каталог провайдеров платформы рядом с
-   остальными наследниками `<%= base_class %>`; класс — `<%= class_name %>`.
-2. Задайте ключи `provider.credentials` из раздела 1 и переменные окружения из
-   раздела 2. Значения секретов — только в хранилище credentials платформы.
-3. Сверьте параметры подключения из раздела 6 с тем, как провайдер заведён
-   у вас: адрес, ключи учётных данных, валюты и границы суммы выведены из
-   спецификации, отдельного конфига сервис не требует.
-4. Направьте маршрут входящих уведомлений провайдера на `<%= method_for(:webhook) %>`,
-   передавая уже разобранный JSON (`<%= callback_body %>`). Подпись считается по
-   сырым байтам тела, которых в разобранном JSON уже нет, поэтому вызовите
-   `<%= signature_entrypoint %>(raw_body, headers)` в самом маршруте, до разбора
-   тела; форма аргумента задана в `rules/contract.yml`, раздел `platform`.
-5. Включите `<%= method_for(:fetch_status) %>` в поллинг незавершённых операций:
-   это единственный путь узнать статус, если уведомление не пришло.
-6. Прогоните `fixtures.json` через WebMock: в нём запросы, ответы и
-   уведомления из примеров спецификации с ожидаемым внутренним статусом.
-7. Пройдите по пунктам `report.md`: каждая строка там — действие, а TODO в
-   сервисе указывают на то же место.
+<%= t('prose.howto', service_file: service_file, base_class: base_class, class_name: class_name, webhook: method_for(:webhook), callback: callback_body, verify: signature_entrypoint, status: method_for(:fetch_status)) %>
 
-## 9. Принятые допущения
+## <%= t('heading.assumptions') %>
 
 <%= assumptions.contract_line %>
 

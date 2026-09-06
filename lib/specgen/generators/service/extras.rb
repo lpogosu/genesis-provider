@@ -67,7 +67,17 @@ module SpecGen
         # @return [Boolean] есть операция, чей успешный ответ разбирает
         #   accept_response: отмена или подтверждение той же операции
         def accepting?
-          operations.any? { |op| ACCEPTING_ROLES.include?(op.role.value) }
+          operations.any? { |op| accepts?(op) }
+        end
+
+        # Разбирать ответ как «ту же операцию» можно только там, где операция
+        # у метода есть. У подтверждения без параметров пути и без тела
+        # аргумента нет, и accept_response(operation, body) поднимал бы
+        # NameError — прогон собранного класса это и показал.
+        # @param operation [IR::Operation]
+        # @return [Boolean]
+        def accepts?(operation)
+          ACCEPTING_ROLES.include?(operation.role.value) && !params(operation).empty?
         end
 
         # Операции вне контракта в порядке спецификации.
@@ -178,8 +188,14 @@ module SpecGen
           "#{base}_#{index}"
         end
 
+        # Аргумент нужен, когда телу метода есть что взять у операции: тело
+        # запроса или подстановка в путь. Смотрится сам шаблон пути, а не
+        # объявленные параметры: спецификация вправе написать `{id}` и не
+        # объявить его (так делает одна из публичных), а подстановку шаблон
+        # всё равно сгенерирует — и метод без аргумента получал бы NameError
+        # на `operation`. Прогон собранного класса это и показал.
         def params(operation)
-          needs = !operation.parameters_in(:path).empty? || operation.request_schema
+          needs = operation.path.match?(Http::PATH_PARAM) || operation.request_schema
           needs ? [{ name: 'operation' }] : []
         end
 
@@ -210,8 +226,7 @@ module SpecGen
                   [request, 'body = parse_json(response.body)']
           lines.concat(Ruby.guard('provider_failure(response, body)',
                                   @http.success_check(operation), indent: INDENT, negate: true))
-          accepting = ACCEPTING_ROLES.include?(operation.role.value)
-          lines + ['', accepting ? 'accept_response(operation, body)' : 'body']
+          lines + ['', accepts?(operation) ? 'accept_response(operation, body)' : 'body']
         end
 
         # Отмена только в разрешённых статусах — если спецификация об этом

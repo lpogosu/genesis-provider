@@ -25,20 +25,28 @@ module SpecGen
 
       def view
         Report::View.new(profile: profile, rules: rules, naming: naming, artifacts: artifacts,
-                         checks: checks || Validators::Result.new)
+                         checks: checks || Validators::Result.new,
+                         run: run || Validators::Result.new)
       end
 
-      # Покрытие уже посчитано для раздела 2 отчёта, сверка со спецификацией
-      # — для раздела 1; пакетный прогон, веб-API и тесты берут числа отсюда,
-      # а не считают их заново и не разбирают markdown. Цифры покрытия две:
-      # от всей спецификации и от того, что контракт способен использовать.
+      # Покрытие уже посчитано для раздела 2 отчёта, сверка со спецификацией и
+      # прогон собранного класса — для раздела 1; пакетный прогон, веб-API и
+      # тесты берут числа отсюда, а не считают их заново и не разбирают
+      # markdown. Цифры покрытия две: от всей спецификации и от того, что
+      # контракт способен использовать.
       def metrics
         coverage = template_view.coverage
         # Сверки может не быть (профиль без спецификации): NilClass#to_h
         # даёт пустой хеш, поэтому отдельная ветка не нужна.
         { coverage_percent: coverage.percent, covered: coverage.covered, total: coverage.total,
           contract_coverage_percent: coverage.in_scope_percent,
-          contract_total: coverage.in_scope_total }.merge(checks.to_h)
+          contract_total: coverage.in_scope_total }.merge(checks.to_h).merge(run_metrics)
+      end
+
+      # @return [Hash{Symbol => Integer}] числа прогона: их печатает CLI
+      def run_metrics
+        (run || Validators::Result.new).to_h(prefix: :run,
+                                             kinds: Validators::ServiceCheck::KINDS)
       end
     end
   end

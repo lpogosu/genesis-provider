@@ -91,15 +91,26 @@ module SpecGen
           Ruby.comment(text, width: WIDTH)
         end
 
+        # Заголовок — только когда спецификация его объявляет; пространство
+        # имён — всегда, когда ключ считается как UUID v5.
+        #
+        # Приватный idempotency_key_for генерируется в любом случае: роль
+        # idempotency_key бывает и у поля тела запроса, а не только у
+        # заголовка. Без константы такой метод поднимал бы NameError на
+        # первом же вызове — прогон собранного класса это и показал.
         def idempotency
           idempotency = @ctx.profile.idempotency
-          return [] unless idempotency&.supported?
+          entries = idempotency&.supported? ? [header_constant(idempotency)] : []
+          return entries if idempotency&.strategy&.value == :external_id
 
-          header = @ctx.t('idempotency_comment', evidence: idempotency.header.evidence)
-          [['IDEMPOTENCY_HEADER', Ruby.str(idempotency.header.value),
-            Ruby.comment(header, width: WIDTH)],
-           ['IDEMPOTENCY_NAMESPACE', Ruby.str(@ctx.rules.idempotency.namespace),
-            Ruby.comment(@ctx.t('namespace_comment'), width: WIDTH)]]
+          entries + [['IDEMPOTENCY_NAMESPACE', Ruby.str(@ctx.rules.idempotency.namespace),
+                      Ruby.comment(@ctx.t('namespace_comment'), width: WIDTH)]]
+        end
+
+        def header_constant(idempotency)
+          text = @ctx.t('idempotency_comment', evidence: idempotency.header.evidence)
+          ['IDEMPOTENCY_HEADER', Ruby.str(idempotency.header.value),
+           Ruby.comment(text, width: WIDTH)]
         end
       end
     end

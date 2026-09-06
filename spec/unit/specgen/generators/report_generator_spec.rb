@@ -6,10 +6,16 @@ require 'yaml'
 RSpec.describe SpecGen::Generators::ReportGenerator do
   include Fixtures
 
+  # Семь разделов в порядке шаблона. Заголовки берутся из локали: пример
+  # проверяет, что разделы на месте и в том же порядке, а не то, какими
+  # словами они названы — слова живут в locales/<код>/generators.yml.
   let(:sections) do
-    ['## 1. Сводка', '## 2. Покрытие спецификации', '## 3. Неоднозначности',
-     '## 4. Операции вне контракта и без роли', '## 5. Противоречия в самой спецификации',
-     '## 6. Справки', '## 7. Что доделать руками']
+    %w[summary coverage ambiguities operations contradictions notes checklist]
+      .map { |key| "## #{heading(key)}" }
+  end
+
+  def heading(key)
+    SpecGen::Texts.t("generators.report.heading.#{key}")
   end
 
   def generate(spec, dir, provider: nil)
@@ -41,9 +47,9 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
     coverage_line(text).scan(/\((\d+) из (\d+)/).flatten.map(&:to_i)
   end
 
-  # Подраздел «Что не покрыто и почему» раздела 2.
+  # Подраздел о непокрытом внутри раздела 2.
   def gaps_section(text)
-    text.split('### Что не покрыто и почему').last.split('## 3.').first
+    text.split("### #{heading('gaps')}").last.split('## 3.').first
   end
 
   # Фрагменты overlay из раздела 3 склеиваются в один документ ровно так, как

@@ -37,12 +37,17 @@ module SpecGen
         findings.any?(&:problem?)
       end
 
-      # Числа прогона наружу: их кладёт в Artifact#metrics генератор отчёта,
-      # так же как покрытие.
+      # Числа наружу: их кладёт в Artifact#metrics генератор отчёта, так же
+      # как покрытие. Префикс и набор видов задаёт вызывающий, потому что
+      # проверок две: сверка фикстур со схемами и прогон собранного класса, и
+      # смешивать их числа в одной таблице нельзя.
+      #
+      # @param prefix [Symbol] приставка ключей
+      # @param kinds [Array<Symbol>] виды находок, которые считаем
       # @return [Hash{Symbol => Integer}]
-      def to_h
-        Finding::KINDS.to_h { |kind| [:"checks_#{kind}", count(kind)] }
-                      .merge(checks_total: total)
+      def to_h(prefix: :checks, kinds: Finding::KINDS)
+        kinds.to_h { |kind| [:"#{prefix}_#{kind}", count(kind)] }
+             .merge("#{prefix}_total": total)
       end
     end
   end

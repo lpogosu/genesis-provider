@@ -7,6 +7,20 @@ require_relative 'validators/result'
 require_relative 'validators/schemas'
 require_relative 'validators/targets'
 require_relative 'validators/fixture_check'
+require_relative 'validators/expression'
+require_relative 'validators/fixture_set'
+require_relative 'validators/platform'
+require_relative 'validators/fake_client'
+require_relative 'validators/payment'
+require_relative 'validators/sandbox'
+require_relative 'validators/run/judge'
+require_relative 'validators/run/base'
+require_relative 'validators/run/prechecks'
+require_relative 'validators/run/creation'
+require_relative 'validators/run/polling'
+require_relative 'validators/run/callbacks'
+require_relative 'validators/run/extras'
+require_relative 'validators/service_check'
 
 module SpecGen
   # Стадия проверки: то, что генератор собрал, сверяется с той самой
@@ -32,6 +46,13 @@ module SpecGen
   # (`URI::InvalidComponentError`). Обе построены на том же json_schemer, так
   # что взят движок без обёртки.
   #
+  # Проверок две, и они отвечают на разные вопросы. Сверка (`check`) говорит,
+  # правильной ли формы то, что собрано: тела из fixtures.json против схем
+  # спецификации. Прогон (`exercise`) говорит, работает ли то, что собрано:
+  # сгенерированный класс исполняется на тех же фикстурах с подменёнными
+  # платформой и HTTP-клиентом. Первая проверяет данные, вторая — код; ни
+  # одна не выходит в сеть.
+  #
   # Чего стадия не делает. Она не блокирует генерацию: артефакты уже
   # записаны, проверка сообщает, а не отменяет. Исключение валидатора
   # наружу не выходит — любая его неудача становится находкой вида
@@ -52,6 +73,26 @@ module SpecGen
       return Result.new if document.nil? || fixtures_file.nil?
 
       FixtureCheck.new(document: document, profile: profile,
+                       fixtures_file: fixtures_file).call
+    end
+
+    # Прогон сгенерированного класса на его же фикстурах: класс загружается в
+    # изолированный модуль с подменой базового класса платформы, HTTP-клиент
+    # отвечает телами из fixtures.json, сети нет.
+    #
+    # Спецификация здесь не нужна: всё, чем проверяется класс, уже записано в
+    # артефактах и в модели провайдера. Нет одного из двух файлов — прогонять
+    # нечего, и это пустой итог, а не отказ.
+    #
+    # @param profile [IR::ProviderProfile] модель провайдера
+    # @param rules [Rules::Registry] справочники: контракт платформы
+    # @param service_file [String, nil] путь к записанному service.rb
+    # @param fixtures_file [String, nil] путь к записанному fixtures.json
+    # @return [Result]
+    def self.exercise(profile:, rules:, service_file:, fixtures_file:)
+      return Result.new if service_file.nil? || fixtures_file.nil?
+
+      ServiceCheck.new(profile: profile, rules: rules, service_file: service_file,
                        fixtures_file: fixtures_file).call
     end
   end

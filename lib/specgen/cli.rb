@@ -100,12 +100,25 @@ module SpecGen
       Reporter::Summary.new(profile, document, explain: options[:explain]).print_to($stdout)
     end
 
-    desc 'diff', Texts.t('cli.desc.diff')
+    desc 'diff --old FILE --new FILE [options]', Texts.t('cli.desc.diff')
+    long_desc Texts.t('cli.desc.diff_long')
     method_option :old, type: :string, required: true, desc: Texts.t('cli.option.old')
     method_option :new, type: :string, required: true, desc: Texts.t('cli.option.new')
+    method_option :overlay_old, type: :string, desc: Texts.t('cli.option.overlay_old')
+    method_option :overlay_new, type: :string, desc: Texts.t('cli.option.overlay_new')
+    method_option :strict, type: :boolean, default: false, desc: Texts.t('cli.option.strict_diff')
     def diff
       apply_locale!
-      not_implemented('diff')
+      # Обе версии проходят тот же конвейер, что и генерация: сравниваются не
+      # файлы, а два профиля, собранные одними и теми же анализаторами.
+      versions = Diff::Versions.new(options, rules: Rules.load)
+      Reporter::DiffLines.new(versions.changes, **versions.labels).print_to($stdout)
+      # --strict здесь значит «сервис придётся перегенерировать», а не «есть
+      # предупреждения»: ровно это и нужно сборке, следящей за чужой версией.
+      return unless options[:strict] && versions.changes.any?(&:code?)
+
+      warn Texts.t('cli.diff_strict_failed')
+      exit(EXIT_ERROR)
     end
 
     desc 'version', Texts.t('cli.desc.version')
@@ -136,6 +149,10 @@ module SpecGen
       artifacts = Generators.call(profile: profile, rules: rules, document: document,
                                   options: options)
       artifacts.each { |artifact| say artifact_line(artifact) }
+      # Числа прогона собранного класса печатаются как есть из метрик
+      # артефакта отчёта: считать их второй раз значило бы разойтись с ним.
+      run = Generators::Artifact.run_metrics(artifacts)
+      say Texts.t('generators.run_line', **run) if run
       say warnings_line(profile)
       profile
     end
@@ -210,10 +227,6 @@ module SpecGen
 
     def missing_spec?
       options[:spec] && !File.file?(options[:spec])
-    end
-
-    def not_implemented(command)
-      raise Error, Texts.t('cli.not_implemented', command: command, version: SpecGen::VERSION)
     end
   end
 end

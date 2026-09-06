@@ -1,26 +1,21 @@
-# Отчёт о разборе спецификации «<%= provider_title %>»
+# <%= t('heading.title', title: provider_title) %>
 
 | | |
 |---|---|
-| Провайдер | `<%= provider_slug %>` |
-| Спецификация | `<%= spec_file %>`, версия <%= spec_version %>, OpenAPI <%= oas_version %> |
-| Класс сервиса | `<%= class_name %>` |
-| Файл сервиса | `<%= service_file %>` |
+| <%= t('head_provider') %> | `<%= provider_slug %>` |
+| <%= t('head_spec') %> | <%= t('head_spec_value', file: spec_file, version: spec_version, oas: oas_version) %> |
+| <%= t('head_class') %> | `<%= class_name %>` |
+| <%= t('head_file') %> | `<%= service_file %>` |
 
-Отчёт сгенерирован инструментом integrate из той же модели провайдера, что и
-сервис: всё, о чём здесь сказано, лежит в сгенерированных файлах рядом.
-Каждая строка ниже — действие, а не констатация: если элемент спецификации
-попал в отчёт, к нему приложено, что сделал инструмент и чем это закрыть.
-Генерация не блокируется никогда, поэтому отчёт описывает готовые файлы, а не
-причину отказа.
+<%= t('prose.intro') %>
 
-## 1. Сводка
+## <%= t('heading.summary') %>
 
-<%= table(['Показатель', 'Значение'], summary_rows).join("\n") %>
+<%= table([t('metric_col'), t('value_col')], summary_rows).join("\n") %>
 
-Сгенерированные артефакты:
+<%= t('prose.artifacts_intro') %>
 
-<%= table(['Файл', 'Что это', 'Строк'], artifact_rows).join("\n") %>
+<%= table([t('file_col'), t('what_col'), t('lines_col')], artifact_rows).join("\n") %>
 <%- if overlay -%>
 
 <%= t('overlay_applied', file: overlay.file, title: overlay.title) %>
@@ -28,14 +23,9 @@
 <%= table([t('overlay_target'), t('overlay_action'), t('overlay_why')], overlay_rows).join("\n") %>
 <%- end -%>
 
-### Сверка сгенерированного со спецификацией
+### <%= t('heading.checks') %>
 
-Тела из `fixtures.json` проверены схемами той же спецификации, из которой они
-выведены: запрос — схемой тела своей операции, ответ — схемой своего кода
-ответа, уведомление — схемой тела вебхука. Это замыкает круг: спецификация →
-разбор → генерация → обратно к спецификации. Тела, которых спецификация не
-обещала (операция без `requestBody`, ответ `204`), в счёт не идут — проверять
-там нечего.
+<%= t('prose.checks_intro') %>
 
 <%= checks.line %>
 <%- checks.groups.each do |group| -%>
@@ -48,17 +38,26 @@
 <%- end -%>
 <%- end -%>
 
-## 2. Покрытие спецификации
+### <%= t('heading.run') %>
 
-**Покрытие: <%= coverage.percent %> % (<%= coverage.covered %> из <%= coverage.total %> элементов). В границах контракта: <%= coverage.in_scope_percent %> % (<%= coverage.covered %> из <%= coverage.in_scope_total %>).**
+<%= t('prose.run_intro', base_class: base_class) %>
 
-Формула первой цифры — доля покрытых элементов от всех: сумма покрытого по
-семи измерениям, делённая на сумму найденного. Среднее по измерениям
-отброшено намеренно: измерения разного размера, и четыре события вебхука не
-должны весить столько же, сколько триста полей схем. Покрытым считается
-элемент, у которого в сгенерированном коде есть ветка, выражение или строка
-таблицы; поля тел запросов считаются по операциям, поля входящих тел — по
-схемам.
+<%= run.line %>
+<%- run.groups.each do |group| -%>
+
+**<%= group.title %>** — <%= group.explanation %>
+
+<%= list(group.items).join("\n") %>
+<%- unless group.hidden.zero? -%>
+- <%= group.more %>
+<%- end -%>
+<%- end -%>
+
+## <%= t('heading.coverage') %>
+
+<%= t('prose.coverage_line', percent: coverage.percent, covered: coverage.covered, total: coverage.total, in_contract: coverage.in_scope_percent, in_contract_total: coverage.in_scope_total) %>
+
+<%= t('prose.coverage_formula') %>
 
 <%= coverage_scope_note %>
 
@@ -72,14 +71,13 @@
 <%= coverage_scope_rest %>
 <%- end -%>
 
-<%= table(['Измерение', 'Найдено', 'Покрыто', 'Покрытие'],
+<%= table([t('dimension_col'), t('found_col'), t('covered_col'), t('coverage_col')],
           coverage.dimensions.map { |d| [dimension_name(d), d.total, d.covered, d.percent_text] }).join("\n") %>
 
-### Что не покрыто и почему
+### <%= t('heading.gaps') %>
 
 <%- if coverage.gaps.empty? -%>
-Непокрытых элементов нет: каждый элемент спецификации задействован в
-сгенерированной интеграции.
+<%= t('prose.gaps_none') %>
 <%- else -%>
 <%= coverage_buckets_line %>
 
@@ -88,20 +86,17 @@
 <%= coverage_folded_blocks %>
 <%- end -%>
 
-## 3. Неоднозначности
+## <%= t('heading.ambiguities') %>
 
-Элементы, о которых спецификация говорит недостаточно, чтобы решение было
-однозначным. Инструмент решил сам — что именно, сказано под каждым кодом; от
-человека нужна проверка, а не заполнение пропуска.
+<%= t('prose.ambiguities_intro') %>
 
 <%- if warnings.ambiguities.empty? -%>
-Ничего не найдено: всё, что попало в код, выведено из структуры спецификации
-или справочников без догадок.
+<%= t('prose.ambiguities_none') %>
 <%- else -%>
 <%- warnings.ambiguities.each do |group| -%>
 ### `<%= group.code %>` — <%= group.total %>
 
-Что сделал инструмент: <%= group.items.first.action %>
+<%= t('prose.group_action', action: group.items.first.action) %>
 
 <%- group.items.each do |item| -%>
 - **`<%= item.path %>`** — <%= item.message %>
@@ -115,17 +110,14 @@
 <%- end -%>
 <%- end -%>
 <%- unless group.hidden.zero? -%>
-- и ещё <%= group.hidden %> с тем же кодом
+- <%= t('prose.group_more', count: group.hidden) %>
 <%- end -%>
 
 <%- end -%>
 <%- end -%>
-### Как собрать overlay
+### <%= t('heading.overlay_howto') %>
 
-Фрагменты выше — действия одного документа OpenAPI Overlay 1.0.0
-(<https://spec.openapis.org/overlay/v1.0.0.html>). Соберите файл
-`<%= provider_slug %>.overlay.yaml`, вставив их подряд под ключ `actions`,
-замените значения `TODO` и перегенерируйте:
+<%= t('prose.overlay_assemble', provider: provider_slug) %>
 
 ```yaml
 overlay: 1.0.0
@@ -142,72 +134,60 @@ actions:
 ./integrate --spec <%= spec_file %> --provider <%= provider_slug %> --overlay <%= provider_slug %>.overlay.yaml
 ```
 
-Склеивать руками не обязательно: флаг `--fix` пишет этот файл пятым артефактом
-рядом с остальными. Слоты в нём закомментированы — выбор между кандидатами
-остаётся за человеком, потому что раскомментированная строка читается
-инструментом как достоверная.
+<%= t('prose.overlay_fix') %>
 
-## 4. Операции вне контракта и без роли
+## <%= t('heading.operations') %>
 
-Операция, которой нет места в контракте базового класса, не выбрасывается: для
-неё генерируется отдельный публичный метод, и здесь сказано какой. Роль
-операции закрепляется синонимом в `rules/operations.yml` — расширения
-`x-specgen-role` для операции в модели нет (`docs/IR.md`, таблица расширений).
+<%= t('prose.operations_intro') %>
 
 <%- if operations.any? -%>
 <%= table(operations.headers, operations.rows).join("\n") %>
 <%- else -%>
-Ничего не найдено: все операции спецификации отображены на методы контракта.
+<%= t('prose.operations_none') %>
 <%- end -%>
 
-## 5. Противоречия в самой спецификации
+## <%= t('heading.contradictions') %>
 
-Спецификация расходится сама с собой или со своими соседями: enum против
-примеров, коды ответов одной операции против другой, проза против структуры.
-Инструмент выбрал, чему верить, и продолжил; правится это правкой
-спецификации, а не настройкой инструмента.
+<%= t('prose.contradictions_intro') %>
 
 <%- if warnings.contradictions.empty? -%>
-Ничего не найдено: enum, примеры и коды ответов в спецификации согласованы.
+<%= t('prose.contradictions_none') %>
 <%- else -%>
 <%- warnings.contradictions.each do |group| -%>
 ### `<%= group.code %>` — <%= group.total %>
 
-Что сделал инструмент: <%= group.items.first.action %>
+<%= t('prose.group_action', action: group.items.first.action) %>
 
 <%= list(group.items.map { |item| "**`#{item.path}`** — #{item.message}" }).join("\n") %>
 <%- unless group.hidden.zero? -%>
-- и ещё <%= group.hidden %> с тем же кодом
+- <%= t('prose.group_more', count: group.hidden) %>
 <%- end -%>
 
 <%- end -%>
 <%- end -%>
-## 6. Справки
+## <%= t('heading.notes') %>
 
-Факты, о которых читателю стоит знать; решения за человека инструмент здесь не
-принимал. Списки сокращены до первых <%= notes_limit %> элементов в группе — полный набор
-виден в `./integrate analyze --spec <%= spec_file %>`.
+<%= t('prose.notes_intro', limit: notes_limit, spec: spec_file) %>
 
 <%- if warnings.notes.empty? -%>
-Ничего не найдено.
+<%= t('prose.notes_none') %>
 <%- else -%>
 <%- warnings.notes.each do |group| -%>
-**`<%= group.code %>`** — <%= group.total %><%= group.reference ? ", подробности в разделе #{group.reference}" : '' %>
+**`<%= group.code %>`** — <%= group.total %><%= group.reference ? t('prose.notes_reference', section: group.reference) : '' %>
 
 <%= list(group.items.map { |item| "`#{item.path}` — #{item.message}" }).join("\n") %>
 <%- unless group.hidden.zero? -%>
-- и ещё <%= group.hidden %> с тем же кодом
+- <%= t('prose.group_more', count: group.hidden) %>
 <%- end -%>
 
 <%- end -%>
 <%- end -%>
-## 7. Что доделать руками
+## <%= t('heading.checklist') %>
 
 <%- if checklist.empty? -%>
-Ничего: всё, что описано в спецификации, попало в сгенерированные файлы без
-заглушек.
+<%= t('prose.checklist_none') %>
 <%- else -%>
 <%= numbered(checklist).join("\n") %>
 
-Итого: <%= checklist_total %>.
+<%= t('prose.checklist_total', total: checklist_total) %>
 <%- end -%>
