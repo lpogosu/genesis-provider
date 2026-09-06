@@ -20,7 +20,8 @@ module SpecGen
         def units_lines
           units = profile.units
           return [] if units.nil?
-          return [t('run_units_unknown', evidence: units.unit.evidence)] unless units.known?
+          # Обоснование у члена, которого не хватило: см. IR::Units#blocker.
+          return [t('run_units_unknown', evidence: units.blocker.evidence)] unless units.known?
 
           members = [units.unit, units.exponent, units.currency].select { |d| ctx.doubtful?(d) }
           members.map { |d| t('run_units_doubt', confidence: label(d), evidence: d.evidence) }

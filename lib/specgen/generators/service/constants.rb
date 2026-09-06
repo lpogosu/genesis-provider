@@ -53,7 +53,10 @@ module SpecGen
           units = @ctx.profile.units
           return ['AMOUNT_MULTIPLIER', units.multiplier.to_s, units_comment(units)] if units&.known?
 
-          evidence = units.nil? ? @ctx.t('units_none') : units.unit.evidence
+          # Обоснование берётся у члена, которого не хватило, а не у
+          # выведенного: иначе комментарий говорит «единицы не выведены
+          # (type: integer -> минорные единицы)» и противоречит сам себе.
+          evidence = units.nil? ? @ctx.t('units_none') : units.blocker.evidence
           text = @ctx.t('units_unknown', evidence: evidence)
           ['AMOUNT_MULTIPLIER', '1', Ruby.comment(text, width: WIDTH, prefix: '# TODO: ')]
         end
