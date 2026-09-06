@@ -18,31 +18,91 @@ module SpecGen
     # что пришлось оставить открытым: нет operationId, роль неоднозначна,
     # роль распознана, но ей нет места в Provider::BaseService.
     class OperationAnalyzer < Base
-      # Роли, для которых у контракта нет метода. Они распознаны, а не
-      # проигнорированы: генератор даёт каждой отдельный публичный метод, а
-      # отчёт говорит «вне контракта».
-      OFF_CONTRACT = (IR::Roles::OPERATION - IR::Roles::CONTRACT - [:unmapped]).freeze
       # Диапазон, который некоторые спецификации пишут в нижнем регистре;
       # принимается, но не репортится.
       RANGE = /\A[1-5]xx\z/i
 
       # Заполняет `profile.operations` в порядке спецификации.
+      #
+      # Два прохода, а не один: слот роли в сервисе занимает не самая
+      # уверенная операция поодиночке, а согласованная пара «создание —
+      # опрос статуса», и знать о ней можно только когда прочитаны все
+      # операции. Предупреждения пишутся после выбора пары, чтобы отчёт
+      # объяснял ту роль, которая осталась у операции, а не ту, что была у
+      # неё до связывания.
       # @return [IR::ProviderProfile] тот профиль, который был передан
       def call
         @assigner = Matchers::Assigner.new(rules: rules)
-        each_operation { |path, http_method, node| add(path, http_method, node) }
+        built = []
+        each_operation { |path, http_method, node| built << add(path, http_method, node) }
+        pair(built)
+        built.each { |operation, result, at| report(operation, result, at) }
         profile
       end
 
       private
 
+      # Предупреждения об одной операции; их состав и порядок решает
+      # OperationNotes.
+      def report(operation, result, at)
+        OperationNotes.new(operation: operation, result: result, at: at)
+                      .call.each { |note| record(note) }
+      end
+
+      # @return [Array(IR::Operation, OperationRole::Result, String)]
       def add(path, http_method, node)
         at = json_path('paths', path, http_method)
         key = SchemaNaming.operation_key(node['operationId'], http_method, path)
         result = role_of(path, http_method, node)
         operation = build(path, http_method, node, at: at, key: key, role: result.derived)
         profile.operations << operation
-        report(operation, result, at)
+        [operation, result, at]
+      end
+
+      # Слоты ролей занимает согласованная пара: сервис, который создаёт один
+      # ресурс, а статус опрашивает у другого, выглядит рабочим и молча
+      # неверен.
+      def pair(built)
+        choices = OperationPairing.new(operations: profile.operations, book: rules.operations,
+                                       links: links).call
+        choices.each_value { |choice| occupy(choice, built) }
+        PairingNotes.new(choices).notes.each { |note| record(note) }
+      end
+
+      # @return [Array<OperationLinks::Link>] формальные связи операций
+      def links
+        reader = OperationLinks.new(data)
+        found = reader.call
+        reader.problems.each { |message, at| warn_shape(message, at) }
+        found
+      end
+
+      # Выбранная операция занимает слот роли; обоснование дописывается
+      # только когда было из чего выбирать, иначе отчёт остаётся прежним.
+      def occupy(choice, built)
+        operation = choice.operation
+        operation.primary = true
+        text = PairingNotes.evidence(choice)
+        return if text.nil?
+
+        operation.role = derived_with(operation.role, choice, text)
+        silence(built, operation) if choice.link
+      end
+
+      # Формальная ссылка — первый уровень доверия: она заменяет вывод, а не
+      # дополняет его.
+      def derived_with(role, choice, text)
+        return IR::Derived.structural(choice.role, evidence: text) if choice.link
+
+        IR::Derived.heuristic(role.value, confidence: role.confidence,
+                                          evidence: [role.evidence, text].compact.join)
+      end
+
+      # Роль, названную ссылкой, не о чем предупреждать: сомнение снято
+      # спецификацией.
+      def silence(built, operation)
+        entry = built.find { |candidate, _, _| candidate.equal?(operation) }
+        entry[1].reason = nil unless entry.nil?
       end
 
       # @return [IR::Operation]
@@ -60,7 +120,13 @@ module SpecGen
                           http_method: http_method.to_sym, path: path,
                           tags: node['tags'].is_a?(Array) ? node['tags'].grep(String) : [],
                           body: node['requestBody'].is_a?(Hash),
-                          secured: secured?(node)).call
+                          secured: secured?(node), list: list_response?(node)).call
+      end
+
+      # Форма успешного ответа отличает чтение одного ресурса от листинга;
+      # служебные свойства обёртки перечисляет справочник.
+      def list_response?(node)
+        ResponseShape.list?(node, ignore: rules.operations.veto(:list_response)[:ignore])
       end
 
       # Операция отказывается от авторизации пустым списком — так
@@ -149,64 +215,6 @@ module SpecGen
       def skipped_status(code, at)
         warn_shape(Texts.t('analyzers.operation.status_unknown', code: code.inspect), at)
         nil
-      end
-
-      # Два разных молчания — два разных предупреждения: плотная борьба
-      # настоящих кандидатов это неоднозначность, которую разрешает человек,
-      # а полное отсутствие набранных очков означает, что спецификация не
-      # говорит ничего, что мы могли бы прочитать.
-      def report(operation, result, at)
-        missing_id(operation, at) if operation.id.nil?
-        case result.reason
-        when :ambiguous then ambiguous(result, at)
-        when :below_threshold then doubtful(result, at)
-        when :no_signal then no_role(result, at)
-        end
-        off_contract(operation, at)
-      end
-
-      def missing_id(operation, at)
-        profile.warn(:operation_id_missing,
-                     Texts.t('analyzers.operation.id_missing', key: operation.key.inspect),
-                     json_path: at, severity: :info)
-      end
-
-      def no_role(result, at)
-        profile.warn(:operation_unmapped,
-                     Texts.t('analyzers.operation.unmapped', scores: scores_of(result)),
-                     json_path: at)
-      end
-
-      def ambiguous(result, at)
-        profile.warn(:operation_role_ambiguous,
-                     Texts.t('analyzers.operation.ambiguous', scores: scores_of(result)),
-                     json_path: at)
-      end
-
-      # Роль взята ниже порога: по третьему уровню доверия из CLAUDE.md
-      # лучший кандидат всё равно присваивается, но человек должен об этом
-      # узнать из отчёта.
-      def doubtful(result, at)
-        profile.warn(:operation_role_ambiguous,
-                     Texts.t('analyzers.operation.below_threshold', scores: scores_of(result)),
-                     json_path: at)
-      end
-
-      # @return [String] "create_payout 8.0, webhook 8.0 из 13.0 поданных голосов"
-      def scores_of(result)
-        listed = result.scores.take(3).reject { |_, score| score.zero? }
-                       .map { |role, score| "#{role} #{format('%.1f', score)}" }
-        Texts.t('analyzers.operation.scores', scores: listed.join(', '),
-                                              cast: format('%.1f', result.cast))
-      end
-
-      def off_contract(operation, at)
-        role = operation.role.value
-        return unless OFF_CONTRACT.include?(role)
-
-        profile.warn(:operation_unmapped,
-                     Texts.t('analyzers.operation.off_contract', role: role),
-                     json_path: at, severity: :info)
       end
 
       def warn_shape(message, at)

@@ -23,10 +23,17 @@ module SpecGen
     #   request_examples    {имя => значение} из examples у requestBody
     #   responses           [Response] в порядке спецификации
     #   secured             false, если операция объявляет `security: []`
+    #   primary             эта операция занимает слот своей роли в
+    #                       сгенерированном сервисе. Роль может быть у
+    #                       нескольких операций сразу (у Adyen Transfers
+    #                       шесть кандидатов на опрос статуса), и выбор между
+    #                       ними делает не уверенность поодиночке, а
+    #                       согласованная пара «создание — опрос статуса»:
+    #                       Analyzers::OperationPairing
     #   json_path           "$.paths['/payouts'].post"
     Operation = Struct.new(:id, :role, :http_method, :path, :summary, :tags, :parameters,
                            :request_schema, :request_required, :request_media_type,
-                           :request_examples, :responses, :secured, :json_path,
+                           :request_examples, :responses, :secured, :primary, :json_path,
                            keyword_init: true)
 
     # Словарь значений, проверки и выборки Operation.
@@ -49,11 +56,13 @@ module SpecGen
       # @param request_examples [Hash{String => Object}]
       # @param responses [Array<Response>]
       # @param secured [Boolean]
+      # @param primary [Boolean] занимает слот своей роли в сервисе
       # @param json_path [String, nil]
       # @raise [ArgumentError]
       def initialize(role:, http_method:, path:, id: nil, summary: nil, tags: [], parameters: [],
                      request_schema: nil, request_required: false, request_media_type: JSON,
-                     request_examples: {}, responses: [], secured: true, json_path: nil)
+                     request_examples: {}, responses: [], secured: true, primary: false,
+                     json_path: nil)
         Node.assert_derived!(role, 'роль операции', allowed: Roles::OPERATION,
                                                     allow_unknown: false)
         Node.assert_member!(METHODS, http_method, 'HTTP-метод')

@@ -129,6 +129,63 @@ RSpec.describe SpecGen::Analyzers::OperationAnalyzer do
     end
   end
 
+  # Отсечки формы: голоса говорят, на что операция похожа, а отсечка — может
+  # ли она вообще играть эту роль. Ложная роль хуже её отсутствия.
+  describe 'roles the shape of the operation forbids' do
+    def list_response(item = 'Customer')
+      { '200' => { 'description' => 'ok',
+                   'content' => { 'application/json' => { 'schema' => {
+                     'type' => 'object',
+                     'properties' => { 'total' => { 'type' => 'integer' },
+                                       'items' => { 'type' => 'array',
+                                                    'items' => { 'x-specgen-ref' =>
+                                                                   "#/components/schemas/#{item}" } } }
+                   } } } } }
+    end
+
+    it 'refuses a payment role to a name that holds no noun of that role' do
+      profile = analyze('/customers' => { 'post' => { 'operationId' => 'customer_create',
+                                                      'requestBody' => json_body } })
+      operation = profile.operations.first
+
+      expect(operation.role.value).to eq(:unmapped)
+      expect(operation.role.evidence).to include('отсечены по форме', 'create_payout')
+      expect(profile.warnings.first)
+        .to have_attributes(code: :operation_unmapped, severity: :info)
+      expect(profile.warnings.first.message).to include('create_payout', 'существительного')
+    end
+
+    it 'tells a listing from a status poll by the shape of the response, not the path' do
+      profile = analyze('/payouts' => { 'get' => { 'operationId' => 'listPayouts',
+                                                   'responses' => list_response('Payout') } })
+      operation = profile.operations.first
+
+      expect(operation.role.value).to eq(:unmapped)
+      expect(operation.role.evidence).to include('fetch_status', 'успешный ответ — список')
+    end
+
+    it 'keeps the status poll whose response is one resource' do
+      responses = { '200' => { 'description' => 'ok',
+                               'content' => { 'application/json' => { 'schema' => {
+                                 'type' => 'object',
+                                 'properties' => { 'id' => { 'type' => 'string' },
+                                                   'status' => { 'type' => 'string' } }
+                               } } } } }
+      profile = analyze('/payouts/{id}' => { 'get' => { 'operationId' => 'getPayout',
+                                                        'responses' => responses } })
+
+      expect(profile.operations.first.role.value).to eq(:fetch_status)
+    end
+
+    it 'refuses a role to an HTTP method the role is never expressed with' do
+      profile = analyze('/payouts' => { 'put' => { 'operationId' => 'replacePayouts',
+                                                   'requestBody' => json_body } })
+
+      expect(profile.operations.first.role.value).to eq(:unmapped)
+      expect(profile.warnings.map(&:message).join).to include('HTTP-метод операции')
+    end
+  end
+
   describe 'parameters' do
     it 'inherits the parameters of the path item and lets the operation override them' do
       shared = [{ 'name' => 'payout_id', 'in' => 'path', 'schema' => { 'type' => 'string' } },

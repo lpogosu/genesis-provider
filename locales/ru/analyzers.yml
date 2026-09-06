@@ -80,10 +80,51 @@ analyzers:
     no_runner_up: "больше ничего не набрало голосов"
     no_signal_evidence: "ни один сигнал не совпал ни с одной ролью"
     lost_evidence: "%{reason}: %{scores} из %{cast} поданных голосов (floor %{floor}, minimum %{minimum}, margin %{margin})"
+    vetoed_evidence: "ни одна роль не прошла отсечку формы: %{scores} из %{cast} поданных голосов"
+    vetoed: "больше всех голосов набрала роль %{role}, но она отсечена по форме: %{reason}; роль не присвоена, операция получает отдельный публичный метод"
+    rejected: "; отсечены по форме: %{roles}"
+    rejected_role: "%{role} — %{reason}"
     # Почему роль не присвоена; печатается в начале обоснования.
     reason:
       below_threshold: "ниже порога"
       ambiguous: "неоднозначно"
+      off_domain: "ни в пути, ни в operationId нет ни одного платёжного существительного (vetoes.domain_nouns в rules/operations.yml)"
+      method_mismatch: "HTTP-метод операции не из тех, которыми выражается эта роль (vetoes.http_method в rules/operations.yml)"
+      list_response: "успешный ответ — список, то есть листинг ресурса, а не чтение одного экземпляра (vetoes.list_response в rules/operations.yml)"
+
+  # Формальная связь операций: Link Object OpenAPI 3.x в ответе операции.
+  link:
+    shape: "ссылка %{name} должна быть объектом"
+    target_missing: "ссылка не называет цель: нет ни operationId, ни operationRef"
+    unknown_operation: "ссылка указывает на операцию %{id}, которой нет в спецификации"
+    unknown_ref: "operationRef %{ref} не читается как указатель на операцию этого документа"
+
+  # Выбор пары «создание — опрос статуса» и объяснение этого выбора.
+  pairing:
+    evidence: "; пара с %{partner} выбрана согласованно: %{rules}"
+    evidence_unrelated: "; спецификация не связывает её с %{partner} ни ссылкой, ни общим ресурсом — взят лучший кандидат поодиночке"
+    link_evidence: "OpenAPI Link Object %{name} в ответе %{status} операции %{from} называет %{to}: связь прочитана, а не выведена"
+    link_parameters: "; идентификатор берётся из %{expressions}"
+    tie_message: "на роль %{role} претендует несколько операций с одинаковой уверенностью %{confidence} (%{candidates}); взята %{chosen}: %{reason}"
+    tie_reason_rules: "её связывает с %{partner} %{rules}"
+    tie_reason_order: "спецификация не связывает её с остальными ни ссылкой, ни общим контейнером пути, ни общей схемой ответа — выбор решён порядком объявления, проверьте его"
+    mismatch_message: "создание бьёт в %{create}, а статус опрашивается у %{status}: спецификация не связывает эти операции ни Link Object, ни общим контейнером пути, ни общей схемой ответа; сгенерированный сервис создаст один ресурс, а читать будет другой"
+    # Правила связывания producer -> consumer, веса — в rules/operations.yml.
+    rule:
+      link: "формальная ссылка Link Object"
+      container: "общий контейнер ресурса `%{word}`"
+      path_prefix: "путь продолжает путь создания"
+      schema: "общая схема успешного ответа %{word}"
+    link_overlay: |
+      - target: "%{path}"
+        update:
+          links:
+            # связь создания с опросом статуса; после неё пара читается
+            # формально, без эвристик
+            %{name}:
+              operationId: %{operation}
+              parameters:
+                %{parameter}: "$response.body#/id"
 
   parameter:
     role_pending: "роли параметров сопоставляют матчеры полей, это более поздняя стадия"
@@ -105,12 +146,16 @@ analyzers:
     ambiguous: "статус %{status} неоднозначен: %{reason}"
     unknown: "статус %{status} не найден ни в каноне, ни среди синонимов rules/statuses.yml"
     tail: "составное имя %{status}: как статус читается его хвост %{tail} -> %{internal}; ведущие слова отброшены, поэтому уверенность понижена"
+    suffix: "составное имя %{status}: хвост `%{suffix}` исхода не меняет (suffixes rules/statuses.yml), остаток читается как %{tail} -> %{internal}; уверенность понижена, потому что часть имени отброшена"
+    head: "составное имя %{status}: хвост как статус не читается, смысл задаёт голова %{head} -> %{internal} (heads rules/statuses.yml); в этом списке только слова, ведущие в in_progress, поэтому операция останется в опросе, а не будет помечена выплаченной"
+    not_status: "значение %{status} называет тип операции, а не её исход: слово `%{word}` из not_status_words rules/statuses.yml; похоже, что в одном enum смешаны статусы и виды проводки"
     partial: "статус %{status} целиком не найден ни в каноне, ни среди синонимов rules/statuses.yml; как статус читается только хвост %{tail} (%{internal}), но ведущее слово `%{word}` меняет смысл (modifiers rules/statuses.yml) — снимать его нельзя"
     overlay: "x-specgen-status-map: %{status} -> %{internal}"
     overlay_bad: "x-specgen-status-map: для %{status} задано неизвестное значение %{value} (допустимо: %{allowed})"
     ambiguous_message: "%{evidence}; выберите внутренний статус (in_progress | approved | rejected) в overlay"
     unknown_message: "%{evidence}; выберите внутренний статус в overlay или добавьте синоним в справочник"
     partial_message: "%{evidence}; выберите внутренний статус в overlay — молча приравнять его к хвосту нельзя: частично проведённый платёж ушёл бы в платформу как выплаченный"
+    not_status_message: "%{evidence}; проверьте enum: если это всё-таки статусы, задайте их в overlay, иначе поле статусом не является"
     missing_from_enum: "статус %{status} встречается в примере, но его нет ни в одном enum поля статуса; карта статусов дополнена им, спецификацию стоит поправить"
     field_missing_message: "ни одна схема не объявляет поле статуса: ни одно имя не совпало с синонимами роли status в rules/roles.yml, и ни одному полю матчеры не дали эту роль, поэтому fetch_status и process_callback не смогут перевести ответ во внутренний статус"
     overlay_fragment: |

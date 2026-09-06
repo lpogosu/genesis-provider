@@ -14,6 +14,14 @@ module SpecGen
     # из COMA (Rahm & Bernstein 2001), применённый к эндпоинтам вместо
     # столбцов: несколько независимых матчеров, веса, агрегация, порог.
     #
+    # Поверх голосования стоят отсечки формы (секция `vetoes` того же
+    # справочника): роль платёжной области не присваивается операции, в имени
+    # и пути которой нет ни одного платёжного существительного, а опрос
+    # статуса — операции, чей успешный ответ является списком. Голоса
+    # отвечают на вопрос «на что это похоже», отсечка — на вопрос «может ли
+    # эта операция вообще играть такую роль». Без них `customer_create`
+    # становился созданием выплаты, а `GET /payouts` — опросом статуса.
+    #
     # Уверенность — арифметика, а не ощущение: это доля победителя в весе
     # всех сигналов, которые вообще голосовали. Сигнал, который голосовать
     # не смог — в спецификации нет operationId, — не попадает в знаменатель,
@@ -30,10 +38,12 @@ module SpecGen
       #   role        победившая роль или :unmapped
       #   derived     IR::Derived с ролью, уверенностью и обоснованием
       #   reason      nil, если роль победила, иначе :no_signal,
-      #               :below_threshold или :ambiguous
-      #   scores      [[роль, очки]], лучшая первой
+      #               :below_threshold, :ambiguous или причина отсечки
+      #   scores      [[роль, очки]], лучшая первой; только прошедшие отсечки
       #   cast        суммарный вес сигналов, которые голосовали
-      Result = Struct.new(:role, :derived, :reason, :scores, :cast, keyword_init: true)
+      #   rejected    {роль => причина отсечки} — те, кого отсекла форма
+      Result = Struct.new(:role, :derived, :reason, :scores, :cast, :rejected,
+                          keyword_init: true)
 
       TEMPLATE = /\A\{.+\}\z/
       # Сигналы, которые называют роль, а не просто сопутствуют ей.
@@ -51,13 +61,16 @@ module SpecGen
       # @param tags [Array<String>]
       # @param body [Boolean] операция объявляет requestBody
       # @param secured [Boolean] false, если она объявляет `security: []`
-      def initialize(book:, http_method:, path:, id: nil, tags: [], body: false, secured: true)
+      # @param list [Boolean] успешный ответ операции — список (READ_MULTI)
+      def initialize(book:, http_method:, path:, id: nil, tags: [], body: false, secured: true,
+                     list: false)
         @book = book
         @id_tokens = Rules::Normalizer.tokens(id)
         @http_method = http_method
         @tags = Array(tags).flat_map { |tag| Rules::Normalizer.tokens(tag) }
         @body = body
         @secured = secured
+        @list = list
         read_path(path)
       end
 
@@ -154,15 +167,67 @@ module SpecGen
       # (низкой) уверенностью и предупреждением в отчёте. Пустое место тоже
       # ручной шаг, а эксперты 4 сентября 2026 просили, чтобы инструмент
       # решал сам. :unmapped остаётся только там, где кандидата нет вовсе:
-      # ни один сигнал не совпал ни с одной ролью.
+      # ни один сигнал не совпал ни с одной ролью либо каждый кандидат
+      # отсечён по форме.
       def decide(votes, cast)
-        ranked = rank(votes)
+        all = rank(votes)
+        rejected = by_score(all, vetoes(votes))
+        ranked = all.reject { |role, _| rejected.key?(role) }
+        role, score = ranked.first
+        reason = reason_of(votes, ranked, cast, rejected)
+        return unmapped(ranked, cast, reason, rejected) if role.nil? || silent?(reason)
+
+        matched(role, ranked, Tally.new(vote: votes[role], score: score, cast: cast),
+                reason, notable(rejected, all, score))
+      end
+
+      # Отсечённая роль называется в обосновании победившей только тогда,
+      # когда без отсечки она бы и победила. «DELETE — не создание выплаты»
+      # верно, но ничего не объясняет, а пять таких строк прячут настоящую
+      # арифметику. У операции без роли список остаётся полным: там отсечка
+      # и есть всё объяснение.
+      def notable(rejected, ranked, score)
+        scores = ranked.to_h
+        rejected.select { |role, _| scores[role].to_f > score }
+      end
+
+      # @return [Symbol, nil] почему роль нельзя присвоить уверенно
+      def reason_of(votes, ranked, cast, rejected)
         role, score = ranked.first
         reason = rejection(score, ranked[1], cast)
         reason = :no_signal unless identified?(votes[role])
-        return unmapped(ranked, cast, reason) if reason == :no_signal
+        return veto_reason(rejected) if reason == :no_signal && !rejected.empty?
 
-        matched(role, ranked, Tally.new(vote: votes[role], score: score, cast: cast), reason)
+        reason
+      end
+
+      # Роли не осталось: либо ни один сигнал не совпал, либо всё, что
+      # совпало, отсекла форма.
+      def silent?(reason)
+        reason == :no_signal || RoleEvidence::VETO_REASONS.include?(reason)
+      end
+
+      # Отсечённые роли перечисляются в порядке баллов: первой должна стоять
+      # та, что набрала больше всех, — именно её называет предупреждение.
+      def by_score(ranked, rejected)
+        ranked.filter_map { |role, _| [role, rejected[role]] if rejected.key?(role) }.to_h
+      end
+
+      # Слова, по которым проверяются отсечки: имя операции, путь и тег.
+      # Описание сюда не входит — проза остаётся подтверждающим сигналом, и
+      # фраза «Create a payment agreement» превращала соглашение в выплату.
+      # Отсекается только роль, которую назвал опознающий сигнал: голос
+      # метода и тела не называет роль и отклонять в нём нечего.
+      def vetoes(votes)
+        named = votes.select { |_, vote| identified?(vote) }
+        RoleVeto.new(book: book, tokens: (@id_tokens + @segments + @tags).uniq,
+                     http_method: @http_method, list: @list).reasons(named)
+      end
+
+      # Причина, которую видит человек, когда роли не осталось: та, по
+      # которой отсечён лидер голосования.
+      def veto_reason(rejected)
+        rejected.values.first || :no_signal
       end
 
       def rank(votes)
@@ -207,69 +272,26 @@ module SpecGen
       # Уверенность всегда настоящая — доля голосов победителя. Роль,
       # взятая ниже порога, отличается от уверенной не подкрученным числом,
       # а тем, что у неё есть reason: он поднимает предупреждение в отчёте.
-      def matched(role, ranked, tally, reason)
+      def matched(role, ranked, tally, reason, rejected)
+        evidence = evidence_of(ranked, tally.cast, rejected)
         confidence = [tally.score / denominator(tally.cast), book.scoring(:ceiling)].min
-        derived = IR::Derived.heuristic(role, confidence: confidence,
-                                              evidence: evidence(ranked, tally, reason))
-        Result.new(role: role, derived: derived, reason: reason, scores: ranked, cast: tally.cast)
-      end
-
-      # Роль, взятая ниже порога или в плотной борьбе, объясняется тем же
-      # текстом, что и неприсвоенная: человеку важно увидеть, кто и с каким
-      # отрывом победил, а не только имя роли.
-      def evidence(ranked, tally, reason)
-        return lost_evidence(ranked, tally.cast, reason) if reason
-
-        won_evidence(tally.vote, tally.score, tally.cast, ranked)
+        text = reason ? evidence.lost(reason) : evidence.won(tally.vote, tally.score)
+        derived = IR::Derived.heuristic(role, confidence: confidence, evidence: text)
+        Result.new(role: role, derived: derived, reason: reason, scores: ranked,
+                   cast: tally.cast, rejected: rejected)
       end
 
       # :unmapped — это решение, а не измерение, поэтому его уверенность
       # равна нулю, а набранные очки, приведшие к нему, идут в обоснование.
-      def unmapped(ranked, cast, reason)
-        evidence = lost_evidence(ranked, cast, reason)
-        derived = IR::Derived.heuristic(:unmapped, confidence: 0.0, evidence: evidence)
-        Result.new(role: :unmapped, derived: derived, reason: reason, scores: ranked, cast: cast)
+      def unmapped(ranked, cast, reason, rejected)
+        text = evidence_of(ranked, cast, rejected).lost(reason)
+        derived = IR::Derived.heuristic(:unmapped, confidence: 0.0, evidence: text)
+        Result.new(role: :unmapped, derived: derived, reason: reason, scores: ranked,
+                   cast: cast, rejected: rejected)
       end
 
-      def won_evidence(vote, score, cast, ranked)
-        parts = Rules::OperationsBook::SIGNALS.filter_map do |signal|
-          "#{signal} #{number(vote[signal])}" if vote.key?(signal)
-        end
-        Texts.t('analyzers.operation.match_evidence', parts: parts.join(', '),
-                                                      score: number(score), cast: number(cast),
-                                                      runner_up: runner_up_text(ranked))
-      end
-
-      def lost_evidence(ranked, cast, reason)
-        return Texts.t('analyzers.operation.no_signal_evidence') if reason == :no_signal
-
-        Texts.t('analyzers.operation.lost_evidence',
-                reason: Texts.t("analyzers.operation.reason.#{reason}"),
-                scores: scores_text(ranked), cast: number(cast),
-                floor: number(book.scoring(:floor)), minimum: percent(:minimum),
-                margin: percent(:margin))
-      end
-
-      def percent(key)
-        format('%<share>d%%', share: book.scoring(key) * 100)
-      end
-
-      def runner_up_text(ranked)
-        runner_up = ranked[1]
-        return Texts.t('analyzers.operation.no_runner_up') if runner_up.nil? ||
-                                                              runner_up.last.zero?
-
-        Texts.t('analyzers.operation.runner_up', role: runner_up.first,
-                                                 score: number(runner_up.last))
-      end
-
-      def scores_text(ranked)
-        ranked.take(3).reject { |_, score| score.zero? }
-              .map { |role, score| "#{role} #{number(score)}" }.join(', ')
-      end
-
-      def number(value)
-        format('%.1f', value.to_f)
+      def evidence_of(ranked, cast, rejected)
+        RoleEvidence.new(book: book, ranked: ranked, cast: cast, rejected: rejected)
       end
     end
   end

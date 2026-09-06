@@ -102,13 +102,19 @@ module SpecGen
       end
 
       # Операция, которая занимает слот роли в сгенерированном сервисе.
-      # Берётся самая уверенная: роль может быть присвоена и ниже порога, и
-      # тогда первая по порядку спецификации не должна вытеснять уверенную.
-      # При равной уверенности решает порядок спецификации.
+      #
+      # Сначала — та, которую выбрал Analyzers::OperationPairing (`primary`):
+      # создание и опрос статуса выбираются согласованной парой, а не
+      # поодиночке, иначе сервис создаёт один ресурс, а статус читает у
+      # другого. Профиль, собранный без стадии связывания (тесты, ручная
+      # сборка IR), падает на прежнее правило: самая уверенная, при равенстве
+      # — первая по порядку спецификации.
       # @param role [Symbol] одна из Roles::OPERATION
       # @return [Operation, nil]
       def operation_for(role)
-        operations_by_role(role).min_by.with_index { |op, i| [-op.role.confidence.to_f, i] }
+        listed = operations_by_role(role)
+        listed.find(&:primary) ||
+          listed.min_by.with_index { |op, i| [-op.role.confidence.to_f, i] }
       end
 
       # @param key [String] Operation#key

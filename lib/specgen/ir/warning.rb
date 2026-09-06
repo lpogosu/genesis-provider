@@ -49,6 +49,14 @@ module SpecGen
       # статусу, но не называет ни одного статуса, объявленного в enum;
       # условие взаимодействия не выведено, догадки нет.
       #
+      # Два кода про выбор операции на слот роли: `operation_tie` — на роль
+      # претендует несколько операций с одинаковой уверенностью, и в тексте
+      # сказано, чем ничья разрешена; `operation_pair_mismatch` — выбранные
+      # создание и опрос статуса не связаны в спецификации ничем, то есть
+      # сервис создаёт один ресурс, а читать будет другой. Второй — худший
+      # класс ошибки: результат выглядит рабочим и молча неверен, поэтому у
+      # него есть готовый фрагмент overlay с Link Object.
+      #
       # Четыре кода про роли полей различают четыре исхода матчеров:
       # `field_role_unknown` — ни один матчер не проголосовал, необязательное
       # поле пропущено (справка); `required_field_role_unknown` — то же у
@@ -61,6 +69,7 @@ module SpecGen
         spec_element_unsupported schema_unresolved example_missing
         provider_name_unknown server_environment_unknown
         operation_unmapped operation_id_missing operation_role_ambiguous
+        operation_tie operation_pair_mismatch
         undeclared_status_code
         field_role_unknown required_field_role_unknown field_role_low_confidence
         field_role_conflict conditional_required_hint

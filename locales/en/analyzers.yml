@@ -80,10 +80,51 @@ analyzers:
     no_runner_up: "nothing else scored"
     no_signal_evidence: "no signal matched any role"
     lost_evidence: "%{reason}: %{scores} of %{cast} votes cast (floor %{floor}, minimum %{minimum}, margin %{margin})"
+    vetoed_evidence: "no role passed the shape veto: %{scores} of %{cast} votes cast"
+    vetoed: "role %{role} scored highest but was vetoed by shape: %{reason}; no role was assigned and the operation gets a public method of its own"
+    rejected: "; vetoed by shape: %{roles}"
+    rejected_role: "%{role} — %{reason}"
     # Why no role was assigned; printed at the start of the evidence.
     reason:
       below_threshold: "below threshold"
       ambiguous: "ambiguous"
+      off_domain: "neither the path nor the operationId holds a single payment noun (vetoes.domain_nouns in rules/operations.yml)"
+      method_mismatch: "the HTTP method of the operation is not one this role is expressed with (vetoes.http_method in rules/operations.yml)"
+      list_response: "the success response is a list, that is a listing of the resource and not a read of one instance (vetoes.list_response in rules/operations.yml)"
+
+  # The formal link between operations: an OpenAPI 3.x Link Object.
+  link:
+    shape: "link %{name} must be an object"
+    target_missing: "the link names no target: neither operationId nor operationRef"
+    unknown_operation: "the link points at operation %{id}, which the spec does not declare"
+    unknown_ref: "operationRef %{ref} does not read as a pointer to an operation of this document"
+
+  # Choosing the create/poll pair and explaining that choice.
+  pairing:
+    evidence: "; paired with %{partner} coherently: %{rules}"
+    evidence_unrelated: "; the spec links it to %{partner} neither by a link nor by a shared resource — the best candidate was taken on its own"
+    link_evidence: "OpenAPI Link Object %{name} in response %{status} of %{from} names %{to}: the relation is read, not inferred"
+    link_parameters: "; the identifier comes from %{expressions}"
+    tie_message: "role %{role} is claimed by several operations with the same confidence %{confidence} (%{candidates}); %{chosen} was taken: %{reason}"
+    tie_reason_rules: "it is tied to %{partner} by %{rules}"
+    tie_reason_order: "the spec relates it to the others neither by a link, nor by a shared path container, nor by a shared response schema — the choice fell to declaration order, so check it"
+    mismatch_message: "creation posts to %{create} while the status is polled at %{status}: the spec relates these operations neither by a Link Object, nor by a shared path container, nor by a shared response schema; the generated service will create one resource and read another"
+    # Producer -> consumer rules; their weights live in rules/operations.yml.
+    rule:
+      link: "a formal Link Object"
+      container: "the shared resource container `%{word}`"
+      path_prefix: "the path continues the creation path"
+      schema: "the shared success response schema %{word}"
+    link_overlay: |
+      - target: "%{path}"
+        update:
+          links:
+            # ties creation to the status poll; with it the pair reads
+            # formally, without heuristics
+            %{name}:
+              operationId: %{operation}
+              parameters:
+                %{parameter}: "$response.body#/id"
 
   parameter:
     role_pending: "parameter roles are matched by the field matchers, a later stage"
@@ -105,12 +146,16 @@ analyzers:
     ambiguous: "status %{status} is ambiguous: %{reason}"
     unknown: "status %{status} is neither in the canon nor among the synonyms of rules/statuses.yml"
     tail: "compound name %{status}: its tail reads as a status, %{tail} -> %{internal}; the leading words were dropped, so the confidence is lowered"
+    suffix: "compound name %{status}: the trailing `%{suffix}` does not change the outcome (suffixes in rules/statuses.yml), the rest reads as %{tail} -> %{internal}; confidence is lowered because part of the name was dropped"
+    head: "compound name %{status}: the tail does not read as a status, the head carries the meaning, %{head} -> %{internal} (heads in rules/statuses.yml); that list holds only words leading to in_progress, so the operation stays in polling instead of being marked paid"
+    not_status: "value %{status} names an operation type rather than its outcome: the word `%{word}` comes from not_status_words in rules/statuses.yml; the enum appears to mix statuses with booking types"
     partial: "status %{status} as a whole is neither in the canon nor among the synonyms of rules/statuses.yml; only the tail %{tail} (%{internal}) reads as a status, but the leading word `%{word}` changes its meaning (modifiers in rules/statuses.yml), so it cannot be dropped"
     overlay: "x-specgen-status-map: %{status} -> %{internal}"
     overlay_bad: "x-specgen-status-map: %{status} is given the unknown value %{value} (allowed: %{allowed})"
     ambiguous_message: "%{evidence}; pick the internal status (in_progress | approved | rejected) in an overlay"
     unknown_message: "%{evidence}; pick the internal status in an overlay or add a synonym to the dictionary"
     partial_message: "%{evidence}; pick the internal status in an overlay — equating it with the tail silently would report a partially settled payment to the platform as paid"
+    not_status_message: "%{evidence}; check the enum: if these values really are statuses, map them in an overlay, otherwise the field is not a status field"
     missing_from_enum: "status %{status} appears in an example but in no enum of a status field; the status map was extended with it, the spec should be fixed"
     field_missing_message: "no schema declares a status field: no name matches a synonym of role status in rules/roles.yml and the matchers gave that role to no field, so fetch_status and process_callback cannot translate a response into an internal status"
     overlay_fragment: |

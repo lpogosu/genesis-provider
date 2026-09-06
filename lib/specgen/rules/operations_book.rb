@@ -12,6 +12,8 @@ module SpecGen
     # совпасть, или нулевой вес тихо искривили бы каждую сгенерированную
     # интеграцию.
     class OperationsBook < Book
+      include OperationTuning
+
       FILE = 'operations.yml'
       # Независимые сигналы композитного матчера, в том порядке, в котором их
       # перечисляет строка обоснования.
@@ -56,6 +58,8 @@ module SpecGen
       def build
         @weights = load_weights
         @scoring = load_scoring
+        @vetoes = load_vetoes
+        @pairing = load_pairing
         @entries = load_roles
       end
 
@@ -87,8 +91,7 @@ module SpecGen
         fault('operations.above_zero', at, key: key, got: describe(value))
       end
 
-      def fraction(value, key)
-        at = path('scoring', key)
+      def fraction(value, key, at = path('scoring', key))
         return value.to_f if value.is_a?(Numeric) && FRACTION.cover?(value)
 
         fault('operations.fraction', at, key: key, range: FRACTION, got: describe(value))
