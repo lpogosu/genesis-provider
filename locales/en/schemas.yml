@@ -15,6 +15,7 @@ analyzers:
     body_schema_unreadable: "the body of %{operation} declares no readable schema, so nothing describes what it carries"
     response_body_undeclared: "response %{status} of %{operation} is declared by its description alone: there is no `content`, so nothing describes the body — either declare a schema or declare a bodiless response with 204"
     nesting_too_deep: "schemas nest deeper than %{limit} levels here, so %{name} was left undescribed; check the spec for a schema that contains itself"
+    ref_cycle: "a schema refers to itself: %{chain}; the cycle is cut — the second occurrence keeps the reference without its fields, and those fields do not reach the code"
     field_schema_missing: "`%{field}` refers to schema %{schema}, which is not described anywhere"
     role_pending: "field roles are matched by the field matchers, a later stage"
     required_not_list: "`required` must be a list of property names"
