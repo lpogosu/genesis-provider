@@ -18,18 +18,39 @@ ROOT = File.expand_path('..', __dir__)
 TMP = File.join(ROOT, 'tmp', 'real-specs')
 FIXTURES = File.join(ROOT, 'spec', 'fixtures', 'specs', 'real')
 RAW = 'https://raw.githubusercontent.com'
+GURU = 'https://api.apis.guru/v2/specs'
 
 # Что качаем: имя файла => [URL, каталог назначения].
+# Каталог назначения — FIXTURES только при подтверждённой открытой лицензии и
+# разумном размере файла; всё остальное живёт в TMP. Причины по каждой строке —
+# в spec/fixtures/specs/real/README.md.
 SOURCES = {
-  'stripe_spec3.yaml' => ["#{RAW}/stripe/openapi/master/openapi/spec3.yaml", TMP],
-  'mollie_specs.yaml' => ["#{RAW}/mollie/openapi/main/specs.yaml", TMP],
+  # --- в репозитории: открытая лицензия, файл до ~130 КБ ------------------
   'adyen_payout_v68.yaml' =>
     ["#{RAW}/Adyen/adyen-openapi/main/yaml/PayoutService-v68.yaml", FIXTURES],
   'adyen_transfers_v4.yaml' =>
     ["#{RAW}/Adyen/adyen-openapi/main/yaml/TransferService-v4.yaml", FIXTURES],
   'paypal_payouts_v1.json' =>
     ["#{RAW}/paypal/paypal-rest-api-specifications/main/openapi/payments_payouts_batch_v1.json",
-     FIXTURES]
+     FIXTURES],
+  'paystack_v1.yaml' => ["#{RAW}/PaystackHQ/openapi/main/dist/paystack.yaml", FIXTURES],
+  'govuk_pay_v1.json' =>
+    ["#{RAW}/alphagov/pay-publicapi/master/openapi/publicapi_spec.json", FIXTURES],
+  'moov_paygate_v1.yaml' =>
+    ["#{RAW}/moov-io/paygate/master/pkg/client/api/openapi.yaml", FIXTURES],
+
+  # --- только в tmp/: велики, либо лицензия не подтверждена ---------------
+  'stripe_spec3.yaml' => ["#{RAW}/stripe/openapi/master/openapi/spec3.yaml", TMP],
+  'mollie_specs.yaml' => ["#{RAW}/mollie/openapi/main/specs.yaml", TMP],
+  'velo_payments.yaml' =>
+    ["#{RAW}/velopaymentsapi/VeloOpenApi/master/spec/openapi.yaml", TMP],
+  'dwolla.yaml' => ["#{RAW}/Dwolla/dwolla-openapi/main/openapi.yml", TMP],
+  'revolut_business.yaml' =>
+    ["#{RAW}/revolut-engineering/revolut-openapi/master/yaml/business.yaml", TMP],
+  'airwallex.yaml' =>
+    ["#{RAW}/airwallex/airwallex-openapi/main/openapi/client-api/latest/" \
+     'airwallex-openapi-latest.yaml', TMP],
+  'klarna_payments.yaml' => ["#{GURU}/klarna.com/payments/1.0.0/openapi.yaml", TMP]
 }.freeze
 
 # Скачивает один файл, следуя перенаправлениям.

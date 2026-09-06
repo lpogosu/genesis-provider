@@ -7,11 +7,24 @@ require 'specgen/web'
 RSpec.describe SpecGen::Web::App do
   include Fixtures
 
-  # Каталог тот же, что у пакетного прогона: семь спецификаций, три из них
-  # чужие. Каталог статики намеренно несуществующий — сервер обязан
+  # Каталог тот же, что у пакетного прогона: наши спецификации и чужие в
+  # `real/` рядом. Каталог статики намеренно несуществующий — сервер обязан
   # подниматься без собранного фронта.
   def specs_dir
     File.join(SpecGen::ROOT, 'spec', 'fixtures', 'specs')
+  end
+
+  # Числа берём с диска, а не константой: набор спецификаций пополняется, и
+  # тест сервера не должен падать от того, что рядом положили ещё одну
+  # чужую спеку.
+  def spec_files
+    Dir.glob(File.join(specs_dir, '**', '*')).select do |path|
+      File.file?(path) && SpecGen::Batch::EXTENSIONS.include?(File.extname(path).downcase)
+    end
+  end
+
+  def foreign_count
+    spec_files.count { |path| File.basename(File.dirname(path)) == 'real' }
   end
 
   def request
@@ -57,7 +70,7 @@ RSpec.describe SpecGen::Web::App do
     it 'lists every specification of the directory with its title' do
       specs = json(request.get('/api/specs'))['specs']
 
-      expect(specs.size).to eq(7)
+      expect(specs.size).to eq(spec_files.size)
       expect(specs.map { |spec| spec['id'] }).to include('novapay', 'broken', 'paypal_payouts_v1')
       novapay = specs.find { |spec| spec['id'] == 'novapay' }
       expect(novapay).to include('file' => 'novapay.yaml', 'title' => 'NovaPay Payout API',
@@ -70,7 +83,8 @@ RSpec.describe SpecGen::Web::App do
       foreign = specs.reject { |spec| spec['own'] }
 
       expect(foreign.map { |spec| spec['file'] }).to all(start_with('real/'))
-      expect(foreign.size).to eq(3)
+      expect(foreign.size).to eq(foreign_count)
+      expect(foreign.size).to be >= 2
     end
   end
 
@@ -181,8 +195,8 @@ RSpec.describe SpecGen::Web::App do
     it 'runs every specification of the directory and keeps failures as rows' do
       body = json(request.get('/api/batch'))
 
-      expect(body['total']).to eq(7)
-      expect(body['rows'].size).to eq(7)
+      expect(body['total']).to eq(spec_files.size)
+      expect(body['rows'].size).to eq(spec_files.size)
       row = body['rows'].find { |candidate| candidate['provider'] == 'novapay' }
       expect(row).to include('file' => 'novapay.yaml', 'artifacts' => 4, 'error' => nil)
       expect(row['coverage_percent']).to be_a(Integer)

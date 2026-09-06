@@ -12,16 +12,29 @@
 | `adyen_payout_v68.yaml` | [Adyen/adyen-openapi](https://github.com/Adyen/adyen-openapi), `yaml/PayoutService-v68.yaml` | MIT (`LICENSE-adyen`) | 93 КБ | OpenAPI 3.1, выплаты, сумма как вложенный объект `amount.value` + `amount.currency`, статус в поле `resultCode` |
 | `adyen_transfers_v4.yaml` | [Adyen/adyen-openapi](https://github.com/Adyen/adyen-openapi), `yaml/TransferService-v4.yaml` | MIT (`LICENSE-adyen`) | 218 КБ | 12 операций, 99 схем, десятки enum, которые не являются статусами |
 | `paypal_payouts_v1.json` | [paypal/paypal-rest-api-specifications](https://github.com/paypal/paypal-rest-api-specifications), `openapi/payments_payouts_batch_v1.json` | Apache-2.0 (`LICENSE-paypal`) | 76 КБ | JSON, OAuth2 client credentials, сумма строкой в мажорных единицах, заголовок `PayPal-Request-Id`, статусы `SUCCESS`/`UNCLAIMED`/`ONHOLD` |
+| `paystack_v1.yaml` | [PaystackHQ/openapi](https://github.com/PaystackHQ/openapi), `dist/paystack.yaml` | MIT (`LICENSE-paystack`) | 125 КБ | 120 операций — самая крупная фикстура набора; `POST /transferrecipient` требует `bank_code` и `account_number`, то есть единственная чужая спека с реквизитом той же формы, что у НоваПэй; сумма в kobo/pesewas/cents объявлена только прозой `description`, экспоненту берём из enum валют (NGN, GHS, ZAR, USD); `$ref` указывает внутрь `paths` (`#/paths/~1plan/get/responses/200`), а не в `components` — проверка резолвера на JSON Pointer с экранированием |
+| `govuk_pay_v1.json` | [alphagov/pay-publicapi](https://github.com/alphagov/pay-publicapi), `openapi/publicapi_spec.json` | MIT (`LICENSE-govuk-pay`) | 109 КБ | JSON, государственный провайдер Великобритании (не коммерческий шлюз); сумма — целое в пенсах с `minimum`/`maximum`, из которых генератор собрал предпроверки в `check_conditions`; вебхуков нет вовсе, поэтому `process_callback` отказывает `webhooks_not_supported`, а статус берётся только опросом; заголовок `Idempotency-Key` объявлен явно |
+| `moov_paygate_v1.yaml` | [moov-io/paygate](https://github.com/moov-io/paygate), `pkg/client/api/openapi.yaml` | Apache-2.0 (`LICENSE-moov`) | 23 КБ | Самая маленькая чужая спека набора: ACH-переводы, 10 операций; `securitySchemes` не объявлены вообще — ветка «авторизация не выведена» на настоящей спеке; получатель не телефон и не карта, а пара `{customerID, accountID}`; enum `TransferStatus` (`canceled`/`failed`/`reviewable`/`pending`/`processed`) — четыре значения канон, `reviewable` кандидат в `ambiguous`; объявлены сразу два заголовка, `X-Idempotency-Key` и `X-Request-ID` |
 
 Файлы скопированы как есть, без правок. Обновлять — повторной загрузкой по
 тем же ссылкам через `bin/fetch-real-specs --refresh`.
 
+Взято `pkg/client/api/openapi.yaml`, а не `api/client.yaml` из того же
+репозитория: во втором `$ref` уходит по сети на
+`raw.githubusercontent.com/moov-io/base/.../common.yaml`, а загрузчик сетевых
+ссылок не разрешает и говорит об этом прямо (осознанный отказ, не дефект).
+
 ## Что скачивается по требованию (`bin/fetch-real-specs` → `tmp/real-specs/`)
 
-| Файл | Источник | Почему не в репозитории |
-|---|---|---|
-| `stripe_spec3.yaml` | [stripe/openapi](https://github.com/stripe/openapi), `openapi/spec3.yaml` | MIT, но 6,4 МБ — нагрузочный тест загрузчика, не фикстура |
-| `mollie_specs.yaml` | [mollie/openapi](https://github.com/mollie/openapi), `specs.yaml` | 1,9 МБ, OpenAPI 3.1, файл лицензии в репозитории отсутствует |
+| Файл | Источник | Лицензия | Размер | Почему не в репозитории | Что интересного |
+|---|---|---|---|---|---|
+| `stripe_spec3.yaml` | [stripe/openapi](https://github.com/stripe/openapi), `openapi/spec3.yaml` | MIT | 6,4 МБ | размер | нагрузочный тест загрузчика; останавливается на циклическом `$ref` |
+| `mollie_specs.yaml` | [mollie/openapi](https://github.com/mollie/openapi), `specs.yaml` | файла лицензии нет | 1,9 МБ | размер и лицензия | OpenAPI 3.1, 128 операций, десяток доменов — на ней видно, что отчёту нужна группировка |
+| `velo_payments.yaml` | [velopaymentsapi/VeloOpenApi](https://github.com/velopaymentsapi/VeloOpenApi), `spec/openapi.yaml` | MIT в файле, но копирайт в `LICENSE` чужой (шаблон) | 691 КБ | лицензия неясна, плюс размер | Чистая платформа **выплат**: `/v3/payouts`, payee, funding, OAuth2 client credentials. По домену — самая близкая к кейсу из всех найденных |
+| `dwolla.yaml` | [Dwolla/dwolla-openapi](https://github.com/Dwolla/dwolla-openapi), `openapi.yml` | MIT | 603 КБ | размер | OpenAPI 3.1, ACH и mass payments, HAL-ссылки вместо плоских идентификаторов; рядом в репозитории лежит настоящий **OpenAPI Overlay** (`gram/overlay.yml`) — чужой пример формата, который мы реализуем |
+| `revolut_business.yaml` | [revolut-engineering/revolut-openapi](https://github.com/revolut-engineering/revolut-openapi), `yaml/business.yaml` | файла лицензии нет | 703 КБ | лицензия и размер | 101 операция, `/pay`, `/transfer`, `/payout-links`, счета в разных валютах |
+| `airwallex.yaml` | [airwallex/airwallex-openapi](https://github.com/airwallex/airwallex-openapi), `openapi/client-api/latest/…yaml` | MIT | 4,3 МБ | размер | Второй после Stripe циклический `$ref` (`IndustryCategoryV3Item` ссылается сам на себя) — подтверждает, что ограничение резолвера не единичный случай |
+| `klarna_payments.yaml` | каталог [APIs.guru](https://github.com/APIs-guru/openapi-directory) (CC0-1.0), `klarna.com/payments/1.0.0` | у первоисточника лицензии нет, у каталога CC0 | 57 КБ | лицензия первоисточника | Нижняя граница набора: чистый приём платежей без выплат, `securitySchemes` нет, покрытие 12 % — и это нормальный результат, а не сбой |
 
 Скачивается руками, лицензия на документацию не ясна, поэтому в репозиторий
 не кладём:
@@ -30,8 +43,15 @@
   [документации](https://yookassa.ru/developers/using-api/openapi-specification),
   OpenAPI 3.0.2, YAML, 338 КБ, есть выплаты и СБП. Российский провайдер,
   самый близкий к кейсу. Сохранить как `tmp/real-specs/yookassa_openapi.yaml`.
-- Wise Platform API: [docs.wise.com/api-reference](https://docs.wise.com/api-reference),
-  упоминаются `index.json` / `index.yaml`.
+
+Искали и не нашли машиночитаемой спецификации (6 сентября 2026): Wise
+(`transferwise/api-docs` — это Slate, OpenAPI внутри нет), GoCardless,
+Checkout.com, Flutterwave, Razorpay, Rapyd, Xendit, dLocal, Тинькофф, НСПК
+СБП. У них документация есть, отдельного `openapi.yaml` в открытом доступе
+нет. Крупные, но найденные: Square (`square/connect-api-specification`,
+Apache-2.0, 7,9 МБ), Lithic (Apache-2.0, 1,1 МБ), Paddle (Apache-2.0,
+7,4 МБ), Plaid (`plaid/plaid-openapi`, файла лицензии нет) — в набор не
+берём, они ничего нового к нему не добавляют.
 
 ## Что показал первый прогон `./integrate analyze` (4 сентября 2026)
 
@@ -159,3 +179,108 @@ Auth (`shopId` + секретный ключ → `username`/`password`), обя�
 (большая спека даёт шум вместо сигнала). Первое чинится строками в `rules/`
 и `StructureMatcher` из промпта 6, второе — якорем основного ресурса и
 группировкой отчёта из промпта 10, а не кодом под провайдера.
+
+## Что показал прогон новых спецификаций (6 сентября 2026)
+
+Полная генерация, не только анализ: `./integrate generate --all` (десять
+спецификаций каталога, 15,6 с) и `--all --specs tmp/real-specs` (восемь
+скачанных, 47,6 с). Ни одного стектрейса; два отказа — с внятным
+сообщением и кодом возврата 0 у пакетного прогона.
+
+| Спецификация | Операций | С ролью | Покрытие | В контракте | Замечаний | Время |
+|---|---|---|---|---|---|---|
+| `paystack_v1.yaml` | 120 | 95/120 | 51 % | 69 % | 453 | 4,3 с |
+| `govuk_pay_v1.json` | 16 | 14/16 | 37 % | 91 % | 201 | 2,8 с |
+| `moov_paygate_v1.yaml` | 10 | 9/10 | 59 % | 83 % | 51 | 1,0 с |
+| `velo_payments.yaml` (tmp) | 109 | 83/109 | 39 % | 80 % | 1482 | 14,5 с |
+| `dwolla.yaml` (tmp) | 82 | 66/82 | 42 % | 87 % | 1063 | 7,4 с |
+| `revolut_business.yaml` (tmp) | 101 | 85/101 | 49 % | 69 % | 619 | 4,9 с |
+| `klarna_payments.yaml` (tmp) | 6 | 6/6 | 12 % | 45 % | 160 | 3,1 с |
+| `airwallex.yaml` (tmp) | — | — | — | — | — | отказ, 1,8 с |
+
+**Paystack.** Лучший результат среди чужих спек по абсолютным числам: 81
+операция из 120 отображена на контракт, 463 роли полей из 634 скалярных,
+`bank_code` и `account_number` опознаны в `POST /transferrecipient`.
+Не распознано:
+
+- **статусов ноль, и это не наш промах**. Все ответы Paystack — `$ref` на
+  один общий конверт `{ status: boolean, message, data }`, причём `data` без
+  схемы. Значений статуса перевода в спецификации нет нигде: ни enum, ни
+  примеров ответов. `StatusReader` правильно не принял булев `status` за
+  статус операции, `STATUS_MAP` пуст, а в сгенерированном коде на его месте
+  TODO. Это как раз тот случай, ради которого существует `report.md`: спека
+  не описывает того, без чего интеграция не работает, и инструмент говорит
+  об этом прямо, вместо того чтобы выдумать таблицу;
+- кодов ошибок ноль по той же причине: ошибка у Paystack — проза в
+  `message`, enum нет нигде;
+- единицы: `AMOUNT_MULTIPLIER = 100` выведен верно, но по enum валют
+  (NGN, GHS, ZAR, USD — у всех экспонента 2), а не по слову «kobo».
+  Это ровно тот порядок вывода, который требует конституция. Мелкий
+  дефект вывода: в комментарии сгенерированного файла фраза
+  обрывается — «…экспонента 2, валюта )», потому что конкретной валюты
+  у операции нет и подстановка пустая;
+- 14 операций «вне контракта» — списки банков, планы, подписки,
+  страницы оплаты: честно вынесены отдельными публичными методами.
+
+**GOV.UK Pay.** Самая высокая доля «в контракте» среди чужих — 91 %.
+Показательные ветки: из `minimum`/`maximum` суммы в пенсах генератор собрал
+предпроверки в `check_conditions` (`operation.amount > 100_000` →
+`errors.amount_above_maximum`), а из отсутствия вебхуков — отказ
+`webhooks_not_supported` в `process_callback`. Не распознано:
+
+- статусы взяты из `Agreement.status` (`active`/`inactive` не сопоставлены),
+  а не из `PaymentState.status`, у которого enum в спеке не объявлен вовсе.
+  Это уже описанная выше проблема якоря основного ресурса, а не новая;
+- **ложный кандидат в валюту:** поле `method` объекта ссылок (его пример —
+  `GET`) набрало роль `currency` с уверенностью 0.24, и в комментарии
+  сгенерированного файла появилось «валюта GET». Порог отработал, кандидат
+  помечен эвристикой ниже порога и множитель взят по умолчанию, но кандидат
+  бессмысленный: значение, которого нет в таблице ISO 4217, не должно
+  становиться валютой даже как догадка.
+
+**Moov PayGate.** Маленькая спека, и почти всё вывелось: 8 операций из 10 на
+контракт, статусы 4 из 5. Не распознано:
+
+- `reviewable` — статус «на ручной проверке», пары среди трёх внутренних нет;
+  кандидат в `ambiguous` рядом с `on_hold`;
+- получатель — `{customerID, accountID}`, ролей для внутренних
+  идентификаторов счетов у нас нет, и это правильно: догадка о платформе
+  запрещена, в коде TODO;
+- **дефект выбора заголовка идемпотентности.** В спеке объявлены оба:
+  `X-Idempotency-Key` («Idempotent key in the header which expires after
+  24 hours», только у `POST /transfers`) и `X-Request-ID` («Optional
+  requestID allows application developer to trace requests through the
+  systems logs», у четырёх операций). Выбран `X-Request-ID` — заголовок
+  трассировки, а не идемпотентности, — судя по всему потому, что он
+  встречается чаще. Хуже того, выбор молчаливый: в `report.md` про
+  конкуренцию заголовков нет ни строки. Это нарушение правила «никогда не
+  угадываем молча»: при нескольких совпавших алиасах нужен и приоритет
+  (точное имя из семейства `idempotency` бьёт `request-id`), и запись
+  в отчёт.
+
+**Velo Payments, Dwolla, Revolut Business.** Три большие спеки прошли
+целиком. Общее у всех трёх и уже знакомое: `fetch_status` раздаётся каждому
+`GET /x/{id}` (у Velo это пользователи и источники финансирования, у Dwolla —
+клиенты и документы), а число замечаний измеряется тысячами без группировки.
+Своё: у Dwolla это OpenAPI 3.1 и HAL — ответ `201` на `POST /transfers` не
+содержит поля с ролью `provider_operation_id` (идентификатор приходит
+ссылкой), и генератор честно пишет TODO ровно там, где платформа ждёт
+`result[:id]`, вместо того чтобы подставить наугад. Там же видно, что сумма
+у Dwolla — объект без дробного примера, и единицы не выведены: TODO и слот
+в overlay.
+
+**Klarna Payments.** Покрытие 12 % — самое низкое в наборе, и это ожидаемо:
+приём платежей без выплат, авторизация в спеке не объявлена, статусов нет.
+Ценность фикстуры именно в нижней границе: инструмент не падает и честно
+показывает, что отображать почти нечего.
+
+**Airwallex (4,3 МБ, tmp).** Отказ на циклическом `$ref`
+(`IndustryCategoryV3Item` → сам на себя) — та же причина, что у Stripe.
+Второй случай подтверждает: это не экзотика Stripe, а обычная практика, и
+резолвер обязан размыкать цикл ссылкой-маркером, а не отказываться от файла.
+Пока это единственный класс чужих спек, который мы не берём.
+
+**Moov `api/client.yaml` (не в наборе).** Отказ на `$ref` по сети. Здесь
+отказ осознанный и правильный: генератор не делает сетевых запросов, и
+сообщение говорит об этом прямо. Взяли из того же репозитория собранный
+вариант `pkg/client/api/openapi.yaml`.
