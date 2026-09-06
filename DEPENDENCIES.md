@@ -57,7 +57,7 @@ OpenAPI 3.1. `openapi_first` отклонён: падает на путях с �
 | json | 2.21.2 | Ruby | rubocop |
 | language_server-protocol | 3.17.0.6 | MIT | rubocop |
 | lint_roller | 1.1.0 | MIT | rubocop |
-| parallel | 2.1.0 | MIT | rubocop |
+| parallel | 2.0.1 | MIT | rubocop; закреплён ниже 2.1, потому что 2.1 требует Ruby 3.3 |
 | parser | 3.3.12.0 | MIT | rubocop |
 | prism | 1.9.0 | MIT | rubocop (rubocop-ast) |
 | public_suffix | 7.0.5 | MIT | webmock (addressable) |
