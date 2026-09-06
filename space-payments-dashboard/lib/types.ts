@@ -41,6 +41,7 @@ export type Summary = {
   schemas: number
   fields: number
   coverage_percent: number
+  contract_coverage_percent: number
   warnings: { total: number; error: number; warning: number; info: number }
   auth: string
   units: string
@@ -65,6 +66,7 @@ export type BatchRow = {
   operations: number
   operations_with_role: number
   coverage_percent: number
+  contract_coverage_percent: number
   warnings: number
   artifacts: number
   error: string | null

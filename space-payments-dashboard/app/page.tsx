@@ -571,6 +571,16 @@ function ResultScreen({
             <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">coverage</div>
           </div>
           <div className="h-12 w-px bg-border" />
+          <div>
+            <div className="font-mono text-5xl tracking-[-0.08em]">
+              {summary.contract_coverage_percent}
+              <span className="text-2xl text-primary">%</span>
+            </div>
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              in contract
+            </div>
+          </div>
+          <div className="h-12 w-px bg-border" />
           <div className="pb-1 text-right font-mono text-xs text-muted-foreground">
             <div className="text-foreground">
               {summary.operations_with_role} / {summary.operations}
@@ -584,7 +594,7 @@ function ResultScreen({
         <Metric
           label="Операции"
           value={`${summary.operations_with_role} из ${summary.operations}`}
-          detail={`покрытие ${summary.coverage_percent}%`}
+          detail={`покрытие ${summary.coverage_percent}% · в контракте ${summary.contract_coverage_percent}%`}
         />
         <Metric label="Схемы" value={`${summary.schemas}`} detail={`полей: ${summary.fields}`} />
         <Metric
@@ -904,6 +914,7 @@ function BatchScreen({
                   <th>Ops</th>
                   <th>Mapped</th>
                   <th>Coverage</th>
+                  <th>In contract</th>
                   <th>Signals</th>
                   <th>Files</th>
                   <th>Status</th>
@@ -924,6 +935,7 @@ function BatchScreen({
                     <td className="py-4">{row.operations}</td>
                     <td className="py-4">{row.operations_with_role}</td>
                     <td className="py-4 font-mono text-primary">{row.coverage_percent}%</td>
+                    <td className="py-4 font-mono text-muted-foreground">{row.contract_coverage_percent}%</td>
                     <td className="py-4">{row.warnings}</td>
                     <td className="py-4">{row.artifacts}</td>
                     <td className="py-4">
