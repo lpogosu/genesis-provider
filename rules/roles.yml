@@ -26,6 +26,14 @@
 #            срабатывать и на свойстве `error`, и на схеме `PayoutError`,
 #            и на `error_details`. Поэтому в parents пишутся односложные
 #            смысловые слова, а не имена схем конкретных провайдеров.
+#   avoid_parents необязателен. Обратная подсказка: родитель, при котором
+#               синоним роли значит НЕ эту роль. `state` под `address` — штат,
+#               а не статус; `type` под `error` — вид ошибки, а не способ
+#               зачисления. Запрет снимает только словарный голос, слабые
+#               сигналы считаются как обычно: если роль всё-таки выведется,
+#               она выведется эвристикой и попадёт в отчёт. Слово, стоящее
+#               одновременно в `parents` и в `avoid_parents`, — ошибка
+#               загрузки.
 #   locations   необязателен. Где роль ожидается параметром операции:
 #               header | path | query | cookie. Подсказка StructureMatcher:
 #               ключ идемпотентности и подпись живут в заголовках,
@@ -81,6 +89,41 @@
 #                    провайдеров — код ошибки. Выбор между status и
 #                    error_code сделать нечем; поле остаётся неопознанным с
 #                    предупреждением и слотом x-specgen-role
+#   iban, account_number — реквизит счёта. Роли «счёт» в IR::Roles::FIELD
+#                    нет, а подменять ею card_number нельзя: IBAN уехал бы
+#                    провайдеру в поле номера карты. Прямо этот случай
+#                    называет CLAUDE.md («реквизит, которого нет в таблице
+#                    requisites, вслепую не генерируется») и ответ экспертов
+#                    25. Поле остаётся с TODO и строкой в INTEGRATION.md
+#   correlation_id — у Velo и Open Banking это идентификатор трассировки
+#                    запроса, уникальный на каждый повтор; принять его за наш
+#                    идентификатор операции значит потерять дедупликацию
+#   reference_id   — «ссылка» без указания, чья: у Square наша, у части
+#                    провайдеров их (та же причина, что у голого reference)
+#   channel, scheme — у одних это способ зачисления, у других канал
+#                    уведомления и платёжная система карты
+#   nonce          — и ключ идемпотентности, и одноразовое значение подписи
+#   value_date, booking_date — банковская дата валютирования и дата проводки:
+#                    это не время создания заявки и не время её завершения, а
+#                    третья величина, которой в IR роли нет. Замер показал их
+#                    у двух провайдеров каждую, но добавление `value_date` в
+#                    created_at сразу дало неверную роль полю запроса
+#                    depositbank.yaml — ровно тот случай, ради которого
+#                    написано правило 4 выше
+#   title          — короткий заголовок ошибки RFC 7807; лежит в одной схеме
+#                    с `detail`, поэтому вторым синонимом создавал бы конфликт
+#                    ролей на каждом теле problem+json
+#   errorType      — вид ошибки, а не её код; у Adyen лежит рядом с errorCode
+#                    в одной схеме и отобрал бы у него роль
+#   method         — слово из generic_tokens: `payment_method` синоним, а
+#                    голое `method` роль получает только по значениям enum
+#                    вместе с родителем (так это работает на cardpay.yaml)
+#
+# Замер по корпусу (6 сентября 2026, 33 публичные спецификации, 3177
+# операций, 6832 схемы, ~57 000 свойств): 88 имён этого файла добавлены по
+# результатам замера, каждое встречено минимум у одного провайдера. Полный
+# разбор — в отчёте исследования; здесь остались только те имена, у которых
+# в платёжной области один устойчивый смысл.
 #
 # Различие external_id и provider_operation_id (критично, путать нельзя):
 #   external_id            — НАШ идентификатор операции, который мы передаём
@@ -150,8 +193,8 @@ matchers:
     # `error.code` — кандидат, `countryCode` — нет. Как точные синонимы
     # (`id`, `type`) они по-прежнему работают — здесь речь только о
     # частичном совпадении.
-    generic_tokens: [account, caption, code, data, date, description, details, full, id,
-                     identifier, info, key, merchant, message, method, name, number, reason,
+    generic_tokens: [account, caption, code, data, date, description, detail, details, full,
+                     id, identifier, info, key, merchant, message, method, name, number, reason,
                      response, result, short, text, time, title, type, value, x]
     # Сходство по Левенштейну с лучшим синонимом, умноженное на levenshtein;
     # только при сходстве не ниже min_similarity и имени не короче
@@ -196,16 +239,26 @@ roles:
   amount:
     names:
       - amount
+      - amount_due
       - amount_minor
+      - amount_money
+      - amount_paid
+      - amount_total
       - amount_value
       - charge_amount
       - deposit_amount
       - gross_amount
+      - invoice_amount
       - order_amount
+      - paid_amount
       - payment_amount
       - payout_amount
+      - price
+      - settlement_amount
+      - source_amount
       - sum
       - summa
+      - target_amount
       - total
       - total_amount
       - transaction_amount
@@ -222,6 +275,7 @@ roles:
     # пишут и так и так. member_id — идентификатор участника в СБП.
     names:
       - aba
+      - aba_routing_number
       - bank_bic
       - bank_bik
       - bank_code
@@ -229,8 +283,16 @@ roles:
       - bank_identifier
       - bic
       - bik
+      - bsb
+      - bsb_code
+      - bsb_number
+      - clearing_code
+      - clearing_number
       - ifsc
+      - institution_id
+      - institution_number
       - member_id
+      - routing_number
       - sort_code
       - swift
       - swift_bic
@@ -253,6 +315,8 @@ roles:
       - bank_name
       - bank_short_name
       - bank_title
+      - financial_institution_name
+      - institution_name
       - naimenovanie_banka
       - recipient_bank
     types: [string]
@@ -266,7 +330,11 @@ roles:
       - card_no
       - card_num
       - card_number
+      - encrypted_card_number
+      - encrypted_number
       - masked_card
+      - masked_card_number
+      - masked_number
       - masked_pan
       - nomer_karty
       - primary_account_number
@@ -282,18 +350,31 @@ roles:
   completed_at:
     # Время перехода в терминальный статус. `updated_at` сюда НЕ входит.
     names:
+      - approved_at
+      - captured_at
+      - closed_at
       - completed
       - completed_at
       - completed_date
       - completed_time
       - completion_date
       - completion_time
+      - confirmed_at
       - executed_at
+      - execution_date
+      - finalized_at
       - finished_at
       - paid_at
+      - paid_date
+      - paid_time
       - posted_at
       - processed_at
+      - processed_on
+      - processed_time
       - settled_at
+      - settled_date
+      - settlement_date
+      - succeeded_at
       - time_completed
       - time_processed
     types: [integer, string]
@@ -305,11 +386,14 @@ roles:
       - created
       - created_at
       - created_date
+      - created_on
       - created_time
       - creation_date
       - creation_time
       - date_created
+      - initiated_at
       - registered_at
+      - requested_at
       - submitted_at
       - time_created
     types: [integer, string]
@@ -323,6 +407,12 @@ roles:
       - currency_code
       - currency_iso
       - iso_currency
+      - payment_currency
+      - payout_currency
+      - settlement_currency
+      - source_currency
+      - target_currency
+      - transaction_currency
       - valuta
       - valyuta
     tokens: [ccy]
@@ -346,8 +436,10 @@ roles:
       - error_code
       - failure_code
       - reason_code
+      - refusal_reason_code
       - rejection_code
       - response_code
+      - status_reason_code
     tokens: [code]
     types: [integer, string]
     # bad, duplicate, invalid — схема, названная самой ошибкой, а не словом
@@ -357,12 +449,13 @@ roles:
     # подтверждает кандидата, которого открыл слабый токен `code`, поэтому
     # шире поля с именем «код» она ничего не задевает.
     parents: [bad, decline, duplicate, error, errors, failure, fault, invalid, problem,
-              rejection]
+              refusal, rejection]
 
   error_message:
     names:
       - decline_reason
       - error_description
+      - error_detail
       - error_message
       - error_text
       - failure_message
@@ -370,7 +463,16 @@ roles:
       - message
       - reason_text
       - rejection_reason
-    tokens: [msg]
+      - status_detail
+      - status_message
+    # `detail` — поле RFC 7807 (application/problem+json), «подробное
+    # объяснение именно этого случая». Слово добавлено и в generic_tokens,
+    # поэтому роль оно опознаёт только вместе с родителем-ошибкой:
+    # `problem.detail` — кандидат, `card.detail` — нет. Соседнее `title` того
+    # же RFC намеренно НЕ добавлено: у 7807 оба поля лежат в одной схеме, и
+    # второй токен превратил бы каждое такое тело в конфликт ролей вместо
+    # вывода.
+    tokens: [detail, msg]
     types: [string]
     parents: [decline, error, errors, failure, fault, problem, rejection]
 
@@ -379,18 +481,26 @@ roles:
     names:
       - client_order_id
       - client_reference
+      - client_reference_id
       - client_transaction_id
+      - customer_reference
       - external_id
+      - external_identifier
       - external_operation_id
       - external_reference
+      - invoice_number
       - merchant_order_id
       - merchant_reference
       - merchant_transaction_id
       - order_id
       - order_number
+      - order_reference
       - partner_order_id
+      - partner_transaction_id
+      - reference_number
       - sender_batch_id
       - sender_item_id
+      - sender_reference
       - shop_order_id
     types: [integer, string]
     formats: [uuid]
@@ -429,9 +539,15 @@ roles:
     # `provider_id` исключён намеренно: это идентификатор самого провайдера,
     # а не операции.
     names:
+      - acquirer_id
+      - acquirer_reference
+      - batch_id
+      - capture_id
       - charge_id
       - deposit_id
+      - gateway_transaction_id
       - id
+      - invoice_id
       - operation_id
       - payment_id
       - payout_batch_id
@@ -440,8 +556,14 @@ roles:
       - provider_operation_id
       - provider_payment_id
       - provider_transaction_id
+      - psp_id
       - psp_reference
+      - refund_id
+      - remote_id
+      - session_id
       - transaction_id
+      - transaction_key
+      - transfer_code
       - transfer_id
     tokens: [trx, txn]
     types: [integer, string]
@@ -456,9 +578,12 @@ roles:
 
   recipient_phone:
     names:
+      - beneficiary_phone
       - cell
       - cell_phone
       - contact_phone
+      - customer_mobile
+      - customer_phone
       - mobile
       - mobile_number
       - mobile_phone
@@ -467,6 +592,7 @@ roles:
       - phone
       - phone_number
       - recipient_phone
+      - recipient_phone_number
       - telefon
       - telephone
       - telephone_number
@@ -482,10 +608,19 @@ roles:
     # Голое `type` оставлено намеренно: в платёжных схемах у получателя это
     # почти всегда способ зачисления (sbp/card/account). Вне родителя-
     # получателя вес совпадения гасится подсказкой parents.
+    #
+    # Замер 6 сентября 2026: `type` встречается в 24 спецификациях из 33 и
+    # значит там три разные вещи — способ зачисления, вид транзакции (Lithic:
+    # AUTHORIZATION, BALANCE_INQUIRY) и вид ошибки (Adyen: errorType). Без
+    # структурного контекста словарь дал бы третьему и второму случаю
+    # молчаливую ложную роль. Отсюда avoid_parents.
     names:
+      - account_type
+      - beneficiary_type
       - destination_type
       - payee_type
       - payment_method
+      - payment_method_type
       - payout_method
       - recipient_type
       - settlement_type
@@ -496,6 +631,12 @@ roles:
     # Способы зачисления, которыми провайдеры перечисляют тип получателя.
     enum_values: [account, bank_account, card, iban, phone, sbp, wallet]
     parents: [beneficiary, destination, payee, recipient]
+    # Родители, при которых синоним этой роли значит НЕ эту роль. Запрет
+    # снимает только словарный голос: слабые сигналы (enum способов
+    # зачисления, токен) считаются как обычно, и если роль всё-таки
+    # выведется, она выведется эвристикой и попадёт в отчёт.
+    avoid_parents: [address, billing, card, error, errors, event, failure, fault, notification,
+                    problem, rejection, shipping, webhook]
 
   signature:
     # Имена заголовков подписи перечислены в rules/signatures.yml; пересечение
@@ -519,11 +660,24 @@ roles:
       - current_status
       - deposit_status
       - operation_status
+      - order_status
+      - outcome
+      - payment_state
       - payment_status
+      - payout_state
       - payout_status
+      - refund_status
+      - settlement_status
       - state
       - status
       - transaction_state
       - transaction_status
+      - transfer_state
       - transfer_status
     types: [string]
+    # `state` значит статус в 13 спецификациях из 33, но в Checkout.com и
+    # Stripe это ещё и штат в адресе: в enum лезут AK, AL, AZ. Роль по имени
+    # без структурного контекста дала бы адресу карту статусов из названий
+    # штатов — молча. Отсюда avoid_parents; список намеренно короткий и
+    # состоит из слов, которых не бывает в имени схемы платёжной операции.
+    avoid_parents: [address, billing, delivery, location, shipping]

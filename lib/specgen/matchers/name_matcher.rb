@@ -62,12 +62,29 @@ module SpecGen
 
       def dictionary(subject)
         role = exact(subject.name)
+        role = nil if role && banned?(subject, role)
         return [vote(role, 1.0, :synonym, t('synonym', name: subject.name, role: role))] if role
 
         role, file = @headers[subject.normalized]
         return nil if role.nil?
 
         [vote(role, 1.0, :header, t('header', name: subject.name, file: file))]
+      end
+
+      # Родитель, при котором синоним роли значит не эту роль: `state` в
+      # адресе — штат, а не статус операции, `type` в теле ошибки — вид
+      # ошибки, а не способ зачисления. Это ровно те имена, из-за которых
+      # словарь давал бы молчаливую ложную роль, — самое дорогое, что может
+      # сделать матчер. Запрет снимает только словарный голос: слабые
+      # сигналы (токен, общие токены, Левенштейн) считаются как обычно, и
+      # если роль всё-таки выведется, она выведется эвристикой и попадёт в
+      # отчёт.
+      # @return [Boolean]
+      def banned?(subject, role)
+        words = @book.hints(role)[:avoid_parents]
+        return false if words.empty?
+
+        !StructureMatcher.parent_hit(subject.parents, words).nil?
       end
 
       # Лучший из слабых сигналов; при равенстве — первый, порядок

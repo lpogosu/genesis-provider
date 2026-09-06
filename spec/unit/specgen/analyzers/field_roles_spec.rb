@@ -71,11 +71,22 @@ RSpec.describe 'field roles through the analyzers' do
       profile = schemas('Thing' => object({ 'transaction_id' => { 'type' => 'string' },
                                             'payment_id' => { 'type' => 'string' } }))
 
-      expect(profile.schema('Thing').field('transaction_id').role.value).to eq(:provider_operation_id)
-      expect(profile.schema('Thing').field('payment_id').role).to be_unknown
+      # Both names are synonyms of the same role with the same confidence, so
+      # the main bearer decides: the shorter name wins, and the loser is named.
+      expect(profile.schema('Thing').field('payment_id').role.value).to eq(:provider_operation_id)
+      expect(profile.schema('Thing').field('transaction_id').role).to be_unknown
       expect(profile.warnings.first)
         .to have_attributes(code: :field_role_conflict,
-                            json_path: '$.components.schemas.Thing.properties.payment_id')
+                            json_path: '$.components.schemas.Thing.properties.transaction_id')
+    end
+
+    it 'gives a role claimed by a required and an optional field to the required one' do
+      profile = schemas('Thing' => { 'type' => 'object', 'required' => ['sum'],
+                                     'properties' => { 'total_amount' => { 'type' => 'integer' },
+                                                       'sum' => { 'type' => 'integer' } } })
+
+      expect(profile.schema('Thing').field('sum').role.value).to eq(:amount)
+      expect(profile.schema('Thing').field('total_amount').role).to be_unknown
     end
   end
 

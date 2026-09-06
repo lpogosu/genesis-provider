@@ -143,8 +143,8 @@ RSpec.describe SpecGen::Matchers::Assigner do
       expect(second.remarks.first.message).to include('взята следующая роль card_number (0.50)')
     end
 
-    it 'lets the earlier field win a tie and never questions an overlay role' do
-      first, second = assign(subject_for('id'), subject_for('payout_id'))
+    it 'lets the earlier field win a full tie and never questions an overlay role' do
+      first, second = assign(subject_for('payout_id'), subject_for('charge_id'))
       fixed, other = assign(subject_for('a', overlay: 'amount'), subject_for('sum'))
 
       expect(first.derived.value).to eq(:provider_operation_id)
@@ -154,12 +154,27 @@ RSpec.describe SpecGen::Matchers::Assigner do
       expect(other.remarks.first.code).to eq(:field_role_conflict)
     end
 
+    it 'gives the role to the required field when the confidence is equal' do
+      optional, required = assign(subject_for('total_amount'), subject_for('sum', required: true))
+
+      expect(required.derived.value).to eq(:amount)
+      expect(optional.derived).to be_unknown
+    end
+
+    it 'gives the role to the shorter name when nothing else separates two synonyms' do
+      modified, plain = assign(subject_for('settlement_amount'), subject_for('amount'))
+
+      expect(plain.derived.value).to eq(:amount)
+      expect(modified.derived).to be_unknown
+      expect(modified.remarks.first.code).to eq(:field_role_conflict)
+    end
+
     it 'survives a chain of conflicts where the first winner later loses' do
       outcomes = nil
 
       expect { outcomes = assign(subject_for('payout_id'), subject_for('id'), subject_for('transaction_id')) }
         .not_to raise_error
-      expect(outcomes.map { |outcome| outcome.derived.value }).to eq([:provider_operation_id, nil, nil])
+      expect(outcomes.map { |outcome| outcome.derived.value }).to eq([nil, :provider_operation_id, nil])
     end
   end
 

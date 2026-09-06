@@ -13,8 +13,10 @@ module SpecGen
     #
     # Одна роль на два поля одной схемы — конфликт, а не совпадение: две
     # суммы в одном объекте означают, что одна из них не сумма операции.
-    # Роль остаётся у поля с большей уверенностью (при равенстве — у
-    # первого по порядку схемы), второе получает следующего кандидата или
+    # Роль остаётся у поля с большей уверенностью, при равной уверенности —
+    # у главного носителя роли (обязательное поле, затем более короткое имя:
+    # `amount` против `amount_refunded`), при полном равенстве — у первого по
+    # порядку схемы; второе получает следующего кандидата или
     # остаётся без роли, и в обоих случаях об этом сказано. Роли из overlay в
     # конфликт не вступают: человек так решил. Роли из `repeatable`
     # rules/roles.yml конфликтом не считаются.
@@ -119,8 +121,28 @@ module SpecGen
       def rank(first, second)
         return [first, second] if first.fixed
         return [second, first] if second.fixed
+        return [first, second] if first.confidence > second.confidence
+        return [second, first] if second.confidence > first.confidence
 
-        first.confidence >= second.confidence ? [first, second] : [second, first]
+        main_bearer(first, second)
+      end
+
+      # При равной уверенности роль остаётся у главного носителя. Признаки
+      # главного взяты из замера: у Stripe в роль amount попадают 24 разных
+      # поля одной схемы (`amount`, `amount_captured`, `amount_refunded`,
+      # `amount_due`), и все они одинаково хорошие синонимы. Обязательное
+      # поле важнее необязательного — без него запрос не уйдёт; при равной
+      # обязательности выигрывает более короткое имя, потому что модификатор
+      # (`refunded`, `captured`, `net`, `fee`) может только удлинить имя, а
+      # не укоротить. Сравнение строгое, поэтому при полном равенстве роль
+      # по-прежнему остаётся у первого поля схемы и вывод детерминирован.
+      def main_bearer(first, second)
+        (bearer_key(second) <=> bearer_key(first)).negative? ? [second, first] : [first, second]
+      end
+
+      # @return [Array(Integer, Integer)] меньше — главнее
+      def bearer_key(slot)
+        [slot.subject.required ? 0 : 1, slot.subject.normalized.size]
       end
 
       def outcome(slot)

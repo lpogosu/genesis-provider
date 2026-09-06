@@ -12,12 +12,12 @@ RSpec.describe SpecGen::Matchers::NameMatcher do
                         headers: { 'x_acme_sig' => [:signature, 'signatures.yml'] })
   end
 
-  def subject_named(name)
-    SpecGen::Matchers::Subject.new(name: name)
+  def subject_named(name, parents: [])
+    SpecGen::Matchers::Subject.new(name: name, parents: parents)
   end
 
-  def votes(name)
-    matcher.call(subject_named(name))
+  def votes(name, parents: [])
+    matcher.call(subject_named(name, parents: parents))
   end
 
   describe 'the dictionary step' do
@@ -68,13 +68,45 @@ RSpec.describe SpecGen::Matchers::NameMatcher do
     end
   end
 
+  describe 'a synonym the parent forbids' do
+    it 'gives no dictionary vote to state inside an address, where it means a region' do
+      banned = votes('state', parents: %w[BillingAddress])
+      allowed = votes('state', parents: %w[TransferResource])
+
+      # The name still votes, but only as a weak signal: the role, if it is
+      # assigned at all, becomes a heuristic below the threshold and lands in
+      # the report instead of passing as a dictionary fact.
+      expect(banned.map(&:kind)).not_to include(:synonym)
+      expect(banned.find { |vote| vote.role == :status }.score).to be < allowed.first.score
+    end
+
+    it 'keeps the dictionary vote for the same name in a payment schema' do
+      vote = votes('state', parents: %w[TransferResource]).find { |v| v.role == :status }
+
+      expect(vote.kind).to eq(:synonym)
+    end
+
+    it 'gives no dictionary vote to type inside an error body' do
+      banned = votes('type', parents: %w[ErrorEnvelope])
+
+      expect(banned.map(&:kind)).not_to include(:synonym)
+      expect(banned.find { |vote| vote.role == :recipient_type }.score).to be < 1.0
+    end
+
+    it 'keeps the dictionary vote for type under the recipient' do
+      vote = votes('type', parents: %w[Recipient]).find { |v| v.role == :recipient_type }
+
+      expect(vote.kind).to eq(:synonym)
+    end
+  end
+
   describe 'the overlap step' do
     it 'scores the share of tokens in common with the closest synonym' do
-      vote = votes('recipient_phone_number').find { |v| v.role == :recipient_phone }
+      vote = votes('recipient_phone_no').find { |v| v.role == :recipient_phone }
 
       expect(vote.kind).to eq(:overlap)
       expect(vote.score).to be_within(0.01).of(0.8 * (2.0 / 3))
-      expect(vote.evidence).to include('общие токены с синонимом `phone_number`: phone, number (67%)')
+      expect(vote.evidence).to include('общие токены с синонимом `recipient_phone`: recipient, phone (67%)')
     end
 
     it 'ignores an overlap made only of generic words' do

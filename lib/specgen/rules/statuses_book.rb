@@ -19,6 +19,10 @@ module SpecGen
       attr_reader :index
       # @return [Array<String>] ведущие слова, меняющие смысл статуса за ними
       attr_reader :modifiers
+      # @return [Array<String>] ведущие слова, по которым читается всё имя
+      attr_reader :heads
+      # @return [Array<String>] хвостовые слова, не меняющие исход
+      attr_reader :suffixes
       # @return [Float] уверенность статуса, прочитанного по хвосту
       #   составного имени
       attr_reader :tail_confidence
@@ -54,6 +58,29 @@ module SpecGen
         (tokens & @modifiers).first
       end
 
+      # Голова составного имени, по которой читается всё имя целиком.
+      # @param tokens [Array<String>] токены имени
+      # @return [String, nil] первый токен, если он объявлен в `heads`
+      def head(tokens)
+        word = tokens.first
+        @heads.include?(word) ? word : nil
+      end
+
+      # @param tokens [Array<String>] токены имени
+      # @return [String, nil] последний токен, если он объявлен в `suffixes`
+      def suffix(tokens)
+        word = tokens.last
+        tokens.size > 1 && @suffixes.include?(word) ? word : nil
+      end
+
+      # Слово, по которому видно, что значение называет тип операции, а не
+      # её исход.
+      # @param tokens [Array<String>] токены имени
+      # @return [String, nil]
+      def type_word(tokens)
+        (tokens & @not_status_words).first
+      end
+
       private
 
       def build
@@ -66,15 +93,49 @@ module SpecGen
         load_ambiguous
         load_reading
         report_uncovered
-        [@index, @origins, @canonical, @ambiguous, @modifiers].each(&:freeze)
+        [@index, @origins, @canonical, @ambiguous, @modifiers, @heads, @suffixes,
+         @not_status_words].each(&:freeze)
       end
 
-      # Как читать составное имя: какие ведущие слова снимать нельзя и с
-      # какой уверенностью читается хвост, когда снять их пришлось.
+      # Как читать составное имя: какие ведущие слова снимать нельзя, по
+      # какой голове читается всё имя, какой хвост снимается без потери
+      # смысла и с какой уверенностью читается то, что осталось.
       def load_reading
-        @modifiers = string_list(data['modifiers'], noun(:modifiers), path('modifiers'),
-                                 required: false).map { |word| Normalizer.call(word) }
+        @modifiers = words('modifiers')
+        @heads = words('heads')
+        @suffixes = words('suffixes')
+        @not_status_words = words('not_status_words')
         @tail_confidence = fraction('tail_confidence')
+        check_heads
+        check_not_statuses('suffixes', @suffixes)
+        check_not_statuses('not_status_words', @not_status_words)
+      end
+
+      def words(key)
+        string_list(data[key], noun(key.to_sym), path(key), required: false)
+          .map { |word| Normalizer.call(word) }
+      end
+
+      # Голова обязана быть статусом, отображённым в in_progress: правило
+      # головы отбрасывает часть имени, и единственное направление ошибки,
+      # которое при этом допустимо, — оставить операцию в опросе.
+      def check_heads
+        @heads.each_with_index do |word, index|
+          next if @index[word] == :in_progress
+
+          fault('statuses.head_not_in_progress', "#{path('heads')}[#{index}]",
+                head: word.inspect, internal: (@index[word] || '-').to_s)
+        end
+      end
+
+      # Слово, которое само по себе статус, не может быть ни снимаемым
+      # хвостом, ни признаком «это не статус».
+      def check_not_statuses(key, listed)
+        listed.each_with_index do |word, index|
+          next unless @index.key?(word) || @ambiguous.key?(word)
+
+          fault('statuses.word_is_status', "#{path(key)}[#{index}]", key: key, word: word.inspect)
+        end
       end
 
       def fraction(key)

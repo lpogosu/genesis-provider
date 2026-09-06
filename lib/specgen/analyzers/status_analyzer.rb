@@ -23,7 +23,8 @@ module SpecGen
       ROLE = :status
       EXTENSION = StatusReader::EXTENSION
       # Вид результата StatusReader -> ключ сообщения предупреждения.
-      MESSAGES = { ambiguous: 'ambiguous_message', partial: 'partial_message' }.freeze
+      MESSAGES = { ambiguous: 'ambiguous_message', partial: 'partial_message',
+                   not_status: 'not_status_message' }.freeze
 
       # Заполняет `profile.status_map`.
       # @return [IR::ProviderProfile] тот профиль, который был передан

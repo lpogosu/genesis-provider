@@ -38,6 +38,22 @@
 #      закрыты в IR::Idempotency::STRATEGIES: uuid_v5 | external_id | none.
 #   4. Класть сюда значения ключей. Здесь только имена заголовков.
 #
+# Замер по корпусу из 33 публичных спецификаций (6 сентября 2026): заголовок
+# идемпотентности объявляют 14 из 33. Живые написания — Idempotency-Key
+# (семь провайдеров), X-Idempotency-Key (два), Idempotence-Key (ЮKassa, БЕЗ
+# буквы «y» — это не опечатка, а имя из их документации), X-Request-ID (Moov)
+# и PayPal-Request-Id.
+#
+# Про шаблон «<Бренд>-Request-Id». PayPal-Request-Id — не единственное имя
+# такой формы: bunq, NOWPayments и Checkout.com называют свой заголовок
+# похоже. Выразить это регулярным выражением в справочнике сейчас нечем:
+# IdempotencyBook сравнивает нормализованные имена строкой, ключа `patterns`
+# у него нет, а добавить его — правка загрузчика, а не данных. Отдельная
+# заявка владельцу lib/specgen/rules/idempotency_book.rb: принимать в
+# `aliases` строку вида `/-request-id\z/` и проверять её тем же
+# Normalizer'ом. До тех пор бренды перечисляются поимённо, и это честно
+# названо здесь, а не спрятано.
+#
 # Заголовки записаны в индустриальном регистре, как они выглядят в
 # документации провайдеров; HTTP-заголовки регистронезависимы, сравнение идёт
 # после нормализации. Список отсортирован по алфавиту.
@@ -49,10 +65,10 @@ canonical_header: Idempotency-Key
 
 aliases:
   - Idempotence-Key         # ЮKassa и производные российские API
-  - Idempotency-Key         # Stripe, Adyen, Dwolla; каноническое имя черновика
+  - Idempotency-Key         # Adyen Transfers, GOV.UK Pay, Dwolla, Mollie, Checkout.com, Lithic, Square
   - PayPal-Request-Id       # PayPal
-  - X-Idempotency-Key       # распространённый вариант с префиксом
-  - X-Request-Id            # встречается как ключ идемпотентности, не как трассировка
+  - X-Idempotency-Key       # Moov, Open Banking UK
+  - X-Request-Id            # Moov; встречается как ключ идемпотентности, не как трассировка
   - X-Unique-Transaction-Id # из описания кейса
 
 # Порядок предпочтения, когда спецификация объявляет сразу несколько имён из

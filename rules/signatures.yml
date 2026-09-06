@@ -15,6 +15,24 @@
 #     `v1,<подпись>`, защита от replay по метке времени.
 #   novapay — подтверждено экспертами кейса: HMAC-SHA256 от сырого тела,
 #     hex, заголовок X-NovaPay-Signature.
+#   checkout_com, dwolla — публичная документация провайдеров; заголовки
+#     Cko-Signature и X-Request-Signature встречены в корпусе из 33
+#     спецификаций (замер 6 сентября 2026).
+#
+# Что из корпуса сюда НЕ попало и почему:
+#   X-Bunq-Client-Signature / X-Bunq-Server-Signature — bunq подписывает и
+#     запрос, и ответ ключом RSA-SHA256, а не HMAC. В
+#     IR::SignatureProfile::ALGORITHMS ключа RSA нет, и выдумывать его
+#     здесь нельзя: это изменение модели. Имена заголовков в header_names
+#     всё же перечислены — тогда параметр получает роль signature, и
+#     человек видит в отчёте, что подпись есть и что она не HMAC.
+#   x-jws-signature — открытый банкинг Великобритании подписывает запрос
+#     отсоединённой подписью JWS (RFC 7515). Это не HMAC и не свойство
+#     вебхука: заголовок объявлен у самих операций. Поведение то же —
+#     роль signature и строка в отчёте.
+#   X-Client-Signed-At (Mollie) — метка времени рядом с подписью, а не
+#     подпись; в header_names её быть не должно, иначе параметр получил бы
+#     роль signature.
 #
 # Значения полей закрыты константами SpecGen::IR::SignatureProfile:
 #   profile   PROFILES   = standard_webhooks | custom
@@ -50,6 +68,33 @@
 version: 1
 
 profiles:
+  # Checkout.com: HMAC-SHA256 от сырого тела ключом подписи вебхука, hex, в
+  # заголовке Cko-Signature. В самой спецификации (2887 КБ, OAS 3.0.1)
+  # заголовок не объявлен ни одним параметром — он есть только в описаниях,
+  # и это типовой случай: из 33 спек корпуса имя заголовка подписи формально
+  # объявляют четыре. Профиль взят из публичной документации провайдера;
+  # если он разойдётся с реальностью, сгенерированный verify_signature!
+  # отвергнет уведомление, а не пропустит подделку.
+  checkout_com:
+    profile: custom
+    header: Cko-Signature
+    algorithm: hmac_sha256
+    encoding: hex
+    payload: raw_body
+    secret_key: webhook_secret
+    source: "публичная документация Checkout.com по вебхукам"
+
+  # Dwolla: HMAC-SHA256 от сырого тела, hex, заголовок X-Request-Signature.
+  # Заголовок объявлен в самой спецификации.
+  dwolla:
+    profile: custom
+    header: X-Request-Signature
+    algorithm: hmac_sha256
+    encoding: hex
+    payload: raw_body
+    secret_key: webhook_secret
+    source: "публичная документация Dwolla по вебхукам"
+
   novapay:
     profile: custom
     header: X-NovaPay-Signature
@@ -97,14 +142,20 @@ algorithm_words:
 # rules/roles.yml: нижний регистр, разделители → `_`. Пересекаться разрешено
 # только с ролью signature; совпадение с любой другой ролью — ошибка загрузки.
 header_names:
+  - cko-signature
   - signature
   - webhook-signature
+  - x-bunq-client-signature
+  - x-bunq-server-signature
   - x-callback-signature
+  - x-client-signature
   - x-hub-signature
   - x-hub-signature-256
+  - x-jws-signature
   - x-novapay-signature
   - x-payment-signature
   - x-provider-signature
+  - x-request-signature
   - x-sign
   - x-signature
   - x-signature-256

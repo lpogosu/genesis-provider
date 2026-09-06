@@ -35,6 +35,9 @@ rules:
     pattern: "pattern"
     internal_status: "internal status"
     modifiers: "leading words that change the meaning of a status"
+    heads: "leading words that carry the meaning of the whole status"
+    suffixes: "trailing words that do not change the outcome"
+    not_status_words: "words that name an operation type rather than its outcome"
     synonyms_of: "synonyms of %{status}"
     ambiguity_reason: "reason %{status} is ambiguous"
     default_exponent: "default exponent"
@@ -119,6 +122,7 @@ rules:
     empty_synonym: "synonym %{name} normalizes to an empty name"
     conflict: "synonym %{name} is already claimed by role %{owner} at %{origin}; a name may mean one thing only"
     missing: "no synonyms for %{roles}; every role of IR::Roles::FIELD needs an entry"
+    parents_conflict: "%{words} appear in both `parents` and `avoid_parents` of one role; the hint and the ban would cancel each other out"
     sample_mismatch: "sample %{sample} matches none of the patterns of its own role"
 
   matchers:
@@ -131,6 +135,8 @@ rules:
     mapped_twice: "status %{status} is already mapped to %{owner} at %{origin}; one status means one internal state"
     uncovered: "no provider status maps to %{statuses}"
     confidence: "`%{key}`: expected a number in %{range}, got %{got}"
+    head_not_in_progress: "head %{head} must be a status mapped to in_progress (now: %{internal}); the head rule drops part of the name and the only acceptable error there is to keep polling"
+    word_is_status: "%{word} is listed in %{key} but is a status itself; such a word must not be stripped"
 
   currencies:
     bad_code: "currency code must be three capital letters, got %{code}"

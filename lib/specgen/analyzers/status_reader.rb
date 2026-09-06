@@ -33,12 +33,28 @@ module SpecGen
     #                    `refused`, но ниже порога матчеров — отброшенные
     #                    слова могли значить что-то важное, и это чтение
     #                    обязано попасть в отчёт как допущение прогона.
+    #   suffixes         хвост, который исхода не меняет: `capturedExternally`
+    #                    — это `captured`, проведённый вне платформы
+    #                    провайдера. Слово снимается, остаток читается заново
+    #                    с той же пониженной уверенностью.
+    #   heads            голова, по которой читается всё имя, когда хвост не
+    #                    прочитался: `AwaitingFurtherAuthorisation`,
+    #                    `AcceptedWithoutPosting` (открытый банкинг
+    #                    Великобритании). Справочник разрешает в этом списке
+    #                    только слова, отображённые в in_progress, поэтому
+    #                    правило по построению не может пометить
+    #                    невыплаченные деньги как выплаченные.
+    #   not_status_words слово, по которому видно, что значение называет ТИП
+    #                    операции, а не исход (`bankTransfer`, `fee`,
+    #                    `BALANCE_INQUIRY` в одном enum со статусами).
+    #                    Внутреннего статуса не даёт никогда — только
+    #                    предупреждение о том, что enum смешанный.
     class StatusReader
       # Что получилось из одной строки.
       #
       #   derived  Derived<Symbol> внутренний статус, либо не выведено
       #   kind     :overlay | :canonical | :synonym | :ambiguous | :tail |
-      #            :partial | :unknown
+      #            :suffix | :head | :partial | :not_status | :unknown
       #   status   строка, которая совпала (без префикса события), либо
       #            исходная
       Result = Struct.new(:derived, :kind, :status, keyword_init: true) do
@@ -55,7 +71,7 @@ module SpecGen
       # `payout/completed`. Всё остальное — разделители внутри имени статуса.
       SEGMENT = %r{[.:/]}
       # Виды результата, при которых статус не прочитан.
-      UNREAD = %i[partial unknown].freeze
+      UNREAD = %i[partial not_status unknown].freeze
 
       # @param book [Rules::StatusesBook]
       # @param overrides [Object] значение `x-specgen-status-map` поля:
@@ -72,11 +88,16 @@ module SpecGen
         override = @overrides[Rules::Normalizer.call(text)]
         return overlay(text, override) unless override.nil?
 
-        addressed(text) || inner(text) ||
+        addressed(text) || inner(text) || stripped(text) || headed(text) || typed(text) ||
           result(IR::Derived.unknown(evidence: t('unknown', status: text)), :unknown, text)
       end
 
       private
+
+      # @return [Array<String>] токены последнего сегмента адреса события
+      def name_tokens(text)
+        Rules::Normalizer.tokens(text.to_s.split(SEGMENT).last.to_s)
+      end
 
       # Имя целиком, затем без ведущих сегментов адреса:
       # "payout.completed" -> ["payout_completed", "completed"].
@@ -107,7 +128,7 @@ module SpecGen
       # читается вовсе — `PART` стоит в modifiers rules/statuses.yml.
       # @return [Result, nil]
       def inner(text)
-        tokens = Rules::Normalizer.tokens(text.to_s.split(SEGMENT).last.to_s)
+        tokens = name_tokens(text)
         (1...tokens.size).each do |from|
           tail = tokens[from..].join('_')
           internal = @book.internal_for(tail)
@@ -120,6 +141,55 @@ module SpecGen
         nil
       end
 
+      # Снимаем хвост, который исхода не меняет, и читаем остаток:
+      # `capturedExternally` -> `captured`. Уверенность понижена, как у
+      # любого чтения по части имени.
+      # @return [Result, nil]
+      def stripped(text)
+        tokens = name_tokens(text)
+        word = @book.suffix(tokens)
+        return nil if word.nil?
+
+        rest = tokens[0..-2].join('_')
+        internal = @book.internal_for(rest)
+        return ambiguous(text, rest) if internal.nil? && @book.ambiguous?(rest)
+        return nil if internal.nil?
+
+        evidence = t('suffix', status: text, suffix: word, tail: rest, internal: internal)
+        result(heuristic(internal, evidence), :suffix, rest)
+      end
+
+      # Голова составного имени: `AwaitingUpload` -> `awaiting`. Справочник
+      # держит в `heads` только слова, отображённые в in_progress, поэтому
+      # худшее, что делает это правило, — оставляет операцию в опросе.
+      # @return [Result, nil]
+      def headed(text)
+        tokens = name_tokens(text)
+        return nil if tokens.size < 2
+
+        word = @book.head(tokens)
+        internal = word && @book.internal_for(word)
+        return nil if internal.nil?
+
+        evidence = t('head', status: text, head: word, internal: internal)
+        result(heuristic(internal, evidence), :head, word)
+      end
+
+      # Значение называет тип операции, а не её исход: внутреннего статуса
+      # нет, но человеку сказано, почему.
+      # @return [Result, nil]
+      def typed(text)
+        word = @book.type_word(name_tokens(text))
+        return nil if word.nil?
+
+        evidence = t('not_status', status: text, word: word)
+        result(IR::Derived.unknown(evidence: evidence), :not_status, text)
+      end
+
+      def heuristic(internal, evidence)
+        IR::Derived.heuristic(internal, confidence: @book.tail_confidence, evidence: evidence)
+      end
+
       def partial(text, tail, internal, word)
         evidence = t('partial', status: text, tail: tail, internal: internal, word: word)
         result(IR::Derived.unknown(evidence: evidence), :partial, text)
@@ -127,9 +197,7 @@ module SpecGen
 
       def tailed(text, tail, internal)
         evidence = t('tail', status: text, tail: tail, internal: internal)
-        derived = IR::Derived.heuristic(internal, confidence: @book.tail_confidence,
-                                                  evidence: evidence)
-        result(derived, :tail, tail)
+        result(heuristic(internal, evidence), :tail, tail)
       end
 
       def overlay(text, value)

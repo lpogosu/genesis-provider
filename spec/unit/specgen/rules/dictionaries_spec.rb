@@ -91,6 +91,42 @@ RSpec.describe 'the shipped dictionaries' do
     it 'keeps every modifier out of the statuses themselves' do
       expect(rules.statuses.modifiers.map { |word| rules.statuses.internal_for(word) }).to all(be_nil)
     end
+
+    it 'carries the closed vocabulary of ISO 20022 payment statuses' do
+      expect(rules.statuses.internal_for('ACSC')).to eq(:approved)
+      expect(rules.statuses.internal_for('RJCT')).to eq(:rejected)
+      expect(%w[ACCP ACSP ACTC ACWC ACWP PDNG RCVD].map { |code| rules.statuses.internal_for(code) })
+        .to all(eq(:in_progress))
+      expect(rules.statuses.internal_for('CANC')).to eq(:rejected)
+    end
+
+    it 'lets a head carry the meaning only when the head leads to in_progress' do
+      expect(rules.statuses.heads).not_to be_empty
+      expect(rules.statuses.heads.map { |word| rules.statuses.internal_for(word) })
+        .to all(eq(:in_progress))
+      expect(rules.statuses.head(%w[accepted technical validation])).to eq('accepted')
+      expect(rules.statuses.head(%w[rejected cancellation request])).to be_nil
+    end
+
+    it 'strips only a suffix that is not a status of its own' do
+      expect(rules.statuses.suffix(%w[captured externally])).to eq('externally')
+      expect(rules.statuses.suffix(%w[externally])).to be_nil
+      expect(rules.statuses.suffixes.map { |word| rules.statuses.internal_for(word) }).to all(be_nil)
+    end
+
+    it 'names the words that mark a booking type rather than an outcome' do
+      expect(rules.statuses.type_word(%w[bank transfer])).to eq('transfer')
+      expect(rules.statuses.type_word(%w[atm withdrawal])).to eq('withdrawal')
+      expect(rules.statuses.type_word(%w[completed])).to be_nil
+    end
+
+    it 'explains an entity state instead of mapping it onto an operation' do
+      %w[active inactive enabled disabled verified deleted].each do |word|
+        expect(rules.statuses.internal_for(word)).to be_nil
+        expect(rules.statuses).to be_ambiguous(word)
+        expect(rules.statuses.ambiguity(word)).not_to be_empty
+      end
+    end
   end
 
   describe 'currencies' do

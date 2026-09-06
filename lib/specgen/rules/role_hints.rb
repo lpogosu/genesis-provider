@@ -15,11 +15,12 @@ module SpecGen
       TYPES = %i[array boolean integer number object string].freeze
       # Списки строк записи роли, кроме `names`: как ключ YAML => ключ IR.
       LISTS = { 'tokens' => :tokens, 'formats' => :formats, 'parents' => :parents,
-                'samples' => :samples, 'enum_values' => :enum_values }.freeze
+                'avoid_parents' => :avoid_parents, 'samples' => :samples,
+                'enum_values' => :enum_values }.freeze
       # Подсказки, которые хранятся нормализованными, как токены имени.
-      NORMALIZED = %i[tokens parents enum_values].freeze
+      NORMALIZED = %i[tokens parents avoid_parents enum_values].freeze
       NO_HINTS = { names: [], tokens: [], types: [], formats: [], patterns: [], parents: [],
-                   locations: [], samples: [], enum_values: [], lengths: [],
+                   avoid_parents: [], locations: [], samples: [], enum_values: [], lengths: [],
                    bounds: false }.freeze
 
       private
@@ -35,6 +36,7 @@ module SpecGen
         hints[:lengths] = lengths_of(fields['lengths'], "#{at}.lengths")
         hints[:bounds] = fields['bounds'] == true
         check_samples(hints, at)
+        check_parents(hints, at)
         hints
       end
 
@@ -76,6 +78,16 @@ module SpecGen
         value.each_with_index.filter_map do |length, index|
           integer(length, noun(:length), "#{at}[#{index}]", range: (1..))
         end
+      end
+
+      # Слово, которое роль одновременно ждёт и запрещает у родителя, —
+      # противоречие: подсказка `parents` и запрет `avoid_parents` погасили
+      # бы друг друга, и никто бы этого не заметил.
+      def check_parents(hints, at)
+        both = hints[:parents] & hints[:avoid_parents]
+        return if both.empty?
+
+        fault('roles.parents_conflict', "#{at}.avoid_parents", words: both.join(', '))
       end
 
       # Образец, который не подходит под шаблоны своей роли, — противоречие.
