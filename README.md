@@ -24,18 +24,19 @@ cd hackgenesis
 bundle install
 
 # спецификация → четыре артефакта в output/
-./integrate --spec spec/fixtures/specs/novapay.yaml --provider novapay --lang ruby
+# provider_api.yaml — файл из описания кейса, он лежит в корне репозитория
+./integrate --spec provider_api.yaml --provider novapay --lang ruby
 ```
 
 ```
-Разбор спецификации... novapay.yaml: OpenAPI 3.0.3, 5 операций, 8 схем, 31 поле
+Разбор спецификации... provider_api.yaml: OpenAPI 3.0.3, 5 операций, 8 схем, 31 поле
   POST /payouts, GET /payouts/{payout_id}, POST /payouts/{payout_id}/cancel, ...
 Авторизация: ApiKeyAuth -> api_key, заголовок X-API-Key, ключи credentials: api_key
 Вебхук: /webhooks/payout, подпись X-NovaPay-Signature (hmac_sha256)
 Генерация сервиса... ok (448 строк) -> output/novapay_service.rb
-Генерация документации... ok (241 строка) -> output/INTEGRATION.md
+Генерация документации... ok (243 строки) -> output/INTEGRATION.md
 Генерация фикстур... ok (472 строки) -> output/fixtures.json
-Генерация отчёта... ok (277 строк) -> output/report.md
+Генерация отчёта... ok (287 строк) -> output/report.md
 Предупреждения: 18 (0 ошибок, 6 предупреждений, 12 справок)
 ```
 
