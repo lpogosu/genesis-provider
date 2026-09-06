@@ -98,8 +98,11 @@ docker compose run --rm api ./integrate --spec provider_api.yaml --provider nova
 **Вставить в терминал:**
 
 ```sh
-docker compose run --rm api ./integrate --spec spec/fixtures/specs/real/adyen_transfers_v4.yaml --provider adyen
+docker compose run --rm api ./integrate --spec spec/fixtures/specs/real/adyen_transfers_v4.yaml --provider adyen --output output/adyen
 ```
+
+Хвост `--output output/adyen` обязателен: без него файлы Adyen лягут поверх
+файлов novapay, и второй экран будет нечего показывать.
 
 **Что появится.** Тот же процесс на чужой спецификации: 12 операций, четыре
 файла.
