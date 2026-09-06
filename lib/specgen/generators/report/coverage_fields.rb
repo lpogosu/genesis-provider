@@ -29,20 +29,37 @@ module SpecGen
         def request
           gaps = request_entries.reject { |operation, entry| request_covered?(operation, entry) }
                                 .map { |operation, entry| request_gap(operation, entry) }
-          build('request_fields', request_entries.size, gaps)
+          build('request_fields', request_entries.size, gaps, out_of_scope: skipped_optional)
         end
 
+        # Из знаменателя второй цифры входящие поля уходят целиком, кроме
+        # прочитанных: поле, чья роль не входит в READ_ROLES, и поле без
+        # роли методам контракта класть некуда — они не выбраны, а не
+        # упущены. Поле события уведомления сервис читает, и оно остаётся.
         # @return [Dimension] поля тел ответов и уведомлений, которые сервис читает
         def response
           gaps = response_entries.reject { |_name, entry| response_covered?(entry) }
                                  .map { |name, entry| response_gap(name, entry) }
-          build('response_fields', response_entries.size, gaps)
+          build('response_fields', response_entries.size, gaps, out_of_scope: gaps.size)
         end
 
         private
 
-        def build(key, total, gaps)
-          Dimension.new(key: key, total: total, covered: total - gaps.size, gaps: gaps)
+        def build(key, total, gaps, out_of_scope: 0)
+          Dimension.new(key: key, total: total, covered: total - gaps.size, gaps: gaps,
+                        out_of_scope: out_of_scope)
+        end
+
+        # Необязательное поле без роли в payload не идёт намеренно (CLAUDE.md,
+        # «Что генерируем при неполной спеке»), поэтому пробелом интеграции
+        # оно не является. Обязательное без роли остаётся в знаменателе: оно
+        # уходит в payload с TODO, и это настоящий пробел.
+        def skipped_optional
+          request_entries.count { |_operation, entry| optional_without_role?(entry.field) }
+        end
+
+        def optional_without_role?(field)
+          !field.role.known? && !field.required? && !field.conditionally_required?
         end
 
         # @return [Array<Array(IR::Operation, Generators::SchemaFields::Entry)>]

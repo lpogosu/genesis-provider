@@ -8,8 +8,19 @@ module SpecGen
     # не ломала таблицу, а пустая ячейка не выглядела пропуском.
     module Markdown
       EMPTY = '—'
+      # Ширина абзаца документа. Тексты локали приходят со своими переносами,
+      # но подстановки (список ролей, имя базового класса) их сбивают, и
+      # абзац переносится заново — на одной ширине для всего документа.
+      WIDTH = 78
 
       module_function
+
+      # @param text [String]
+      # @param width [Integer]
+      # @return [String] абзац, перенесённый по словам
+      def paragraph(text, width: WIDTH)
+        Ruby.wrap(text.gsub(/\s+/, ' ').strip, width).join("\n")
+      end
 
       # @param headers [Array<String>]
       # @param rows [Array<Array<Object>>]

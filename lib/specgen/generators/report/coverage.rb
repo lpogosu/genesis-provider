@@ -4,12 +4,22 @@ module SpecGen
   module Generators
     module Report
       # Покрытие спецификации сгенерированной интеграцией: семь измерений и
-      # одна цифра.
+      # две цифры.
       #
       # Формула — доля покрытых элементов от всех: сумма покрытого по всем
       # измерениям, делённая на сумму найденного. Среднее по измерениям
       # отброшено намеренно: измерения разного размера, и четыре события
       # вебхука не должны весить столько же, сколько триста полей.
+      #
+      # Вторая цифра — та же доля, но от знаменателя, из которого вычтено
+      # то, чему в методах контракта нет места по построению: поля входящих
+      # тел с ролью вне читаемых, необязательные поля запросов без роли и
+      # операции без собственного метода. Первая отвечает «сколько
+      # спецификации задействовано», вторая — «сколько задействовано из
+      # того, что контракт вообще может использовать». Исключается только
+      # непокрытое и только по этим трём правилам; всё остальное —
+      # коды ответов, статусы, события, условия, обязательные поля запросов
+      # — остаётся в знаменателе, даже когда не покрыто.
       #
       # Покрытым считается элемент, у которого есть ветка, выражение или
       # строка таблицы в сгенерированном коде. Всё остальное перечисляется
@@ -52,6 +62,28 @@ module SpecGen
           ((covered.to_f / total) * 100).round
         end
 
+        # @return [Integer] элементов вычтено из знаменателя второй цифры
+        def out_of_scope
+          dimensions.sum(&:excluded)
+        end
+
+        # @return [Integer] элементов, которые контракт способен использовать
+        def in_scope_total
+          total - out_of_scope
+        end
+
+        # @return [Integer] покрытие в границах контракта, в процентах
+        def in_scope_percent
+          return 100 if in_scope_total.zero?
+
+          ((covered.to_f / in_scope_total) * 100).round
+        end
+
+        # @return [Array<Dimension>] измерения, что-то отдавшие в исключение
+        def excluded_dimensions
+          dimensions.reject { |dimension| dimension.excluded.zero? }
+        end
+
         # @return [Array<Array(String, String)>] всё непокрытое с причиной
         def gaps
           dimensions.flat_map(&:gaps)
@@ -59,18 +91,28 @@ module SpecGen
 
         private
 
-        def build(key, total, gaps)
-          Dimension.new(key: key, total: total, covered: total - gaps.size, gaps: gaps)
+        def build(key, total, gaps, out_of_scope: 0)
+          Dimension.new(key: key, total: total, covered: total - gaps.size, gaps: gaps,
+                        out_of_scope: out_of_scope)
         end
 
         # Операция покрыта, если у неё есть метод сервиса: метод контракта
         # либо отдельный публичный метод. Роль :unmapped покрытием не
         # считается — метод сгенерирован, но что он делает, решает человек.
+        #
+        # Из знаменателя второй цифры уходит только операция, которой не
+        # досталось даже отдельного метода: пока Extras генерирует метод
+        # каждой операции вне контракта, таких нет, и исключение остаётся
+        # нулевым — это проверка, а не скидка.
         def operations
-          gaps = profile.operations.select(&:unmapped?).map do |operation|
-            [operation.key, t('gap_operation_unmapped')]
-          end
-          build('operations', profile.operations.size, gaps)
+          unmapped = profile.operations.select(&:unmapped?)
+          gaps = unmapped.map { |operation| [operation.key, t('gap_operation_unmapped')] }
+          build('operations', profile.operations.size, gaps,
+                out_of_scope: unmapped.count { |operation| !own_method?(operation) })
+        end
+
+        def own_method?(operation)
+          parts[:extras].entries.any? { |extra, _method| extra.equal?(operation) }
         end
 
         # Ответы входящего вебхука не считаются: их пишем мы, а не провайдер.

@@ -34,7 +34,8 @@ module SpecGen
         { operations: profile.operations.size,
           operations_with_role: profile.operations.count { |op| !op.unmapped? },
           schemas: profile.schemas.size, fields: fields_count,
-          coverage_percent: coverage.percent, warnings: warnings }
+          coverage_percent: coverage.percent,
+          contract_coverage_percent: coverage.in_scope_percent, warnings: warnings }
       end
 
       def texts

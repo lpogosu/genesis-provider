@@ -106,6 +106,35 @@ module SpecGen
           codes(CoverageFields::READ_ROLES)
         end
 
+        # Абзац о том, почему цифр в разделе две и чем они отличаются.
+        # @return [String] раздел 2
+        def coverage_scope_note
+          paragraph(t('coverage_scope_note', base: code(@ctx.contract.base_class),
+                                             roles: read_roles))
+        end
+
+        # @return [String] раздел 2: сколько элементов вычтено из знаменателя
+        def coverage_scope_intro
+          paragraph(t('coverage_scope_intro',
+                      count: Texts.plural(coverage.out_of_scope, 'element')))
+        end
+
+        # Вычтенное поимённо по видам: без явного списка вторая цифра
+        # читалась бы как подкрутка.
+        # @return [String] раздел 2
+        def coverage_scope_list
+          rows = coverage.excluded_dimensions.map do |dimension|
+            reason = t("scope_#{dimension.key}")
+            "**#{dimension_name(dimension)}** — #{dimension.excluded}: #{reason}"
+          end
+          list(rows).join("\n")
+        end
+
+        # @return [String] раздел 2: что в знаменателе осталось и где сверить
+        def coverage_scope_rest
+          paragraph(t('coverage_scope_rest', limit: Dimension::MAX_GAPS))
+        end
+
         # @param dimension [Dimension]
         # @return [String] название измерения по-русски
         def dimension_name(dimension)

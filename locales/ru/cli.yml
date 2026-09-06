@@ -25,6 +25,7 @@ cli:
     operations: "Операций"
     roles: "С ролью"
     coverage: "Покрытие"
+    contract: "В контракте"
     warnings: "Замечаний"
     artifacts: "Файлов"
   version: "integrate %{version}"

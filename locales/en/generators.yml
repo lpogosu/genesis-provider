@@ -370,6 +370,29 @@ generators:
     dim_statuses: "Statuses"
     dim_events: "Webhook events"
     dim_conditions: "Interaction conditions"
+    # 2. Coverage: the second figure, "within the contract"
+    coverage_scope_note: |-
+      There are two figures because there are two questions. The first answers
+      "how much of the specification is used": it counts every element found
+      and forgives nothing. The second answers "how much was not missed out of
+      what the %{base} contract can use at all": its four methods read the
+      notification event field and the fields with roles %{roles} from an
+      incoming body, build the request body by roles — and have nowhere to put,
+      say, the address of an account holder.
+    coverage_scope_intro: "The denominator of the second figure is smaller by %{count}, and here they all are, by kind:"
+    coverage_scope_none: "Both figures share one denominator: this specification has no element the contract could not use, so the second figure equals the first."
+    coverage_scope_rest: |-
+      Nothing else is subtracted: response codes, statuses, webhook events,
+      interaction conditions, required request body fields and request fields
+      with a derived role stay in the denominator of the second figure in full
+      — even when they are not covered, because there it is the integration
+      that falls short, not the contract. Nothing subtracted is hidden: every
+      subtracted element is named below, under "What is not covered and why",
+      with its own reason — those lists are cut to the first %{limit} elements
+      per dimension.
+    scope_operations: "the role of the operation does not map onto the contract and it got no public method of its own — there is nothing to call"
+    scope_request_fields: "optional fields with no role — they are left out of the payload on purpose (CLAUDE.md, \"What we generate for an incomplete spec\"), not by oversight"
+    scope_response_fields: "the role of the field is not one of those the service reads, or was not derived at all — the contract methods have nowhere to read it into"
     gaps_heading: "not covered: %{count}"
     gaps_more: "and %{count} more in this dimension"
     gap_operation_unmapped: "the operation role was not recognised: a method is generated, but what it does is up to a human — section 4"
@@ -459,3 +482,4 @@ generators:
 plural:
   line: { one: "line", other: "lines" }
   item: { one: "item", other: "items" }
+  element: { one: "element", other: "elements" }

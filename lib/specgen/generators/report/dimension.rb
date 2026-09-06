@@ -5,12 +5,14 @@ module SpecGen
     module Report
       # Одно измерение покрытия спецификации сгенерированной интеграцией.
       #
-      #   key      ключ названия измерения в locales/*/generators.yml
-      #   total    сколько элементов спецификации этого вида найдено
-      #   covered  сколько из них задействовано в сгенерированном коде
-      #   gaps     [[элемент, причина]] — непокрытое поимённо, с причиной;
-      #            непокрытое без причины было бы обвинением, а не отчётом
-      Dimension = Struct.new(:key, :total, :covered, :gaps, keyword_init: true)
+      #   key           ключ названия измерения в locales/*/generators.yml
+      #   total         сколько элементов спецификации этого вида найдено
+      #   covered       сколько из них задействовано в сгенерированном коде
+      #   gaps          [[элемент, причина]] — непокрытое поимённо, с причиной;
+      #                 непокрытое без причины было бы обвинением, а не отчётом
+      #   out_of_scope  сколько из непокрытого контракт не может использовать
+      #                 по построению: знаменатель второй цифры покрытия
+      Dimension = Struct.new(:key, :total, :covered, :gaps, :out_of_scope, keyword_init: true)
 
       # Проценты и выборки Dimension.
       class Dimension
@@ -57,6 +59,19 @@ module SpecGen
         # @return [Integer]
         def uncovered
           total.to_i - covered.to_i
+        end
+
+        # Знаменатель второй цифры покрытия: найденное минус то, чему в
+        # методах контракта нет места по построению. Исключается только
+        # непокрытое, поэтому число никогда не меньше покрытого.
+        # @return [Integer]
+        def in_scope_total
+          total.to_i - out_of_scope.to_i
+        end
+
+        # @return [Integer] сколько элементов измерения вне границ контракта
+        def excluded
+          out_of_scope.to_i
         end
       end
     end

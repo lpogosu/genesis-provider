@@ -29,11 +29,13 @@ module SpecGen
     #   operations  сколько операций найдено
     #   roles       у скольких из них выведена роль
     #   coverage    покрытие спецификации в процентах
+    #   contract    покрытие в границах контракта, в процентах: знаменатель
+    #               без элементов, которым в методах контракта нет места
     #   warnings    сколько предупреждений собрал профиль
     #   artifacts   сколько файлов записано
     #   error       сообщение, если прогон не дошёл до конца
-    Row = Struct.new(:file, :provider, :operations, :roles, :coverage, :warnings, :artifacts,
-                     :error, keyword_init: true) do
+    Row = Struct.new(:file, :provider, :operations, :roles, :coverage, :contract, :warnings,
+                     :artifacts, :error, keyword_init: true) do
       # @return [Boolean]
       def ok?
         error.nil?
@@ -71,13 +73,20 @@ module SpecGen
 
     def row(file)
       profile, artifacts = run(file)
-      report = artifacts.find { |artifact| artifact.kind == :report }
       Row.new(file: relative(file), provider: Generators::Naming.for(profile).slug,
               operations: profile.operations.size, roles: mapped(profile),
-              coverage: report&.metrics&.fetch(:coverage_percent, nil),
-              warnings: profile.warnings.size, artifacts: artifacts.size)
+              warnings: profile.warnings.size, artifacts: artifacts.size,
+              **coverage_of(artifacts))
     rescue SpecGen::Error => e
       Row.new(file: relative(file), error: e.message)
+    end
+
+    # Обе цифры покрытия считает генератор отчёта и кладёт в метрики своего
+    # артефакта; пакетный прогон их только перекладывает в строку таблицы и
+    # markdown не разбирает.
+    def coverage_of(artifacts)
+      metrics = artifacts.find { |artifact| artifact.kind == :report }&.metrics || {}
+      { coverage: metrics[:coverage_percent], contract: metrics[:contract_coverage_percent] }
     end
 
     # Имя провайдера берётся из имени файла, а не из заголовка

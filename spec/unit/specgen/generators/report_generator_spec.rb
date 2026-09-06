@@ -26,6 +26,21 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
     text.lines.grep(/\A## /).map(&:chomp)
   end
 
+  # Строка раздела 2 с обеими цифрами покрытия.
+  def coverage_line(text)
+    text[/^\*\*Покрытие: .+$/]
+  end
+
+  # @return [Array(Integer, Integer)] проценты: от всей спеки и в границах контракта
+  def percentages(text)
+    coverage_line(text).scan(/(\d+) %/).flatten.map(&:to_i)
+  end
+
+  # @return [Array(Integer, Integer, Integer, Integer)] покрыто, найдено, покрыто, в границах
+  def figures(text)
+    coverage_line(text).scan(/\((\d+) из (\d+)/).flatten.map(&:to_i)
+  end
+
   # Фрагменты overlay из раздела 3 склеиваются в один документ ровно так, как
   # велит сам отчёт: под ключ actions, без правки отступов.
   def overlay_document(text)
@@ -60,8 +75,41 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
     end
 
     it 'reports coverage as a percentage with the formula named' do
-      expect(@text).to match(/\*\*Покрытие: \d+ %\ \(\d+ из \d+ элементов\)\.\*\*/)
+      expect(@text).to match(/\*\*Покрытие: \d+ %\ \(\d+ из \d+ элементов\)\./)
       expect(@text).to include('доля покрытых элементов от всех')
+    end
+
+    it 'prints the in-contract figure next to the overall one' do
+      expect(@text).to match(/\*\*Покрытие: \d+ % \(\d+ из \d+ элементов\)\. /)
+      expect(@text).to match(/В границах контракта: \d+ % \(\d+ из \d+\)\.\*\*/)
+    end
+
+    # Из знаменателя второй цифры вычитается только непокрытое, поэтому она
+    # не бывает ниже первой, а её знаменатель — ниже покрытого.
+    it 'never lets the in-contract figure fall below the overall one' do
+      overall, in_contract = percentages(@text)
+      covered, total, covered_again, in_scope = figures(@text)
+      expect(in_contract).to be >= overall
+      expect(covered_again).to eq(covered)
+      expect(in_scope).to be_between(covered, total)
+    end
+
+    # Вторая цифра принимается только вместе со списком вычтенного: иначе
+    # читатель вправе счесть её подкруткой.
+    it 'explains the smaller denominator with an explicit list of what is left out' do
+      section = @text.split('## 2.').last.split('### Что не покрыто').first
+      expect(section).to include('Знаменатель второй цифры меньше первого на',
+                                 '**Поля тел ответов и уведомлений** —',
+                                 'Больше не вычтено ничего')
+      expect(section).to match(/\*\*Поля тел ответов и уведомлений\*\* — \d+: роль поля/)
+    end
+
+    it 'puts both coverage figures into the metrics of the artifact' do
+      metrics = @artifact.metrics
+      expect(metrics[:coverage_percent]).to be_a(Integer)
+      expect(metrics[:contract_coverage_percent]).to be_a(Integer)
+      expect(metrics[:contract_total]).to be_between(metrics[:covered], metrics[:total])
+      expect(metrics[:contract_coverage_percent]).to be >= metrics[:coverage_percent]
     end
 
     it 'places every warning of the profile into exactly one section' do
@@ -175,7 +223,19 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
     end
 
     it 'reports full coverage of an empty specification without dividing by zero' do
-      expect(text).to include('**Покрытие: 100 % (0 из 0 элементов).**')
+      expect(text).to include('**Покрытие: 100 % (0 из 0 элементов). ' \
+                              'В границах контракта: 100 % (0 из 0).**')
+    end
+
+    # Спецификация, из которой контракту не досталось ничего, — единственный
+    # случай нулевого знаменателя у второй цифры: делить на него нельзя.
+    it 'keeps the in-contract figure whole when the contract can use nothing' do
+      coverage = SpecGen::Generators::Report::View
+                 .new(profile: profile, rules: SpecGen::Rules.load,
+                      naming: SpecGen::Generators::Naming.for(profile)).coverage
+      expect(coverage.in_scope_total).to eq(0)
+      expect(coverage.in_scope_percent).to eq(100)
+      expect(text).to include('в этой спецификации нет ни одного элемента')
     end
 
     it 'says there is nothing to cover instead of claiming 100 % in an empty dimension' do
@@ -190,6 +250,20 @@ RSpec.describe SpecGen::Generators::ReportGenerator do
       expect(empty).to be_empty
       expect(empty.percent).to be_nil
       expect(empty.percent_text).to eq('нечего покрывать')
+    end
+
+    it 'takes what the contract cannot use out of its own denominator only' do
+      dimension = described_class.new(key: 'response_fields', total: 4, covered: 1,
+                                      gaps: [%w[a b]], out_of_scope: 3)
+      expect(dimension.excluded).to eq(3)
+      expect(dimension.in_scope_total).to eq(1)
+      expect(dimension.percent).to eq(25)
+    end
+
+    it 'counts nothing as out of contract when the count was not given' do
+      dimension = described_class.new(key: 'statuses', total: 3, covered: 2, gaps: [%w[a b]])
+      expect(dimension.excluded).to eq(0)
+      expect(dimension.in_scope_total).to eq(3)
     end
 
     it 'rounds the share of covered elements when there is something to cover' do

@@ -25,6 +25,7 @@ cli:
     operations: "Operations"
     roles: "With a role"
     coverage: "Coverage"
+    contract: "In contract"
     warnings: "Notices"
     artifacts: "Files"
   version: "integrate %{version}"

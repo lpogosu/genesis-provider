@@ -12,9 +12,11 @@ module SpecGen
     # выравнивание — единственное, ради чего таблица вообще нужна.
     class BatchLines
       # Прочерк в ячейке: числа у неразобранной спецификации нет, а пустая
-      # ячейка читается как ноль.
+      # ячейка читается как ноль. Колонок восемь, и заголовки у них
+      # короткие намеренно: строка таблицы обязана уместиться в терминал
+      # шириной 120 знаков вместе с самым длинным путём спецификации.
       EMPTY = '—'
-      COLUMNS = %w[spec provider operations roles coverage warnings artifacts].freeze
+      COLUMNS = %w[spec provider operations roles coverage contract warnings artifacts].freeze
       GAP = '  '
 
       # @param rows [Array<Batch::Row>]
@@ -48,10 +50,10 @@ module SpecGen
       end
 
       def cells(row)
-        return [row.file, Texts.t('cli.batch_failed'), *Array.new(5, EMPTY)] unless row.ok?
+        return [row.file, Texts.t('cli.batch_failed'), *Array.new(6, EMPTY)] unless row.ok?
 
         [row.file, row.provider, row.operations.to_s, "#{row.roles}/#{row.operations}",
-         "#{row.coverage} %", row.warnings.to_s, row.artifacts.to_s]
+         "#{row.coverage} %", "#{row.contract} %", row.warnings.to_s, row.artifacts.to_s]
       end
 
       def total

@@ -29,14 +29,16 @@ module SpecGen
       end
 
       # Покрытие уже посчитано для раздела 2 отчёта, сверка со спецификацией
-      # — для раздела 1; пакетный прогон и тесты берут числа отсюда, а не
-      # считают их заново и не разбирают markdown.
+      # — для раздела 1; пакетный прогон, веб-API и тесты берут числа отсюда,
+      # а не считают их заново и не разбирают markdown. Цифры покрытия две:
+      # от всей спецификации и от того, что контракт способен использовать.
       def metrics
         coverage = template_view.coverage
         # Сверки может не быть (профиль без спецификации): NilClass#to_h
         # даёт пустой хеш, поэтому отдельная ветка не нужна.
-        { coverage_percent: coverage.percent, covered: coverage.covered, total: coverage.total }
-          .merge(checks.to_h)
+        { coverage_percent: coverage.percent, covered: coverage.covered, total: coverage.total,
+          contract_coverage_percent: coverage.in_scope_percent,
+          contract_total: coverage.in_scope_total }.merge(checks.to_h)
       end
     end
   end

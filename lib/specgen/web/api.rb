@@ -65,7 +65,8 @@ module SpecGen
       def row_hash(row)
         { file: row.file, provider: row.provider, operations: row.operations,
           operations_with_role: row.roles, coverage_percent: row.coverage,
-          warnings: row.warnings, artifacts: row.artifacts, error: row.error }
+          contract_coverage_percent: row.contract, warnings: row.warnings,
+          artifacts: row.artifacts, error: row.error }
       end
     end
   end
