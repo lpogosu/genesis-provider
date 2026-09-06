@@ -73,8 +73,24 @@ module SpecGen
         def entry(field, visited, depth)
           return array(field, depth) if field.type == 'array'
           return object(field, visited, depth) if field.schema
+          return free_form(field, depth) if free_form?(field)
 
           scalar(field, depth)
+        end
+
+        # Объект без объявленных свойств (`additionalProperties`, свободная
+        # карта вроде metadata). Ролей внутри нет и быть не может, поэтому
+        # скаляром такое поле уходить не должно: провайдер ждёт объект.
+        def free_form?(field)
+          field.type == 'object' && field.schema.nil?
+        end
+
+        def free_form(field, depth)
+          return nil unless needed?(field)
+
+          note = @ctx.t('todo_free_form')
+          Entry.new(comments: comment(note, depth, prefix: '# TODO: '),
+                    lines: [entry_line(field, '{}')])
         end
 
         def scalar(field, depth)
@@ -149,7 +165,14 @@ module SpecGen
                                                       evidence: field.role.evidence), depth))
           end
           lines.concat(comment(required_when(field), depth)) if field.conditionally_required?
+          lines.concat(variant_note(field, depth)) if field.variant?
           lines
+        end
+
+        # Поля разных веток oneOf/anyOf попадают в одно тело: какая ветка
+        # нужна, решает человек, и молчать об этом нельзя.
+        def variant_note(field, depth)
+          comment(@ctx.t('variant_field', variant: field.variant), depth)
         end
 
         def required_when(field)
