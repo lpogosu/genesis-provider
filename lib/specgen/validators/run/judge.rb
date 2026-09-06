@@ -219,7 +219,7 @@ module SpecGen
         end
 
         def show(value)
-          text = value.is_a?(String) ? value.inspect : JSON.generate(value)
+          text = value.is_a?(Hash) || value.is_a?(Array) ? JSON.generate(value) : value.inspect
           text.length > MAX_VALUE ? "#{text[0, MAX_VALUE]}…" : text
         end
 
